@@ -51,3 +51,14 @@ Verificação do front-end em 23/10/2026 na branch `feat/UC01-cadastro`:
 Os fluxos integrados exercitam cadastro docente sem opcionais, cadastro discente com curso real do catálogo de teste e zeros na matrícula, campos obrigatórios, senha inicialmente oculta, e-mail duplicado, consulta e edição, ETag desatualizado por alteração em outra sessão, troca de e-mail com novo login, confirmação/cancelamento da inativação, senha atual incorreta, bloqueio de conta inativa, falha de rede e catálogo vazio. Os testes também confirmam que tokens não são persistidos em localStorage/sessionStorage.
 
 Esta verificação não conecta ao banco institucional e não repete a validação anterior em PostgreSQL. Testes automatizados de acessibilidade não substituem avaliação manual completa, teste com leitor de tela ou homologação de usabilidade com os participantes do projeto. O guia para executar está em `docs/FRONTEND.md`. UCs 09–11 não integram esta entrega; suas dependências estão em `docs/DEPENDENCIAS-UC09-UC11.md`.
+
+## Comandos da raiz
+
+Em 24/10/2026, foram verificados os atalhos de execução conjunta e diagnóstico:
+
+- `yarn dev`: Flask e Vite iniciados com configurações temporárias de teste; `/api/v1/health/live` e a página inicial responderam com sucesso. A interrupção por Ctrl+C encerrou os servidores e liberou as portas 5000 e 5173. Esse ensaio não conectou ao PostgreSQL nem alterou o `.env` do usuário.
+- `yarn env:check`: identificou a senha de exemplo e a chave JWT vazia, sem revelar credenciais.
+- `yarn test`: 11 testes de Vitest e 64 testes de pytest aprovados; 5 exclusivos de PostgreSQL omitidos. Os três novos testes verificam diagnóstico de configuração, valores de exemplo e omissão de credenciais nas mensagens.
+- Build do front-end, Ruff e integridade do diff aprovados.
+
+Não foi criada infraestrutura de produção ou realizada implantação externa. `docs/INICIAR.md` documenta os passos e diferencia configuração local, manutenção do banco e execução pública com Waitress, servidor estático HTTPS e serviços auxiliares.

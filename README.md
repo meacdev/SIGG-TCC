@@ -4,6 +4,10 @@ API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. I
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
+## Iniciar pela raiz
+
+O guia [Configurar e iniciar](docs/INICIAR.md) explica `.env`, `.venv`, preparação do banco, execução conjunta e produção. Com dependências e banco preparados, execute `yarn dev` na raiz para iniciar back-end e front-end juntos. `yarn test` executa Vitest e pytest; `yarn test:watch` acompanha os testes do front-end. Os scripts também funcionam com `npm run`.
+
 ## Preparar o ambiente
 
 Execute na raiz do repositório. Python 3.14 e PostgreSQL 18 são as versões de referência desta entrega.

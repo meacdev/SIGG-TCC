@@ -2,6 +2,8 @@
 
 Aplicação React/TypeScript em `frontend/`, integrada à API Flask existente. O trabalho está na branch `feat/UC01-cadastro`. Cada caso de uso posterior deverá ter sua própria branch `feat/UCXX-nome-do-UC`, após autorização do solicitante.
 
+Para executar back-end e front-end juntos pela raiz, use `yarn dev` depois de preparar o banco e o `.env`. `yarn test` executa Vitest e pytest; `yarn test:watch` abre o Vitest interativo. O passo a passo está em [Configurar e iniciar](INICIAR.md). Os comandos separados abaixo continuam disponíveis.
+
 ## Executar com o back-end
 
 Prepare o PostgreSQL, os perfis e a configuração do Flask conforme o README principal. O cadastro de estudante depende de pelo menos um curso ativo real, criado pelo comando `criar-curso` já existente.
