@@ -29,6 +29,25 @@ Os dois cenários ficaram abaixo da meta de 2 s no p95. O resultado é uma refer
 
 ## Limites da validação
 
-SMTP foi simulado nos testes: foi exercitada a construção da mensagem, uso de TLS, autenticação e falha de transporte, sem envio a pessoas reais. O envio real requer configuração e teste pela equipe. O cliente TypeScript é um exemplo de integração; a aplicação React e sua acessibilidade não foram implementadas ou verificadas nesta entrega.
+SMTP foi simulado nos testes: foi exercitada a construção da mensagem, uso de TLS, autenticação e falha de transporte, sem envio a pessoas reais. O envio real requer configuração e teste pela equipe. Na verificação inicial do back-end, o cliente TypeScript era somente um exemplo de integração. A interface React do UC01 foi acrescentada posteriormente, com a verificação registrada abaixo.
 
 A proteção de auditoria foi verificada no PostgreSQL, mas proprietário/superusuário ainda pode alterar a infraestrutura. Retenção por cinco anos, backup diário, restauração em menos de uma hora, uptime, SUS e WCAG precisam de operação e validação específicas. O backend e a documentação fornecem as bases e procedimentos correspondentes.
+
+## Front-end UC01
+
+Verificação do front-end em 23/10/2026 na branch `feat/UC01-cadastro`:
+
+| Verificação | Resultado |
+| --- | --- |
+| TypeScript e build de produção | Aprovados |
+| Testes unitários de validação e cliente HTTP | 11 aprovados |
+| Testes de navegador com Chromium e API Flask real em SQLite descartável | 5 aprovados |
+| Regressão da API existente, SQLite | 61 aprovados; 5 exclusivos de PostgreSQL omitidos |
+| Acessibilidade automatizada com axe-core | Nenhuma violação nos critérios WCAG 2.1 AA verificados em cadastro de estudante, cadastro docente e login |
+| Responsividade | Sem rolagem horizontal nas larguras verificadas de 320, 390 e 768 pixels |
+| Revisão visual | Capturas completas do cadastro de estudante e docente em desktop e do cadastro docente em celular inspecionadas |
+| Formatação e integridade do diff | Aprovadas |
+
+Os fluxos integrados exercitam cadastro docente sem opcionais, cadastro discente com curso real do catálogo de teste e zeros na matrícula, campos obrigatórios, senha inicialmente oculta, e-mail duplicado, consulta e edição, ETag desatualizado por alteração em outra sessão, troca de e-mail com novo login, confirmação/cancelamento da inativação, senha atual incorreta, bloqueio de conta inativa, falha de rede e catálogo vazio. Os testes também confirmam que tokens não são persistidos em localStorage/sessionStorage.
+
+Esta verificação não conecta ao banco institucional e não repete a validação anterior em PostgreSQL. Testes automatizados de acessibilidade não substituem avaliação manual completa, teste com leitor de tela ou homologação de usabilidade com os participantes do projeto. O guia para executar está em `docs/FRONTEND.md`. UCs 09–11 não integram esta entrega; suas dependências estão em `docs/DEPENDENCIAS-UC09-UC11.md`.

@@ -1,6 +1,6 @@
-# SIGG-TCC Backend
+# SIGG-TCC
 
-API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. Implementa UC01 (cadastro e gestão do próprio cadastro), UC13 (login, sessão e recuperação de senha por e-mail) e UC02 (cadastro e gestão de turmas). O frontend React/TypeScript é desenvolvido separadamente.
+API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. Implementa UC01 (cadastro e gestão do próprio cadastro), UC13 (login, sessão e recuperação de senha por e-mail) e UC02 (cadastro e gestão de turmas). O front-end React/TypeScript do UC01 está em `frontend/`, com cadastro, login de apoio, consulta, edição e inativação do próprio cadastro. Consulte [o guia do front-end](docs/FRONTEND.md) para executar e verificar a interface.
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
