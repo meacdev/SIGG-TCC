@@ -56,12 +56,6 @@ def app():
             assert result.exit_code == 0, result.output + str(result.exception)
         else:
             db.create_all()
-            db.session.execute(
-                text(
-                    "CREATE TABLE matricula_turma (id_matricula_turma INTEGER PRIMARY KEY, "
-                    "id_turma INTEGER, id_aluno INTEGER)"
-                )
-            )
         seed_profiles()
         db.session.add_all(
             [

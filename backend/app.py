@@ -63,11 +63,17 @@ def create_app(test_config=None):
                 connection.execute("PRAGMA foreign_keys=ON")
 
     from backend.cli import register_cli
-    from backend.routes import auth, catalogs, classes, users
+    from backend.routes import auth, catalogs, classes, enrollments, users
 
-    for blueprint in (auth.bp, users.bp, classes.bp, catalogs.bp):
+    for blueprint in (auth.bp, users.bp, classes.bp, catalogs.bp, enrollments.bp):
         app.register_blueprint(blueprint)
     register_cli(app)
+
+    @app.cli.command("enviar-notificacoes-academicas")
+    def academic_notifications():
+        from backend.services.academic_mail import deliver
+
+        deliver()
 
     @app.before_request
     def start_request():

@@ -20,6 +20,7 @@ app = create_app(
         "JWT_SECRET_KEY": secrets.token_hex(32),
         "RATELIMIT_ENABLED": False,
         "CORS_ORIGINS": [],
+        "MAIL_SENDER": lambda *args: None,
     }
 )
 with app.app_context():

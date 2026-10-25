@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from openapi_academic import extend
+
 
 def ref(name):
     return {"$ref": f"#/components/schemas/{name}"}
@@ -409,6 +411,8 @@ for suffix in ("live", "ready"):
         "application/json": {"schema": obj({"status": string(const="ok")}, ("status",))}
     }
 operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Operação", public=True)
+
+extend(paths, schemas, operation, obj, string, identifier)
 
 document = {
     "openapi": "3.1.0",
