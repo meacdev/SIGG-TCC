@@ -1,0 +1,26 @@
+{
+  "name": "sigg-tcc",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "node scripts/project.mjs dev",
+    "dev:backend": "node scripts/project.mjs dev:backend",
+    "dev:frontend": "node scripts/project.mjs dev:frontend",
+    "env:check": "node scripts/project.mjs env:check",
+    "env:key": "node scripts/project.mjs env:key",
+    "db:upgrade": "node scripts/project.mjs db:upgrade",
+    "db:seed": "node scripts/project.mjs db:seed",
+    "db:check": "node scripts/project.mjs db:check",
+    "test": "node scripts/project.mjs test",
+    "test:frontend": "node scripts/project.mjs test:frontend",
+    "test:watch": "node scripts/project.mjs test:watch",
+    "test:backend": "node scripts/project.mjs test:backend",
+    "test:e2e": "node scripts/project.mjs test:e2e",
+    "build": "node scripts/project.mjs build",
+    "start:backend": "node scripts/project.mjs start:backend"
+  }
+}
