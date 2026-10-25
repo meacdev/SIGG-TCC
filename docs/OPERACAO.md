@@ -32,6 +32,8 @@ O script exportado usa TIMESTAMP sem fuso, enquanto o dicionário descreve TIMES
 
 As notificações de desligamento, orientação e reunião são persistidas no banco e enviadas após a confirmação da ação. Configure SMTP e `FRONTEND_URL` com a origem HTTPS real. Agende o comando `enviar-notificacoes-academicas` descrito no UC04 para reprocessar falhas. As atas de reunião são protegidas por triggers contra UPDATE, DELETE e TRUNCATE. A proteção não substitui a responsabilidade do proprietário do banco, a retenção e os backups.
 
+O UC13 reutiliza esse processador para cobranças de inatividade. Após a migração 008, conceda SELECT/INSERT/UPDATE em `lote_cobranca` à conta de execução e SELECT em `arquivo_pdf`, `entrega_final`, `entrega_correcao`, `solicitacao_correcao` e `banca`, para leitura da atividade de entregas. Cobranças são confirmadas pelo gestor e persistidas com auditoria antes do SMTP; pendências de estudantes regularizados são canceladas nas novas tentativas. O processador trata até 100 notificações elegíveis por execução. O resultado da requisição distingue enviados, pendentes e cancelados; M05 não significa perda da fila.
+
 ## Servidor e observabilidade
 
 Execute Waitress em endereço privado ou loopback atrás de um proxy que termine TLS. Configure `CORS_ORIGINS` somente com as origens HTTPS do frontend. O modo production rejeita origens curinga/HTTP, rate limiting em memória e SMTP sem TLS. Não exponha o debugger Flask.

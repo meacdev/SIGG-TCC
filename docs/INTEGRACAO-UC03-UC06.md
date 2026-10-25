@@ -8,9 +8,12 @@ A ordem adotada é UC03 → UC04 → UC06 → UC05. UC04 depende da turma; UC06 
 | `feat/UC04-matricular-estudantes` | `feat/UC03-cadastrar-turmas` | Interface/API de matrícula, autoinscrição e desligamento |
 | `feat/UC06-registrar-trabalho` | `feat/UC04-matricular-estudantes` | Interface/API do trabalho e vínculo/aceite de orientação |
 | `feat/UC05-registrar-ata-de-reuniao` | `feat/UC06-registrar-trabalho` | Interface/API de atas, histórico e assiduidade |
+| `feat/UC13-monitorar-prazos` | `feat/UC05-registrar-ata-de-reuniao` | Matriz de inatividade, histórico e cobrança confirmada por turma |
 | `codex/yarn-uc01-uc03` | `feat/UC03-cadastrar-turmas` | Base dos UCs 01–03 e instalação/execução Yarn para PR em develop |
 
 A branch do Yarn não inclui os UCs 04/05/06 ou 09/10/11. As funcionalidades posteriores continuam nas branches próprias. A base de desenvolvimento já possui cadastro, login, API de turmas e comandos da raiz; a branch de Yarn consolida a instalação com lockfile e workspaces. A branch da última funcionalidade contém UC03/04/06/05 para homologação integrada.
+
+O UC13 atual depende do UC05, estendendo a sequência para UC03 → UC04 → UC06 → UC05 → UC13. Seu PR pode apontar inicialmente para UC05 e depois para develop quando os pré-requisitos estiverem integrados. A branch Yarn foi renomeada pelo usuário para `chore/yarn`; a configuração não foi alterada na entrega do UC13 e será retomada posteriormente. Não foi realizado merge em develop nesta implementação.
 
 ## Revisão e integração
 

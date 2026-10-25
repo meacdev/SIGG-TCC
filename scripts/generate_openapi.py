@@ -5,6 +5,7 @@ from pathlib import Path
 
 from openapi_academic import extend
 from openapi_meetings import extend as extend_meetings
+from openapi_monitoring import extend as extend_monitoring
 from openapi_works import extend as extend_works
 
 
@@ -417,13 +418,15 @@ operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Operaç�
 extend(paths, schemas, operation, obj, string, identifier)
 extend_works(paths, schemas, operation, obj, string, identifier)
 extend_meetings(paths, schemas, operation, obj, string, identifier)
+extend_monitoring(paths, schemas, operation, obj, string, identifier)
 
 document = {
     "openapi": "3.1.0",
     "info": {
         "title": "SIGG-TCC API",
-        "version": "1.0.0",
-        "description": "Primeira entrega: UC01, UC13 e UC02. "
+        "version": "1.4.0",
+        "description": "Cadastro, autenticação, turmas, matrículas, trabalhos, reuniões "
+        "e UC13 Monitorar Prazos, conforme a numeração atual dos DOCX. "
         "Datas em UTC/ISO 8601; datas acadêmicas em Manaus. "
         "IDs correspondem às PKs do banco. Senhas, hashes e códigos não são expostos em consultas.",
     },

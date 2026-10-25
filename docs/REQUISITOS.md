@@ -39,7 +39,7 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | RF04 | Orientação; orientacao, docente, notificacao | Implementado como pré-requisito do UC06/UC05: seleção de orientador/coorientador, notificação e aceite/recusa autenticados |
 | RF05 | Substituição de orientação; orientacao, auditoria | Infraestrutura de auditoria pronta; fluxo com justificativa é futuro |
 | RF06 | Perfil docente; docente, area_conhecimento, docente_area | Titulação, áreas e Lattes implementados no cadastro e na edição própria |
-| RF07 | Reuniões; reuniao_orientacao, etapa_trabalho | Implementado no UC05: atas imutáveis, notificações, histórico por vínculo, contador e alerta após mais de 30 dias |
+| RF07 | Reuniões; reuniao_orientacao, etapa_trabalho | UC05 implementa atas, histórico e assiduidade; UC13 acrescenta matriz filtrável por turma, seleção individual/em lote, cobrança confirmada, revalidação e auditoria |
 | RF08 | Rubricas; rubrica, criterio_rubrica | Futuro; versão, pesos e limites precisam de validação transacional |
 | RF09 | Agendamento; banca | Futuro; validar aluno/etapa, horários, local e conflitos |
 | RF10 | Examinadores; docente, membro_banca | Cadastro docente externo básico disponível; constituição da banca é futura |
@@ -53,6 +53,8 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | RF18 | Relatórios e indicadores | Futuro; consultas por período/curso/docente e exportação PDF/CSV |
 | RF19 | Painéis por perfil | A API fornece perfis e listas sob autorização; cards, indicadores e fluxos completos são futuros |
 | UC13 | Autenticação, ainda sem RF próprio no levantamento | Implementado; recomenda-se formalizar um RF específico em revisão documental |
+
+O rótulo UC13 de autenticação acima é legado. A ficha atual UC13 é **Monitorar Prazos**, implementada nesta branch a partir do UC05 e documentada em `UC13.md`. O painel considera reuniões do RF07 e registros de entregas de RF14/RF15, sem duplicar os fluxos de upload dessas funcionalidades. Sem atividade, usa a data da matrícula; o alerta é estritamente superior a 30 dias. Permissões usam papel e vínculo de curso/turma vigentes. A fila e a auditoria preservam cada cobrança, inclusive em falha de SMTP.
 
 Antes de implementar os demais fluxos, revisar os índices `uq_docente_curso_vigente`, `uq_trabalho_ativo_aluno`, `uq_orientacao_*`, `uq_banca_vigente_etapa`, `uq_correcao_aprovada` e `uq_entrega_final_aceita`: o export fornecido os torna incondicionais, embora o dicionário descreva unicidade parcial em várias dessas situações. Essa diferença pode impedir históricos e novas tentativas. Não foi reescrito o modelo de módulos fora do escopo.
 

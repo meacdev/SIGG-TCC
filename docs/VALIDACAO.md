@@ -88,3 +88,26 @@ Testes concorrentes confirmaram uma única matrícula para duas inclusões simul
 As verificações axe-core nas telas dos quatro UCs não reportaram violações nos critérios automatizados WCAG 2.1 AA examinados. Capturas de desktop e celular foram inspecionadas; as larguras verificadas não apresentaram rolagem horizontal. Isso não substitui revisão manual completa de acessibilidade ou homologação com usuários.
 
 SMTP foi simulado, inclusive a construção de mensagens, autenticação e TLS. Não foram enviados e-mails a pessoas reais. Não se declara atendimento global de metas de desempenho, disponibilidade ou usabilidade a partir desses testes funcionais. A branch separada do Yarn contém apenas os UCs 01–03 e terá validação própria antes de seu PR em develop.
+
+## UC13 Monitorar Prazos
+
+Verificação em 25/10/2026 na branch `feat/UC13-monitorar-prazos`, baseada no UC05. A numeração segue a ficha atual UC13 de monitoramento, preservando os endpoints legados de autenticação. A configuração Yarn não foi alterada.
+
+| Verificação | Resultado |
+| --- | --- |
+| Regressão completa em PostgreSQL 18 descartável | 108 testes aprovados |
+| Cobertura da API no PostgreSQL | 95,30%, acima da meta de 80% |
+| Regressão rápida SQLite | 98 aprovados; 10 exclusivos de PostgreSQL omitidos |
+| Vitest | 11 testes aprovados |
+| Chromium com API real e banco em memória | 11 testes aprovados, incluindo a regressão dos UCs anteriores |
+| Build, TypeScript, Ruff, formatação e dependências Python | Aprovados |
+
+Foram exercitados turma vazia, ausência de inativos, limite de 30 dias exatos, filtro e paginação, histórico autorizado, restrição por perfil/curso vigente e bloqueio de estudante. Reuniões, entrega final e envio de correções foram avaliados como fontes de atividade em suas respectivas etapas. A conversão de timestamps UTC para o calendário de Manaus foi verificada, inclusive uma data próxima da meia-noite local.
+
+A prévia não enviou e-mails. A confirmação persistiu notificações e auditoria com usuário, timestamp, IP e destinatário. Foram exercitados seleção inválida, exclusões no modo selecionar todos, confirmação expirada, lote restrito ao ator, nova reunião entre prévia e confirmação, falha/reprocessamento de SMTP e cancelamento de cobrança pendente após regularização. Duas confirmações simultâneas no PostgreSQL geraram somente os registros e envios esperados, sem duplicar o lote.
+
+O cenário de navegador tem 22 estudantes sintéticos, 21 inativos, para verificar seleção em todas as páginas, confirmação/cancelamento, envio simulado e resultado do lote. Foram conferidos axe-core nos critérios WCAG 2.1 AA automatizados examinados e ausência de rolagem horizontal da página em largura de celular; a tabela tem rolagem interna. Matriz e modais de histórico/confirmação foram capturados e inspecionados visualmente.
+
+O PostgreSQL de teste usou cluster isolado na porta 55447 e schemas descartáveis por teste, com o SQL original e migrações, sem acesso ao banco do usuário. SQLite usa projeções independentes de leitura das tabelas documentais. As contas e os registros sintéticos não integram a aplicação normal. SMTP foi simulado e nenhuma mensagem real foi enviada.
+
+Esses resultados não comprovam a meta global de carga/latência de produção, usabilidade com participantes reais ou disponibilidade. O envio real exige configuração SMTP e reprocessamento periódico da fila. O guia `UC13.md` documenta a migração 008, permissões, dependências, calendário, idempotência e limites operacionais.

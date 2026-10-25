@@ -63,7 +63,16 @@ def create_app(test_config=None):
                 connection.execute("PRAGMA foreign_keys=ON")
 
     from backend.cli import register_cli
-    from backend.routes import auth, catalogs, classes, enrollments, meetings, users, works
+    from backend.routes import (
+        auth,
+        catalogs,
+        classes,
+        enrollments,
+        meetings,
+        monitoring,
+        users,
+        works,
+    )
 
     for blueprint in (
         auth.bp,
@@ -73,6 +82,7 @@ def create_app(test_config=None):
         enrollments.bp,
         works.bp,
         meetings.bp,
+        monitoring.bp,
     ):
         app.register_blueprint(blueprint)
     register_cli(app)
@@ -122,6 +132,7 @@ def create_app(test_config=None):
         db.session.execute(text("SELECT ativa_turma, data_atualizacao_turma FROM turma LIMIT 0"))
         db.session.execute(text("SELECT id_sessao FROM sessao_autenticacao LIMIT 0"))
         db.session.execute(text("SELECT id_recuperacao FROM recuperacao_senha LIMIT 0"))
+        db.session.execute(text("SELECT id_lote FROM lote_cobranca LIMIT 0"))
         return jsonify(status="ok")
 
     @app.get("/api/v1/openapi.json")

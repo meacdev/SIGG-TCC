@@ -37,3 +37,15 @@ class Reuniao(db.Model):
     data_registro_reuniao_orientacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
     orientacao = db.relationship("Orientacao")
     autor = db.relationship("Usuario")
+
+
+class LoteCobranca(db.Model):
+    __tablename__ = "lote_cobranca"
+    id_lote = db.Column(db.String(36), primary_key=True)
+    id_turma = db.Column(ID, db.ForeignKey("turma.id_turma"), nullable=False)
+    id_usuario = db.Column(ID, db.ForeignKey("usuario.id_usuario"), nullable=False)
+    matriculas = db.Column(db.JSON, nullable=False)
+    mensagem = db.Column(db.Text, nullable=False)
+    criado_em = db.Column(UTCDateTime, nullable=False, default=utcnow)
+    expira_em = db.Column(UTCDateTime, nullable=False)
+    confirmado_em = db.Column(UTCDateTime)

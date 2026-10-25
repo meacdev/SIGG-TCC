@@ -97,7 +97,7 @@ test('UC05: ata, histórico, notificação e alerta de assiduidade', async ({ pa
   await expect(
     page.getByRole('heading', { name: 'Assiduidade das minhas turmas', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/Alerta: mais de 30 dias sem encontro/)).toBeVisible();
+  await expect(page.getByText(/Alerta: mais de 30 dias sem encontro/).first()).toBeVisible();
   await page.getByLabel('Trabalho vinculado', { exact: true }).selectOption(String(work.id_etapa));
   await expect(
     page.getByRole('heading', { name: `Encontro de ${day}`, exact: true }),

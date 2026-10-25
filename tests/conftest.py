@@ -56,6 +56,10 @@ def app():
             assert result.exit_code == 0, result.output + str(result.exception)
         else:
             db.create_all()
+            # Read-only delivery projections use independent metadata, not duplicate ORM models.
+            from backend.services.monitoring_sources import metadata as delivery_metadata
+
+            delivery_metadata.create_all(db.engine)
         seed_profiles()
         db.session.add_all(
             [

@@ -10,7 +10,7 @@ def test_openapi_matches_all_api_operations_and_references(app, client):
     for rule in app.url_map.iter_rules():
         if not rule.rule.startswith("/api/v1/"):
             continue
-        path = re.sub(r"<int:(\w+)>", r"{\1}", rule.rule)
+        path = re.sub(r"<(?:\w+:)?(\w+)>", r"{\1}", rule.rule)
         for method in rule.methods - {"HEAD", "OPTIONS"}:
             operations.add((path, method.lower()))
     documented = {(path, method) for path, methods in spec["paths"].items() for method in methods}

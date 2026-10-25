@@ -62,7 +62,7 @@ def deliver(ids=None):
     )
     query = select(Notification.id_notificacao).where(
         Notification.tipo_notificacao.in_(
-            ["remocao_matricula", "convite_orientacao", "ata_reuniao"]
+            ["remocao_matricula", "convite_orientacao", "ata_reuniao", "cobranca_inatividade"]
         ),
         eligible,
         Notification.tentativas_notificacao < 10,
@@ -89,6 +89,13 @@ def deliver(ids=None):
         item = db.session.get(Notification, identifier)
         db.session.refresh(item)
         try:
+            if item.tipo_notificacao == "cobranca_inatividade":
+                from backend.services.monitoring import pending_is_valid
+
+                if not pending_is_valid(item):
+                    item.situacao_notificacao = "cancelada"
+                    db.session.commit()
+                    continue
             send(item)
             item.situacao_notificacao = "enviada"
             item.data_envio_notificacao = utcnow()

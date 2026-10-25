@@ -7,12 +7,29 @@ import { Classes } from './classes';
 import { Enrollments } from './enrollments';
 import { Works } from './works';
 import { Meetings } from './meetings';
+import { Monitoring } from './monitoring';
 import './academic.css';
 
-type Page = 'cadastro' | 'entrar' | 'perfil' | 'turmas' | 'matriculas' | 'trabalhos' | 'reunioes';
+type Page =
+  | 'cadastro'
+  | 'entrar'
+  | 'perfil'
+  | 'turmas'
+  | 'matriculas'
+  | 'trabalhos'
+  | 'reunioes'
+  | 'monitoramento';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '');
-  return ['entrar', 'perfil', 'turmas', 'matriculas', 'trabalhos', 'reunioes'].includes(page)
+  return [
+    'entrar',
+    'perfil',
+    'turmas',
+    'matriculas',
+    'trabalhos',
+    'reunioes',
+    'monitoramento',
+  ].includes(page)
     ? (page as Page)
     : 'cadastro';
 };
@@ -36,7 +53,14 @@ export function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage = ['perfil', 'turmas', 'matriculas', 'trabalhos', 'reunioes'].includes(page);
+  const protectedPage = [
+    'perfil',
+    'turmas',
+    'matriculas',
+    'trabalhos',
+    'reunioes',
+    'monitoramento',
+  ].includes(page);
   useEffect(() => {
     const change = () => {
       setPage(currentPage());
@@ -54,6 +78,7 @@ export function App() {
       matriculas: 'Matrículas',
       trabalhos: 'Trabalhos',
       reunioes: 'Reuniões',
+      monitoramento: 'Monitorar Prazos',
     };
     document.title = `${titles[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
@@ -197,6 +222,12 @@ export function App() {
               <a href="#/reunioes" aria-current={page === 'reunioes' ? 'page' : undefined}>
                 Reuniões
               </a>
+              <a
+                href="#/monitoramento"
+                aria-current={page === 'monitoramento' ? 'page' : undefined}
+              >
+                Monitorar Prazos
+              </a>
             </nav>
           )}
           {page === 'cadastro' && (
@@ -218,6 +249,9 @@ export function App() {
           )}
           {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
           {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
+          {page === 'monitoramento' && api.hasSession() && (
+            <Monitoring onSessionEnded={sessionEnded} />
+          )}
         </main>
         <footer className="page-footer">
           <span>SIGG-TCC · Equipe Compila-dores</span>
