@@ -18,12 +18,21 @@ GRANT SELECT, INSERT, UPDATE ON usuario, docente, aluno, periodo_letivo, turma,
     sessao_autenticacao, recuperacao_senha TO sigg_app;
 GRANT SELECT, INSERT ON area_conhecimento TO sigg_app;
 GRANT SELECT, INSERT, DELETE ON docente_area TO sigg_app;
+-- Ampliação UCs 04/06/05, somente após aplicar as migrações correspondentes:
+GRANT SELECT, INSERT, UPDATE ON matricula_turma, trabalho, etapa_trabalho,
+    orientacao, notificacao TO sigg_app;
+GRANT SELECT, INSERT ON reuniao_orientacao TO sigg_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON reuniao_orientacao FROM sigg_app;
 GRANT SELECT, INSERT ON auditoria, auditoria_alteracao TO sigg_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sigg_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON auditoria, auditoria_alteracao FROM sigg_app;
 ```
 
 O script exportado usa TIMESTAMP sem fuso, enquanto o dicionário descreve TIMESTAMPTZ. A API configura a sessão PostgreSQL em UTC e normaliza as duas formas; a data acadêmica do vínculo docente é avaliada em America/Manaus. Registros históricos sem fuso precisam de revisão se tiverem sido gravados originalmente em horário local, antes de migrar dados de produção.
+
+As notificações de desligamento, orientação e reunião são persistidas no banco e enviadas após a confirmação da ação. Configure SMTP e `FRONTEND_URL` com a origem HTTPS real. Agende o comando `enviar-notificacoes-academicas` descrito no UC04 para reprocessar falhas. As atas de reunião são protegidas por triggers contra UPDATE, DELETE e TRUNCATE. A proteção não substitui a responsabilidade do proprietário do banco, a retenção e os backups.
+
+O UC13 reutiliza esse processador para cobranças de inatividade. Após a migração 008, conceda SELECT/INSERT/UPDATE em `lote_cobranca` à conta de execução e SELECT em `arquivo_pdf`, `entrega_final`, `entrega_correcao`, `solicitacao_correcao` e `banca`, para leitura da atividade de entregas. Cobranças são confirmadas pelo gestor e persistidas com auditoria antes do SMTP; pendências de estudantes regularizados são canceladas nas novas tentativas. O processador trata até 100 notificações elegíveis por execução. O resultado da requisição distingue enviados, pendentes e cancelados; M05 não significa perda da fila.
 
 ## Servidor e observabilidade
 

@@ -107,6 +107,38 @@
 .academic-table-wrap {
   overflow: auto;
 }
+.monitoring-table {
+  margin: 24px 0;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+}
+.monitoring-table caption {
+  text-align: left;
+  padding: 14px;
+  font-weight: 600;
+}
+.monitoring-table .academic-table {
+  min-width: 680px;
+}
+.monitoring-registration {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #536a60;
+  margin-top: 6px;
+}
+.monitoring-overdue {
+  display: inline-block;
+  color: #9b1c1c;
+  background: #fff0f0;
+  border: 1px solid #e7b4b4;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-weight: 700;
+}
+.monitoring-current {
+  color: #23513d;
+}
 @media (max-width: 600px) {
   .academic-grid {
     grid-template-columns: 1fr;

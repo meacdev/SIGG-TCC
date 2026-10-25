@@ -20,16 +20,23 @@ app = create_app(
         "JWT_SECRET_KEY": secrets.token_hex(32),
         "RATELIMIT_ENABLED": False,
         "CORS_ORIGINS": [],
+        "MAIL_SENDER": lambda *args: None,
     }
 )
 with app.app_context():
     db.create_all()
+    from backend.services.monitoring_sources import metadata as delivery_metadata
+
+    delivery_metadata.create_all(db.engine)
     seed_profiles()
     db.session.add(Curso(codigo_curso="SI", nome_curso="Sistemas de Informação"))
     db.session.commit()
     from seed_academic import seed
 
     seed(app)
+    from seed_monitoring import seed as seed_monitoring
+
+    seed_monitoring(app)
 
 if __name__ == "__main__":
     # A single worker keeps the same in-memory database throughout the test run.

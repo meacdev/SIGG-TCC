@@ -4,7 +4,9 @@ API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. I
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
-A branch `codex/yarn-uc01-uc03` consolida cadastro (UC01), login existente (UC02) e [interface de turmas (UC03)](docs/UC03.md) para revisão em develop. A numeração segue os DOCX atualizados. [O guia Yarn](docs/YARN.md) descreve instalação reproduzível na raiz, workspaces, comandos e a integração após aprovação. UCs 04/05/06 e 09/10/11 permanecem em branches próprias.
+Esta branch segue a numeração dos DOCX atualizados: UC01 cadastro, UC02 login, [UC03 turmas](docs/UC03.md), [UC04 matrículas](docs/UC04.md), [UC06 trabalho](docs/UC06.md) e [UC05 atas de reunião](docs/UC05.md). A ordem das dependências é **UC03 → UC04 → UC06 → UC05**. Matrícula, trabalho e orientação aceita sustentam o histórico de reuniões e a visão de assiduidade do professor. Consulte [o plano de integração](docs/INTEGRACAO-UC03-UC06.md) para bases de PR e a branch separada do Yarn.
+
+O [UC13 Monitorar Prazos](docs/UC13.md) amplia essa base com matriz por turma, filtro de inatividade, histórico em modal e cobrança confirmada por e-mail. Professores e coordenadores autorizados monitoram reuniões e entregas; a fila mantém auditoria e permite repetir pendências sem duplicar envios já confirmados. Aplique a migração 008 com `yarn db:upgrade`. A configuração Yarn será retomada separadamente.
 
 ## Iniciar pela raiz
 
