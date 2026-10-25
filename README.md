@@ -4,6 +4,8 @@ API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. I
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
+A branch `codex/yarn-uc01-uc03` consolida cadastro (UC01), login existente (UC02) e [interface de turmas (UC03)](docs/UC03.md) para revisão em develop. A numeração segue os DOCX atualizados. [O guia Yarn](docs/YARN.md) descreve instalação reproduzível na raiz, workspaces, comandos e a integração após aprovação. UCs 04/05/06 e 09/10/11 permanecem em branches próprias.
+
 ## Iniciar pela raiz
 
 O guia [Configurar e iniciar](docs/INICIAR.md) explica `.env`, `.venv`, preparação do banco, execução conjunta e produção. Com dependências e banco preparados, execute `yarn dev` na raiz para iniciar back-end e front-end juntos. `yarn test` executa Vitest e pytest; `yarn test:watch` acompanha os testes do front-end. Os scripts também funcionam com `npm run`.

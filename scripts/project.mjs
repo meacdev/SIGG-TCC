@@ -11,10 +11,14 @@ const python =
   process.env.SIGG_PYTHON ||
   resolve(root, ".venv", windows ? "Scripts/python.exe" : "bin/python");
 const [command, ...extra] = process.argv.slice(2);
-const vite = resolve(frontend, "node_modules/vite/bin/vite.js");
-const vitest = resolve(frontend, "node_modules/vitest/vitest.mjs");
-const tsc = resolve(frontend, "node_modules/typescript/bin/tsc");
-const playwright = resolve(frontend, "node_modules/@playwright/test/cli.js");
+function moduleFile(relativePath) {
+  const local = resolve(frontend, "node_modules", relativePath);
+  return existsSync(local) ? local : resolve(root, "node_modules", relativePath);
+}
+const vite = moduleFile("vite/bin/vite.js");
+const vitest = moduleFile("vitest/vitest.mjs");
+const tsc = moduleFile("typescript/bin/tsc");
+const playwright = moduleFile("@playwright/test/cli.js");
 
 function requireFile(path, instruction) {
   if (!existsSync(path)) throw new Error(instruction);
@@ -31,7 +35,7 @@ function pythonTask(args) {
 function nodeTask(path, args) {
   requireFile(
     path,
-    "Dependências do front-end ausentes. Execute npm --prefix frontend ci na raiz.",
+    "Dependências do front-end ausentes. Execute yarn install --frozen-lockfile na raiz.",
   );
   return { executable: process.execPath, args: [path, ...args], cwd: frontend };
 }

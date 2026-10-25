@@ -62,3 +62,13 @@ Em 24/10/2026, foram verificados os atalhos de execução conjunta e diagnóstic
 - Build do front-end, Ruff e integridade do diff aprovados.
 
 Não foi criada infraestrutura de produção ou realizada implantação externa. `docs/INICIAR.md` documenta os passos e diferencia configuração local, manutenção do banco e execução pública com Waitress, servidor estático HTTPS e serviços auxiliares.
+
+## Base Yarn dos UCs 01 a 03
+
+Em 25/10/2026, a branch `codex/yarn-uc01-uc03`, baseada em `feat/UC03-cadastrar-turmas`, foi verificada separadamente para revisão em develop. Ela contém cadastro, login existente e interface de turmas; não inclui as funcionalidades posteriores.
+
+Foram aprovados: instalação pela raiz com `yarn install --frozen-lockfile`, resolução de dependências hoistadas em `node_modules` da raiz, build, 11 testes Vitest, 64 testes SQLite (5 exclusivos de PostgreSQL omitidos), 6 testes de navegador, Ruff e formatação. O lockfile foi convertido a partir do npm anterior; as dependências diretas mantiveram as versões. A configuração da CI foi atualizada para Yarn; a execução remota da CI depende do futuro push/PR e não foi apresentada como concluída.
+
+O comando `yarn dev` iniciou Flask e Vite com variáveis temporárias. A saúde básica da API e a página inicial retornaram HTTP 200; o encerramento por Ctrl+C liberou as portas 5000/5173. Esse ensaio não consultou o banco, não usou credenciais institucionais e não alterou o `.env`. O PostgreSQL temporário dos testes dos UCs 04/06/05 já foi encerrado e removido.
+
+A sequência completa UC03 → UC04 → UC06 → UC05 foi verificada na branch do UC05: 94 testes PostgreSQL, cobertura de 95,15%, 85 testes rápidos com 9 omissões específicas de PostgreSQL, 11 Vitest e 9 testes de navegador. Os resultados detalhados acompanham essa branch. As branches continuam separadas, sem merge em develop antes de aprovação.

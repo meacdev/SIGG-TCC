@@ -1,6 +1,6 @@
 # Configurar e iniciar o SIGG-TCC
 
-Execute os comandos deste guia na raiz `C:\Users\mateu\repos\SIGG-TCC`, na branch `feat/UC01-cadastro`. As branches `main` e `develop` não recebem o código automaticamente: o trabalho precisa ser integrado à branch escolhida pela equipe antes de utilizá-la para execução ou implantação.
+Execute os comandos deste guia na raiz `C:\Users\mateu\repos\SIGG-TCC`. A branch `codex/yarn-uc01-uc03` reúne a base dos UCs 01–03 e a instalação Yarn para revisão em `develop`. As branches `main` e `develop` não recebem o código automaticamente: a integração depende da aprovação da equipe.
 
 ## Arquivo de configuração e ambiente Python
 
@@ -41,10 +41,10 @@ As dependências já foram instaladas neste computador. Em outra máquina, prepa
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
-npm.cmd --prefix frontend ci
+yarn install --frozen-lockfile
 ```
 
-O Yarn da raiz executa os comandos do projeto; as dependências do front-end continuam reproduzíveis pelo `frontend/package-lock.json` existente. Não é necessário criar outro lockfile ou executar `yarn install` dentro de `frontend/`. A raiz não acrescenta dependências JavaScript. O campo `packageManager` seleciona Yarn 1.22.22 via Corepack; `npm run dev` e os demais scripts também funcionam na raiz.
+O projeto usa Yarn 1.22.22 com workspace `frontend` e um único `yarn.lock` na raiz. A conversão preservou as versões do lockfile npm anterior. Instale pela raiz; não gere outro lockfile em `frontend/` nem use `npm ci` nesta branch. O campo `packageManager` seleciona a versão via Corepack. Se o Yarn não estiver disponível, instale Corepack e habilite-o conforme o guia `YARN.md`. Os atalhos usam o ambiente Python `.venv` e encontram as dependências do workspace mesmo quando instaladas em `node_modules` na raiz.
 
 Ativação manual opcional do Python no PowerShell:
 
@@ -105,7 +105,7 @@ Abra `http://127.0.0.1:5173`. A API fica em `http://127.0.0.1:5000/api/v1`. O te
 | `yarn build` | Compila o front-end em `frontend/dist` |
 | `yarn start:backend` | Executa a API com Waitress em loopback |
 
-Para os testes de navegador, instale o Chromium uma vez com `npx --prefix frontend playwright install chromium` ou execute `npx playwright install chromium` de dentro de `frontend/`. Os testes precisam das portas 5001 e 5173 livres; encerre `yarn dev` antes de `yarn test:e2e`.
+Para os testes de navegador, instale o Chromium uma vez com `yarn workspace sigg-tcc-frontend playwright install chromium`, na raiz. Os testes precisam das portas 5001 e 5173 livres; encerre `yarn dev` antes de `yarn test:e2e`.
 
 ## Colocar em produção
 
