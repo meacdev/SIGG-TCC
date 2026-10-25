@@ -109,8 +109,8 @@ async function development() {
     "5000",
   ]);
   const frontendTask = nodeTask(vite, ["--host", "127.0.0.1"]);
-  if (await run(pythonTask(["scripts/check_env.py"]))) return 1;
   await Promise.all([available(5000), available(5173)]);
+  if (await run(pythonTask(["scripts/prepare_dev.py"]))) return 1;
   console.log("\nSIGG-TCC — desenvolvimento local");
   console.log("Aplicação: http://127.0.0.1:5173");
   console.log("API: http://127.0.0.1:5000/api/v1");
@@ -166,6 +166,7 @@ async function main() {
     case "dev":
       return development();
     case "dev:backend":
+      if (await run(pythonTask(["scripts/prepare_dev.py"]))) return 1;
       return run(
         pythonTask([
           ...flask,
