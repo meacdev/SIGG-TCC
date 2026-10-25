@@ -5,12 +5,15 @@ import type { Course, FieldErrors, FormValues, User } from './types';
 import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
 import { Classes } from './classes';
 import { Enrollments } from './enrollments';
+import { Works } from './works';
 import './academic.css';
 
-type Page = 'cadastro' | 'entrar' | 'perfil' | 'turmas' | 'matriculas';
+type Page = 'cadastro' | 'entrar' | 'perfil' | 'turmas' | 'matriculas' | 'trabalhos';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '');
-  return ['entrar', 'perfil', 'turmas', 'matriculas'].includes(page) ? (page as Page) : 'cadastro';
+  return ['entrar', 'perfil', 'turmas', 'matriculas', 'trabalhos'].includes(page)
+    ? (page as Page)
+    : 'cadastro';
 };
 const navigate = (page: Page) => {
   window.location.hash = `/${page}`;
@@ -32,7 +35,7 @@ export function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage = ['perfil', 'turmas', 'matriculas'].includes(page);
+  const protectedPage = ['perfil', 'turmas', 'matriculas', 'trabalhos'].includes(page);
   useEffect(() => {
     const change = () => {
       setPage(currentPage());
@@ -48,6 +51,7 @@ export function App() {
       perfil: 'Meu cadastro',
       turmas: 'Turmas',
       matriculas: 'Matrículas',
+      trabalhos: 'Trabalhos',
     };
     document.title = `${titles[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
@@ -185,6 +189,9 @@ export function App() {
               <a href="#/matriculas" aria-current={page === 'matriculas' ? 'page' : undefined}>
                 Matrículas
               </a>
+              <a href="#/trabalhos" aria-current={page === 'trabalhos' ? 'page' : undefined}>
+                Trabalhos
+              </a>
             </nav>
           )}
           {page === 'cadastro' && (
@@ -204,6 +211,7 @@ export function App() {
           {page === 'matriculas' && api.hasSession() && (
             <Enrollments onSessionEnded={sessionEnded} />
           )}
+          {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
         </main>
         <footer className="page-footer">
           <span>SIGG-TCC · Equipe Compila-dores</span>

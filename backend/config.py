@@ -14,6 +14,7 @@ def configuration():
         database = database.replace("postgresql://", "postgresql+psycopg://", 1)
     return {
         "APP_ENV": os.getenv("APP_ENV", "development"),
+        "FRONTEND_URL": os.getenv("FRONTEND_URL", "http://127.0.0.1:5173"),
         "SQLALCHEMY_DATABASE_URI": database,
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
         "SQLALCHEMY_ENGINE_OPTIONS": {"pool_pre_ping": True},

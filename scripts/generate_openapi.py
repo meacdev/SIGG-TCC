@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from openapi_academic import extend
+from openapi_works import extend as extend_works
 
 
 def ref(name):
@@ -413,6 +414,7 @@ for suffix in ("live", "ready"):
 operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Operação", public=True)
 
 extend(paths, schemas, operation, obj, string, identifier)
+extend_works(paths, schemas, operation, obj, string, identifier)
 
 document = {
     "openapi": "3.1.0",

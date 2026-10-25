@@ -63,9 +63,9 @@ def create_app(test_config=None):
                 connection.execute("PRAGMA foreign_keys=ON")
 
     from backend.cli import register_cli
-    from backend.routes import auth, catalogs, classes, enrollments, users
+    from backend.routes import auth, catalogs, classes, enrollments, users, works
 
-    for blueprint in (auth.bp, users.bp, classes.bp, catalogs.bp, enrollments.bp):
+    for blueprint in (auth.bp, users.bp, classes.bp, catalogs.bp, enrollments.bp, works.bp):
         app.register_blueprint(blueprint)
     register_cli(app)
 
