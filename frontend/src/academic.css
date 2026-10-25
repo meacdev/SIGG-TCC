@@ -1,0 +1,123 @@
+.account-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  border-bottom: 1px solid var(--line, #dce4df);
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+  font-size: 13px;
+}
+.account-nav [aria-current='page'] {
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+.academic-box {
+  background: white;
+  border: 1px solid #dce4df;
+  border-radius: 10px;
+  padding: 24px;
+  margin: 20px 0;
+  min-width: 0;
+}
+.academic-box h3 {
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+.academic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.academic-hint {
+  color: #536a60;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.academic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.academic-pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  font-size: 13px;
+}
+.academic-list {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+.academic-list article {
+  margin: 0;
+}
+.academic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: #536a60;
+}
+.academic-box code {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 16px;
+  background: #edf2e7;
+  padding: 14px;
+  margin: 14px 0;
+}
+.academic-box textarea {
+  min-height: 130px;
+  resize: vertical;
+  width: 100%;
+  border: 1px solid #9da99e;
+  border-radius: 6px;
+  padding: 12px;
+  font: inherit;
+}
+.academic-empty {
+  padding: 24px;
+  background: #edf2e7;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+.academic-summary {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.academic-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.academic-table th,
+.academic-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #dce4df;
+  overflow-wrap: anywhere;
+}
+.academic-table-wrap {
+  overflow: auto;
+}
+@media (max-width: 600px) {
+  .academic-grid {
+    grid-template-columns: 1fr;
+  }
+  .academic-box {
+    padding: 18px;
+  }
+  .academic-actions > button {
+    flex: 1;
+  }
+  .academic-pager {
+    flex-wrap: wrap;
+  }
+}

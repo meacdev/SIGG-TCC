@@ -100,6 +100,7 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
   }
 
   return {
+    request,
     hasSession: () => tokens !== null,
     clearSession,
     signup: (data: object) =>

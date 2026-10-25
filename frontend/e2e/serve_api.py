@@ -27,6 +27,9 @@ with app.app_context():
     seed_profiles()
     db.session.add(Curso(codigo_curso="SI", nome_curso="Sistemas de Informação"))
     db.session.commit()
+    from seed_academic import seed
+
+    seed(app)
 
 if __name__ == "__main__":
     # A single worker keeps the same in-memory database throughout the test run.

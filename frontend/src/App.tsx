@@ -3,11 +3,13 @@ import { api, ApiError } from './api';
 import { Field, Icon, Notice, Password, inputA11y } from './components';
 import type { Course, FieldErrors, FormValues, User } from './types';
 import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
+import { Classes } from './classes';
+import './academic.css';
 
-type Page = 'cadastro' | 'entrar' | 'perfil';
+type Page = 'cadastro' | 'entrar' | 'perfil' | 'turmas';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '');
-  return page === 'entrar' || page === 'perfil' ? page : 'cadastro';
+  return ['entrar', 'perfil', 'turmas'].includes(page) ? (page as Page) : 'cadastro';
 };
 const navigate = (page: Page) => {
   window.location.hash = `/${page}`;
@@ -29,6 +31,7 @@ export function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
+  const protectedPage = ['perfil', 'turmas'].includes(page);
   useEffect(() => {
     const change = () => {
       setPage(currentPage());
@@ -38,9 +41,15 @@ export function App() {
     return () => window.removeEventListener('hashchange', change);
   }, []);
   useEffect(() => {
-    document.title = `${page === 'cadastro' ? 'Crie sua conta' : page === 'entrar' ? 'Entrar' : 'Meu cadastro'} · SIGG-TCC`;
+    const titles = {
+      cadastro: 'Crie sua conta',
+      entrar: 'Entrar',
+      perfil: 'Meu cadastro',
+      turmas: 'Turmas',
+    };
+    document.title = `${titles[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
-    if (page === 'perfil' && !api.hasSession()) {
+    if (protectedPage && !api.hasSession()) {
       navigate('entrar');
     }
   }, [page]);
@@ -147,9 +156,9 @@ export function App() {
         <header className="topbar">
           <span>
             Portal acadêmico <span className="topbar-divider">/</span>{' '}
-            {page === 'perfil' ? 'Minha conta' : 'Acesso'}
+            {protectedPage ? 'Área acadêmica' : 'Acesso'}
           </span>
-          {page === 'perfil' ? (
+          {protectedPage ? (
             <button className="text-button" onClick={logout}>
               Sair da conta <Icon name="arrow" size={16} />
             </button>
@@ -163,6 +172,16 @@ export function App() {
           )}
         </header>
         <main id="main-content" tabIndex={-1}>
+          {api.hasSession() && protectedPage && (
+            <nav className="account-nav" aria-label="Área acadêmica">
+              <a href="#/perfil" aria-current={page === 'perfil' ? 'page' : undefined}>
+                Meu cadastro
+              </a>
+              <a href="#/turmas" aria-current={page === 'turmas' ? 'page' : undefined}>
+                Turmas
+              </a>
+            </nav>
+          )}
           {page === 'cadastro' && (
             <AccountForm
               key="signup"
@@ -176,6 +195,7 @@ export function App() {
             <LoginForm initialEmail={email} notice={notice} onLogin={() => navigate('perfil')} />
           )}
           {page === 'perfil' && api.hasSession() && <Profile onSessionEnded={sessionEnded} />}
+          {page === 'turmas' && api.hasSession() && <Classes onSessionEnded={sessionEnded} />}
         </main>
         <footer className="page-footer">
           <span>SIGG-TCC · Equipe Compila-dores</span>
