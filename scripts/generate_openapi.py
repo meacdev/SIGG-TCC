@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from openapi_academic import extend
+from openapi_meetings import extend as extend_meetings
 from openapi_works import extend as extend_works
 
 
@@ -415,6 +416,7 @@ operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Opera√ß√
 
 extend(paths, schemas, operation, obj, string, identifier)
 extend_works(paths, schemas, operation, obj, string, identifier)
+extend_meetings(paths, schemas, operation, obj, string, identifier)
 
 document = {
     "openapi": "3.1.0",

@@ -40,3 +40,13 @@ def seed(app):
             "matricula_aluno": "0002026001",
         }
     )
+    signup(
+        {
+            "nome_usuario": "Estudante de Reuniões",
+            "email_usuario": "reunioes@example.com",
+            "senha": "Senha de teste UC03 123",
+            "tipo_cadastro": "aluno",
+            "id_curso": 1,
+            "matricula_aluno": "0002026002",
+        }
+    )

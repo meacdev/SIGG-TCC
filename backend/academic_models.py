@@ -22,3 +22,18 @@ class NotificacaoAcademica(db.Model):
     tentativas_notificacao = db.Column(db.SmallInteger, nullable=False, default=0)
     ultimo_erro_notificacao = db.Column(db.Text)
     data_tentativa_notificacao = db.Column(UTCDateTime)
+
+
+class Reuniao(db.Model):
+    __tablename__ = "reuniao_orientacao"
+    id_reuniao_orientacao = db.Column(ID, primary_key=True)
+    id_etapa_trabalho = db.Column(
+        ID, db.ForeignKey("etapa_trabalho.id_etapa_trabalho"), nullable=False
+    )
+    id_orientacao = db.Column(ID, db.ForeignKey("orientacao.id_orientacao"), nullable=False)
+    data_encontro_reuniao_orientacao = db.Column(db.Date, nullable=False)
+    resumo_encaminhamentos_reuniao_orientacao = db.Column(db.Text, nullable=False)
+    id_usuario_registro = db.Column(ID, db.ForeignKey("usuario.id_usuario"), nullable=False)
+    data_registro_reuniao_orientacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
+    orientacao = db.relationship("Orientacao")
+    autor = db.relationship("Usuario")

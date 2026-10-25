@@ -1,6 +1,6 @@
 # Análise e rastreabilidade
 
-Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs, os três casos de uso, o SQL exportado em 23/10/2026 e o dicionário de dados versão 2.0. O escopo executável desta etapa é UC01, UC13 e UC02. Os demais requisitos orientam a arquitetura e são registrados como trabalho futuro; sua presença no modelo de dados não significa implementação na API.
+Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs, o SQL fornecido e os DOCX atualizados em 24/10/2026. A numeração atual é UC01 cadastro, UC02 login, UC03 turmas, UC04 matrículas, UC06 trabalho e UC05 atas. Os identificadores legados UC13/Login e UC02/Turmas da API foram preservados para compatibilidade. Esta branch contém os UCs 03 → 04 → 06 → 05 em sequência; os UCs 09–11 estão em branches próprias, aguardando integração. A presença de outras tabelas no modelo não significa implementação de todos os fluxos.
 
 ## Decisões sobre divergências dos documentos
 
@@ -34,19 +34,19 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | RF | Tema e tabelas principais | Situação nesta entrega e evolução prevista |
 | --- | --- | --- |
 | RF01 | Turmas; turma, curso, periodo_letivo, docente | Implementado, incluindo gestão e validações |
-| RF02 | Matrículas; aluno, matricula_turma, notificacao | Código de acesso gerado; inclusão, autoinscrição, busca de alunos e remoção com e-mail ficam para próxima entrega |
-| RF03 | Dados do TCC; trabalho, trabalho_area, etapa_trabalho | Futuro; validar modalidade e DOI/URL quando publicado; nível herdado da turma |
-| RF04 | Orientação; orientacao, docente, notificacao | Futuro; seleção de orientador, aceite e notificação |
+| RF02 | Matrículas; aluno, matricula_turma, notificacao | Implementado no UC04: busca, inclusão, autoinscrição, remoção lógica confirmada e notificação |
+| RF03 | Dados do TCC; trabalho, etapa_trabalho | Implementado no UC06: trabalho próprio, modalidade, DOI/URL de artigo publicado e nível herdado da matrícula |
+| RF04 | Orientação; orientacao, docente, notificacao | Implementado como pré-requisito do UC06/UC05: seleção de orientador/coorientador, notificação e aceite/recusa autenticados |
 | RF05 | Substituição de orientação; orientacao, auditoria | Infraestrutura de auditoria pronta; fluxo com justificativa é futuro |
 | RF06 | Perfil docente; docente, area_conhecimento, docente_area | Titulação, áreas e Lattes implementados no cadastro e na edição própria |
-| RF07 | Reuniões; reuniao_orientacao, etapa_trabalho | Futuro; notificações, contador e alerta de 30 dias |
+| RF07 | Reuniões; reuniao_orientacao, etapa_trabalho | Implementado no UC05: atas imutáveis, notificações, histórico por vínculo, contador e alerta após mais de 30 dias |
 | RF08 | Rubricas; rubrica, criterio_rubrica | Futuro; versão, pesos e limites precisam de validação transacional |
 | RF09 | Agendamento; banca | Futuro; validar aluno/etapa, horários, local e conflitos |
 | RF10 | Examinadores; docente, membro_banca | Cadastro docente externo básico disponível; constituição da banca é futura |
 | RF11 | E-mail e calendário; notificacao, banca | Transporte SMTP reutilizável; convites, lembretes e ICS são futuros |
-| RF12 | Notas; avaliacao, nota_criterio | Futuro; usar Decimal, validar rubrica, autorização na data e cálculo sem arredondamentos intermediários |
-| RF13 | Documentos; documento_oficial, ata_defesa, declaracao_banca | Futuro; geração PDF, assinatura/verificação e envio |
-| RF14 | Correções; solicitacao_correcao, entrega_correcao | Futuro; prazos, validação do orientador e bloqueio da ata |
+| RF12 | Notas; avaliacao, nota_criterio | Implementado na branch UC09; integração posterior com develop e esta sequência |
+| RF13 | Documentos; documento_oficial, ata_defesa, declaracao_banca | Implementado na branch UC10; integração posterior e homologação institucional dos modelos |
+| RF14 | Correções; solicitacao_correcao, entrega_correcao | Implementado na branch UC11; integração posterior |
 | RF15 | Entrega final; arquivo_pdf, entrega_final | Futuro; PDF real até 50 MB, armazenamento protegido e aceite docente |
 | RF16 | Agenda pública; banca e relacionamentos | Futuro; projetar respostas públicas sem dados privados |
 | RF17 | Mural; publicacao_trabalho, palavra_chave | Futuro; aprovação, limites do resumo e exibição pública autorizada |
@@ -55,6 +55,8 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | UC13 | Autenticação, ainda sem RF próprio no levantamento | Implementado; recomenda-se formalizar um RF específico em revisão documental |
 
 Antes de implementar os demais fluxos, revisar os índices `uq_docente_curso_vigente`, `uq_trabalho_ativo_aluno`, `uq_orientacao_*`, `uq_banca_vigente_etapa`, `uq_correcao_aprovada` e `uq_entrega_final_aceita`: o export fornecido os torna incondicionais, embora o dicionário descreva unicidade parcial em várias dessas situações. Essa diferença pode impedir históricos e novas tentativas. Não foi reescrito o modelo de módulos fora do escopo.
+
+Os dois índices de orientação foram corrigidos na migração 006 para permitir histórico de vínculos encerrados, preservando unicidade do papel/docente vigente. A substituição efetiva de orientador continua exigindo RF05, com autorização e justificativa; o formulário do estudante não faz essa troca. A ata de reunião recebeu proteção de imutabilidade na migração 007. Consulte `INTEGRACAO-UC03-UC06.md` para dependências e integração após aprovação.
 
 ## Requisitos não funcionais
 
