@@ -7,7 +7,7 @@ test('UC13: matriz, histórico, filtro e confirmação de cobrança em todas as 
   await page.goto('/#/entrar');
   await page.getByLabel('E-mail', { exact: true }).fill('professora@example.com');
   await page.getByLabel('Senha', { exact: true }).fill('Senha de teste UC03 123');
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('link', { name: 'Monitorar Prazos', exact: true }).click();
   await page
     .getByLabel('Turma de TCC', { exact: true })
@@ -75,7 +75,7 @@ test('UC13: estudante não acessa o painel de monitoramento', async ({ page }) =
   await page.goto('/#/entrar');
   await page.getByLabel('E-mail', { exact: true }).fill('estudante@example.com');
   await page.getByLabel('Senha', { exact: true }).fill('Senha de teste UC03 123');
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('link', { name: 'Monitorar Prazos', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Você não possui permissão');
   await expect(page.getByLabel('Turma de TCC', { exact: true })).toHaveCount(0);

@@ -5,7 +5,7 @@ test('UC03: cadastro, duplicata, alteração, código e inativação de turma', 
   await page.goto('/#/entrar');
   await page.getByLabel('E-mail', { exact: true }).fill('professora@example.com');
   await page.getByLabel('Senha', { exact: true }).fill('Senha de teste UC03 123');
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('link', { name: 'Turmas', exact: true }).click();
   await page.getByRole('button', { name: 'Cadastrar turma', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('campos obrigatórios');

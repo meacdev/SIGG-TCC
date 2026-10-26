@@ -4,7 +4,7 @@ async function login(page: Page, email: string) {
   await page.goto('/#/entrar');
   await page.getByLabel('E-mail', { exact: true }).fill(email);
   await page.getByLabel('Senha', { exact: true }).fill('Senha de teste UC03 123');
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('link', { name: 'Matrículas', exact: true }).click();
 }
 test('UC04: autoinscrição, busca, duplicata, confirmação e remoção', async ({ page, request }) => {

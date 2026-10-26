@@ -3,6 +3,7 @@ import { api, ApiError } from './api';
 import { Field, Icon, Notice, Password, inputA11y } from './components';
 import type { Course, FieldErrors, FormValues, User } from './types';
 import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
+import { RecoveryForm } from './RecoveryForm';
 import { Classes } from './classes';
 import { Enrollments } from './enrollments';
 import { Works } from './works';
@@ -13,6 +14,7 @@ import './academic.css';
 type Page =
   | 'cadastro'
   | 'entrar'
+  | 'recuperar-senha'
   | 'perfil'
   | 'turmas'
   | 'matriculas'
@@ -23,6 +25,7 @@ const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '');
   return [
     'entrar',
+    'recuperar-senha',
     'perfil',
     'turmas',
     'matriculas',
@@ -73,6 +76,7 @@ export function App() {
     const titles = {
       cadastro: 'Crie sua conta',
       entrar: 'Entrar',
+      'recuperar-senha': 'Recuperar senha',
       perfil: 'Meu cadastro',
       turmas: 'Turmas',
       matriculas: 'Matrículas',
@@ -263,7 +267,6 @@ export function App() {
           {page === 'perfil' && api.hasSession() && (
             <Profile onSessionEnded={sessionEnded} initialNotice={notice} />
           )}
-          {page === 'perfil' && api.hasSession() && <Profile onSessionEnded={sessionEnded} />}
           {page === 'turmas' && api.hasSession() && <Classes onSessionEnded={sessionEnded} />}
           {page === 'matriculas' && api.hasSession() && (
             <Enrollments onSessionEnded={sessionEnded} />
