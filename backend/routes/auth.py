@@ -20,7 +20,7 @@ def login():
     data = v.body({"email_usuario", "senha"}, ("email_usuario", "senha"))
     user, result = auth.login(data)
     result["usuario"] = user_json(user)
-    return jsonify(data=result, code="UC_13_M01", message="Login realizado com sucesso!")
+    return jsonify(data=result, code="UC_01_M01", message="Login realizado com sucesso!")
 
 
 @bp.post("/refresh")
@@ -81,4 +81,4 @@ def verify_reset():
 def reset_password():
     fields = {"id_recuperacao", "token_redefinicao", "nova_senha", "confirmacao_senha"}
     auth.reset_password(v.body(fields, fields))
-    return jsonify(code="UC_13_M02", message="Senha redefinida com sucesso!")
+    return jsonify(code="UC_01_M02", message="Senha redefinida com sucesso!")

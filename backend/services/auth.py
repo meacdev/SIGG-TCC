@@ -34,7 +34,7 @@ def login(data):
     if not user:
         raise APIError(
             401,
-            "UC_13_CONTA_NAO_CADASTRADA",
+            "UC_02_M03",
             "Conta não cadastrada, entre em contato com a secretaria.",
         )
     if not valid:

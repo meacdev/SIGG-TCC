@@ -123,6 +123,26 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
       });
       tokens = result.body.data;
     },
+    requestReset: (email_usuario: string) =>
+      request<{ id_recuperacao: string }>('/auth/recuperacao-senha', {
+        method: 'POST',
+        body: JSON.stringify({ email_usuario }),
+      }),
+    verifyReset: (id_recuperacao: string, codigo: string) =>
+      request<{ token_redefinicao: string }>('/auth/recuperacao-senha/verificar', {
+        method: 'POST',
+        body: JSON.stringify({ id_recuperacao, codigo }),
+      }),
+    resetPassword: (data: {
+      id_recuperacao: string;
+      token_redefinicao: string;
+      nova_senha: string;
+      confirmacao_senha: string;
+    }) =>
+      request<void>('/auth/recuperacao-senha/redefinir', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     profile: () => request<User>('/usuarios/me', {}, true),
     update: (data: object, etag: string) =>
       request<User>(

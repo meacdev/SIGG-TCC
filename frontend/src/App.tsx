@@ -3,11 +3,12 @@ import { api, ApiError } from './api';
 import { Field, Icon, Notice, Password, inputA11y } from './components';
 import type { Course, FieldErrors, FormValues, User } from './types';
 import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
+import { RecoveryForm } from './RecoveryForm';
 
-type Page = 'cadastro' | 'entrar' | 'perfil';
+type Page = 'cadastro' | 'entrar' | 'perfil' | 'recuperar-senha';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '');
-  return page === 'entrar' || page === 'perfil' ? page : 'cadastro';
+  return page === 'entrar' || page === 'perfil' || page === 'recuperar-senha' ? page : 'cadastro';
 };
 const navigate = (page: Page) => {
   window.location.hash = `/${page}`;
@@ -38,7 +39,7 @@ export function App() {
     return () => window.removeEventListener('hashchange', change);
   }, []);
   useEffect(() => {
-    document.title = `${page === 'cadastro' ? 'Crie sua conta' : page === 'entrar' ? 'Entrar' : 'Meu cadastro'} · SIGG-TCC`;
+    document.title = `${page === 'cadastro' ? 'Crie sua conta' : page === 'entrar' ? 'Entrar' : page === 'recuperar-senha' ? 'Recuperar senha' : 'Meu cadastro'} · SIGG-TCC`;
     window.scrollTo(0, 0);
     if (page === 'perfil' && !api.hasSession()) {
       navigate('entrar');
@@ -77,7 +78,7 @@ export function App() {
         Ir para o conteúdo
       </a>
       <aside className="brand-panel" aria-label="Sobre o SIGG-TCC">
-        <a className="brand" href="#/cadastro" aria-label="SIGG-TCC, cadastro">
+        <a className="brand" href="#/cadastro">
           <span className="brand-symbol">
             <Icon name="cap" size={30} />
           </span>
@@ -173,9 +174,29 @@ export function App() {
             />
           )}
           {page === 'entrar' && (
-            <LoginForm initialEmail={email} notice={notice} onLogin={() => navigate('perfil')} />
+            <LoginForm
+              initialEmail={email}
+              notice={notice}
+              onLogin={() => {
+                window.history.replaceState(null, '', '#/perfil');
+                setPage('perfil');
+                setNotice('Login realizado com sucesso!');
+              }}
+              onForgot={setEmail}
+            />
           )}
-          {page === 'perfil' && api.hasSession() && <Profile onSessionEnded={sessionEnded} />}
+          {page === 'recuperar-senha' && (
+            <RecoveryForm
+              initialEmail={email}
+              onCompleted={(address) => {
+                setEmail(address);
+                sessionEnded('Senha redefinida com sucesso!');
+              }}
+            />
+          )}
+          {page === 'perfil' && api.hasSession() && (
+            <Profile onSessionEnded={sessionEnded} initialNotice={notice} />
+          )}
         </main>
         <footer className="page-footer">
           <span>SIGG-TCC · Equipe Compila-dores</span>
@@ -675,10 +696,12 @@ function LoginForm({
   initialEmail,
   notice,
   onLogin,
+  onForgot,
 }: {
   initialEmail: string;
   notice: string;
   onLogin: () => void;
+  onForgot: (email: string) => void;
 }) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
@@ -740,8 +763,13 @@ function LoginForm({
             disabled={busy}
           />
         </Field>
+        <p className="recovery-link">
+          <a href="#/recuperar-senha" onClick={() => onForgot(email)}>
+            Esqueceu senha?
+          </a>
+        </p>
         <button className="primary" disabled={busy}>
-          {busy ? 'Entrando…' : 'Entrar'} <Icon name="arrow" size={18} />
+          {busy ? 'Entrando…' : 'Continuar'} <Icon name="arrow" size={18} />
         </button>
       </form>
       <div className="login-prompt">
@@ -751,18 +779,23 @@ function LoginForm({
   );
 }
 
-function Profile({ onSessionEnded }: { onSessionEnded: (message: string) => void }) {
+function Profile({
+  onSessionEnded,
+  initialNotice,
+}: {
+  onSessionEnded: (message: string) => void;
+  initialNotice: string;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState(initialNotice);
   const [version, setVersion] = useState(0);
   const [removing, setRemoving] = useState(false);
   const sessionEnded = useRef(onSessionEnded);
   sessionEnded.current = onSessionEnded;
   const load = useCallback(async () => {
     setMessage('');
-    setSuccess('');
     try {
       const result = await api.profile();
       setUser(result.body.data);
@@ -791,7 +824,7 @@ function Profile({ onSessionEnded }: { onSessionEnded: (message: string) => void
           </button>
         </Notice>
       )}
-      {success && <Notice success message={success} />}
+      {success && user && !message && <Notice success message={success} />}
       {!user && !message && <p role="status">Carregando seu cadastro…</p>}
       {user && (
         <>

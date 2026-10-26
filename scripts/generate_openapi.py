@@ -278,7 +278,7 @@ operation(
     "Tokens",
     "Login",
     public=True,
-    description="Usuário inexistente: UC_13_CONTA_NAO_CADASTRADA. "
+    description="Usuário inexistente: UC_02_M03. "
     "Permissões e rota do painel são interpretadas pelo frontend a partir de usuario.perfis.",
 )
 operation(

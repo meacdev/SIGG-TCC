@@ -4,6 +4,8 @@ import secrets
 import sys
 from pathlib import Path
 
+from flask import jsonify, request
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.app import create_app  # noqa: E402
@@ -11,6 +13,7 @@ from backend.cli import seed_profiles  # noqa: E402
 from backend.db import db  # noqa: E402
 from backend.models import Curso  # noqa: E402
 
+outbox = {}
 app = create_app(
     {
         "TESTING": True,
@@ -20,8 +23,19 @@ app = create_app(
         "JWT_SECRET_KEY": secrets.token_hex(32),
         "RATELIMIT_ENABLED": False,
         "CORS_ORIGINS": [],
+        "SMTP_HOST": "",
+        "SMTP_FROM": "",
+        "MAIL_SENDER": lambda address, subject, content: outbox.update({address: content}),
     }
 )
+
+
+@app.get("/__test__/mail")
+def test_mail():
+    # Only this disposable test server exposes captured mail, never the application factory.
+    return jsonify(content=outbox.get(request.args.get("email"), ""))
+
+
 with app.app_context():
     db.create_all()
     seed_profiles()
