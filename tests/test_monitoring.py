@@ -24,7 +24,9 @@ def roster(app, client, teacher, student, accepted_work, password):
         class_id = member.id_turma
         member.data_matricula_matricula_turma = utcnow() - timedelta(days=60)
         db.session.commit()
-    old_day = (utcnow().date() - timedelta(days=31)).strftime("%d/%m/%Y")
+    old_day = (
+        utcnow().astimezone(app.config["ACADEMIC_TIMEZONE"]).date() - timedelta(days=31)
+    ).strftime("%d/%m/%Y")
     result = client.post(
         f"/api/v1/etapas/{accepted_work['id_etapa']}/reunioes",
         headers=student["headers"],
@@ -140,7 +142,10 @@ def test_roles_and_current_course_scope(app, client, teacher, student, roster, s
                 id_docente=other["id_usuario"],
                 id_curso=1,
                 coordenador_docente_curso=True,
-                data_inicio_docente_curso=utcnow().date() - timedelta(days=1),
+                data_inicio_docente_curso=utcnow()
+                .astimezone(app.config["ACADEMIC_TIMEZONE"])
+                .date()
+                - timedelta(days=1),
             )
         )
         db.session.commit()
@@ -148,7 +153,9 @@ def test_roles_and_current_course_scope(app, client, teacher, student, roster, s
     with app.app_context():
         db.session.scalar(
             select(DocenteCurso).where(DocenteCurso.id_docente == other["id_usuario"])
-        ).data_fim_docente_curso = utcnow().date() - timedelta(days=1)
+        ).data_fim_docente_curso = utcnow().astimezone(
+            app.config["ACADEMIC_TIMEZONE"]
+        ).date() - timedelta(days=1)
         db.session.commit()
     assert client.get(roster["base"], headers=headers).status_code == 403
 
@@ -254,7 +261,7 @@ def test_expired_preview_and_new_meeting_block_stale_confirmation(
         db.session.commit()
     assert confirm(client, teacher, roster, batch).json["error"]["code"] == "CONFIRMACAO_EXPIRADA"
     batch = preview(client, teacher, roster)
-    now = utcnow().date().strftime("%d/%m/%Y")
+    now = utcnow().astimezone(app.config["ACADEMIC_TIMEZONE"]).date().strftime("%d/%m/%Y")
     sent = client.post(
         f"/api/v1/etapas/{roster['work']['id_etapa']}/reunioes",
         headers=student["headers"],
@@ -336,7 +343,7 @@ def test_correction_submission_also_counts_as_activity(app, client, teacher, stu
             "class": roster["class"],
             "teacher": teacher["id_usuario"],
             "stage": roster["work"]["id_etapa"],
-            "deadline": utcnow().date().isoformat(),
+            "deadline": utcnow().astimezone(app.config["ACADEMIC_TIMEZONE"]).date().isoformat(),
         }
         for statement in records:
             db.session.execute(text(statement), params)
@@ -385,7 +392,10 @@ def test_batch_is_actor_bound_and_unknown_fields_are_rejected(
                 id_docente=coordinator["id_usuario"],
                 id_curso=1,
                 coordenador_docente_curso=True,
-                data_inicio_docente_curso=utcnow().date() - timedelta(days=1),
+                data_inicio_docente_curso=utcnow()
+                .astimezone(app.config["ACADEMIC_TIMEZONE"])
+                .date()
+                - timedelta(days=1),
             )
         )
         db.session.commit()

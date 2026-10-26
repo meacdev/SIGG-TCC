@@ -24,6 +24,7 @@ test('UC02: recupera por e-mail, valida o código e entra com a nova senha', asy
   await page.goto('/#/entrar');
   await page.getByLabel('E-mail', { exact: true }).fill(email);
   await page.getByRole('link', { name: 'Esqueceu senha?' }).click();
+  await expect(page).toHaveTitle('Recuperar senha · SIGG-TCC');
   await expect(page.getByLabel('E-mail', { exact: true })).toHaveValue(email);
   await page.screenshot({ path: testInfo.outputPath('uc02-email.png'), fullPage: true });
   await page.getByRole('button', { name: 'Enviar código' }).click();
@@ -60,6 +61,8 @@ test('UC02: recupera por e-mail, valida o código e entra com a nova senha', asy
   await page.getByLabel('Senha', { exact: true }).fill(newPassword);
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Meu cadastro' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Meu cadastro' })).toHaveCount(1);
+  await expect(page.getByRole('navigation', { name: 'Área acadêmica' })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Login realizado com sucesso!');
 });
 
@@ -68,6 +71,7 @@ test('UC02: conta desconhecida, reenvio, retorno ao login e acessibilidade móve
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/recuperar-senha');
+  await expect(page).toHaveTitle('Recuperar senha · SIGG-TCC');
   await page.getByRole('button', { name: 'Enviar código' }).click();
   await expect(page.getByRole('alert')).toContainText('Revise os campos');
   await page.getByLabel('E-mail', { exact: true }).fill('nao-cadastrado@example.com');
