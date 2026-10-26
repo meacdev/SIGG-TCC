@@ -23,7 +23,7 @@ async function login(page: Page, email: string) {
   await page.getByRole('button', { name: 'Ir para o login' }).click();
   await page.getByLabel('E-mail', { exact: true }).fill(email);
   await page.getByLabel('Senha', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Meu cadastro' })).toBeVisible();
   await expect(page.getByLabel('Nome completo')).toHaveValue('Pessoa de Teste');
 }
@@ -69,7 +69,7 @@ test('docente: cadastro, consulta, edição, conflito, alteração de e-mail e i
   await expect(page.getByRole('status')).toContainText('E-mail atualizado com sucesso');
   await page.getByLabel('E-mail', { exact: true }).fill(newEmail);
   await page.getByLabel('Senha', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('button', { name: 'Inativar conta', exact: true }).click();
   await page.getByLabel('Confirme sua senha atual').fill('senha incorreta');
   await page.getByRole('button', { name: 'Confirmar inativação' }).click();
@@ -82,7 +82,7 @@ test('docente: cadastro, consulta, edição, conflito, alteração de e-mail e i
   await expect(page.getByRole('status')).toContainText('Sua conta foi inativada com sucesso.');
   await page.getByLabel('E-mail', { exact: true }).fill(newEmail);
   await page.getByLabel('Senha', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('inativa');
 });
 

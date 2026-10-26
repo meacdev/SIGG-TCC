@@ -18,7 +18,7 @@ def test_login_errors(client, signup, password):
         "/api/v1/auth/login", json={"email_usuario": "missing@example.com", "senha": password}
     )
     assert response.status_code == 401
-    assert response.json["error"]["code"] == "UC_13_CONTA_NAO_CADASTRADA"
+    assert response.json["error"]["code"] == "UC_02_M03"
     assert (
         client.post(
             "/api/v1/auth/login", json={"email_usuario": user["email_usuario"], "senha": "errada"}
@@ -82,7 +82,7 @@ def request_recovery(client, app, user):
     )
     assert response.status_code == 202, response.json
     recovery_id = response.json["data"]["id_recuperacao"]
-    code = re.search(r"\b[0-9]{10}\b", app.outbox[-1][2]).group()
+    code = re.search(r"é: ([0-9]{10})\n", app.outbox[-1][2]).group(1)
     return recovery_id, code
 
 
@@ -114,7 +114,9 @@ def test_full_recovery_flow(app, client, signup, login, password):
     }
     assert client.post("/api/v1/auth/recuperacao-senha/redefinir", json=data).status_code == 422
     data["confirmacao_senha"] = new_password
-    assert client.post("/api/v1/auth/recuperacao-senha/redefinir", json=data).status_code == 200
+    reset_result = client.post("/api/v1/auth/recuperacao-senha/redefinir", json=data)
+    assert reset_result.status_code == 200
+    assert reset_result.json["code"] == "UC_01_M02"
     assert client.post("/api/v1/auth/recuperacao-senha/redefinir", json=data).status_code == 422
     assert (
         client.get("/api/v1/usuarios/me", headers=headers(tokens["access_token"])).status_code
@@ -210,6 +212,48 @@ def test_recovery_expiration(app, client, signup):
         ).status_code
         == 422
     )
+
+
+def test_reset_token_expires_with_recovery(app, client, signup, password):
+    recovery_id, code = request_recovery(client, app, signup())
+    response = client.post(
+        "/api/v1/auth/recuperacao-senha/verificar",
+        json={"id_recuperacao": recovery_id, "codigo": code},
+    )
+    with app.app_context():
+        db.session.get(RecuperacaoSenha, recovery_id).expira_em = utcnow() - timedelta(seconds=1)
+        db.session.commit()
+    assert (
+        client.post(
+            "/api/v1/auth/recuperacao-senha/redefinir",
+            json={
+                "id_recuperacao": recovery_id,
+                "token_redefinicao": response.json["data"]["token_redefinicao"],
+                "nova_senha": password,
+                "confirmacao_senha": password,
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_inactive_account_cannot_login_or_receive_reset(app, client, signup, password):
+    from backend.models import Usuario
+
+    user = signup()
+    with app.app_context():
+        db.session.get(Usuario, user["id_usuario"]).ativo_usuario = False
+        db.session.commit()
+    response = client.post(
+        "/api/v1/auth/login", json={"email_usuario": user["email_usuario"], "senha": password}
+    )
+    assert response.status_code == 403
+    assert response.json["error"]["code"] == "CONTA_INATIVA"
+    response = client.post(
+        "/api/v1/auth/recuperacao-senha", json={"email_usuario": user["email_usuario"]}
+    )
+    assert response.status_code == 202
+    assert app.outbox == []
 
 
 @pytest.mark.parametrize("secret", [[], {}, 123, True])

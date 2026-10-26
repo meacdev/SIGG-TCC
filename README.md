@@ -1,6 +1,6 @@
 # SIGG-TCC
 
-API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. Implementa UC01 (cadastro e gestão do próprio cadastro), UC13 (login, sessão e recuperação de senha por e-mail) e UC02 (cadastro e gestão de turmas). O front-end React/TypeScript do UC01 está em `frontend/`, com cadastro, login de apoio, consulta, edição e inativação do próprio cadastro. Consulte [o guia do front-end](docs/FRONTEND.md) para executar e verificar a interface.
+API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. Implementa UC01 (cadastro e gestão do próprio cadastro), UC02 (login, sessão e recuperação de senha por e-mail) e o back end de cadastro e gestão de turmas (UC03). O front-end React/TypeScript do UC01 está em `frontend/`, com cadastro, login, recuperação de senha por e-mail, consulta, edição e inativação do próprio cadastro. Consulte [o guia do front-end](docs/FRONTEND.md) para executar e verificar a interface.
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
@@ -96,3 +96,5 @@ O usuário de teste precisa de `CREATE SCHEMA`. Nunca use credenciais de produç
 A análise e a rastreabilidade de todos os RF/RNF estão em `docs/REQUISITOS.md`. As diferenças entre SQL, dicionário e casos de uso estão registradas ali. Os cenários de teste e as medições locais estão em `docs/VALIDACAO.md`. A implementação dos módulos de orientação, bancas, notas, documentos, matrículas, relatórios e murais pertence às próximas entregas.
 
 Consulte `docs/OPERACAO.md` para usuário PostgreSQL restrito, HTTPS, Redis, backup diário, restauração e avaliação de desempenho. Recuperação de senha exige SMTP configurado; os testes simulam o transporte. Disponibilidade, acessibilidade do React e metas de carga dependem de validação no ambiente de implantação.
+
+A revisão do UC02 e as instruções SMTP estão em [docs/UC02-LOGIN.md](docs/UC02-LOGIN.md).

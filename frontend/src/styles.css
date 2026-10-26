@@ -300,6 +300,7 @@ main {
   border-radius: 50%;
   background: #548456;
 }
+.page-intro h1,
 .page-intro h2,
 .receipt h2 {
   font-family: Georgia, 'Times New Roman', serif;
@@ -650,6 +651,54 @@ legend {
 .login-section .primary {
   margin-top: 5px;
 }
+.recovery-link {
+  margin: -8px 0 0;
+  text-align: right;
+  font-size: 13px;
+}
+.recovery-progress {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 30px;
+}
+.recovery-progress li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.recovery-progress li span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.recovery-progress li[aria-current='step'] {
+  color: var(--green);
+  font-weight: 700;
+}
+.recovery-progress li[aria-current='step'] span {
+  background: var(--green);
+  color: white;
+}
+.recovery-code {
+  font-size: 22px;
+  letter-spacing: 0.15em;
+  font-family: monospace;
+}
+.recovery-section .page-intro p {
+  overflow-wrap: anywhere;
+}
+.recovery-restart {
+  justify-self: start;
+  text-align: left;
+}
 .receipt {
   text-align: center;
   padding-top: 60px;
@@ -911,6 +960,7 @@ legend {
   .profile-section {
     max-width: 580px;
   }
+  .page-intro h1,
   .page-intro h2 {
     font-size: 34px;
   }
@@ -983,6 +1033,7 @@ legend {
   .section-heading > small {
     display: none;
   }
+  .page-intro h1,
   .page-intro h2 {
     font-size: 34px;
   }

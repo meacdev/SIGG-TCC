@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
-import type { FieldErrors, FormValues } from './types';
 
 export function Icon({
   name,
@@ -71,11 +70,11 @@ export function Field({
   errors,
   children,
 }: {
-  name: keyof FormValues;
+  name: string;
   label: string;
   optional?: boolean;
   hint?: string;
-  errors: FieldErrors;
+  errors: Record<string, string | undefined>;
   children: ReactNode;
 }) {
   return (
@@ -94,7 +93,7 @@ export function Field({
   );
 }
 
-export function inputA11y(name: keyof FormValues, errors: FieldErrors, hint = false) {
+export function inputA11y(name: string, errors: Record<string, string | undefined>, hint = false) {
   return {
     id: name,
     name,

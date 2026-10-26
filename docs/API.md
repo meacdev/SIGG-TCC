@@ -51,7 +51,7 @@ O login recebe `email_usuario` e `senha` e retorna:
 
 ```json
 {
-  "code": "UC_13_M01",
+  "code": "UC_01_M01",
   "message": "Login realizado com sucesso!",
   "data": {
     "access_token": "<JWT>",
@@ -65,7 +65,7 @@ O login recebe `email_usuario` e `senha` e retorna:
 
 Tokens de acesso duram 20 minutos por padrão. A sessão expira após 20 minutos sem requisições autenticadas válidas e, em qualquer caso, após 12 horas. A renovação só funciona enquanto a sessão estiver ativa. Substitua ambos os tokens a cada refresh. Não use timers de renovação ou polling para manter usuários inativos conectados.
 
-Editar o e-mail exige `senha_atual` e revoga todas as sessões: solicite novo login após salvar. O e-mail é normalizado para minúsculas. O catálogo de mensagens do UC13 tinha prefixos copiados de outros UCs; a API utiliza `UC_13_M01`, `UC_13_M02` e `UC_13_CONTA_NAO_CADASTRADA`.
+Editar o e-mail exige `senha_atual` e revoga todas as sessões: solicite novo login após salvar. O e-mail é normalizado para minúsculas. O UC02_LOGIN.docx identifica as mensagens como `UC_01_M01` (login), `UC_01_M02` (senha redefinida) e `UC_02_M03` (conta inexistente). A API segue esses identificadores do documento, substituindo os antigos prefixos UC_13.
 
 ## Recuperação de senha
 
