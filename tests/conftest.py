@@ -56,12 +56,10 @@ def app():
             assert result.exit_code == 0, result.output + str(result.exception)
         else:
             db.create_all()
-            db.session.execute(
-                text(
-                    "CREATE TABLE matricula_turma (id_matricula_turma INTEGER PRIMARY KEY, "
-                    "id_turma INTEGER, id_aluno INTEGER)"
-                )
-            )
+            # Read-only delivery projections use independent metadata, not duplicate ORM models.
+            from backend.services.monitoring_sources import metadata as delivery_metadata
+
+            delivery_metadata.create_all(db.engine)
         seed_profiles()
         db.session.add_all(
             [

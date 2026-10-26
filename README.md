@@ -4,6 +4,10 @@ API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. I
 
 Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
 
+Esta branch segue a numeração dos DOCX atualizados: UC01 cadastro, UC02 login, [UC03 turmas](docs/UC03.md), [UC04 matrículas](docs/UC04.md), [UC06 trabalho](docs/UC06.md) e [UC05 atas de reunião](docs/UC05.md). A ordem das dependências é **UC03 → UC04 → UC06 → UC05**. Matrícula, trabalho e orientação aceita sustentam o histórico de reuniões e a visão de assiduidade do professor. Consulte [o plano de integração](docs/INTEGRACAO-UC03-UC06.md) para bases de PR e a branch separada do Yarn.
+
+O [UC13 Monitorar Prazos](docs/UC13.md) amplia essa base com matriz por turma, filtro de inatividade, histórico em modal e cobrança confirmada por e-mail. Professores e coordenadores autorizados monitoram reuniões e entregas; a fila mantém auditoria e permite repetir pendências sem duplicar envios já confirmados. Aplique a migração 008 com `yarn db:upgrade`. A configuração Yarn será retomada separadamente.
+
 ## Iniciar pela raiz
 
 O guia [Configurar e iniciar](docs/INICIAR.md) explica `.env`, `.venv`, preparação do banco, execução conjunta e produção. Com dependências e banco preparados, execute `yarn dev` na raiz para iniciar back-end e front-end juntos. `yarn test` executa Vitest e pytest; `yarn test:watch` acompanha os testes do front-end. Os scripts também funcionam com `npm run`.

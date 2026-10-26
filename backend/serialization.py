@@ -56,7 +56,11 @@ def class_json(item):
 
 
 def etag(item):
-    if hasattr(item, "id_turma"):
+    if hasattr(item, "versao_trabalho"):
+        value = f"trabalho:{item.id_trabalho}:{item.versao_trabalho}"
+    elif hasattr(item, "id_matricula_turma"):
+        value = f"matricula:{item.id_matricula_turma}:{item.versao_matricula}"
+    elif hasattr(item, "id_turma"):
         value = f"turma:{item.id_turma}:{iso(item.data_atualizacao_turma)}"
     else:
         value = f"usuario:{item.id_usuario}:{iso(item.data_atualizacao_usuario)}"

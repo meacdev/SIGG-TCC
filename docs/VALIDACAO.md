@@ -62,3 +62,52 @@ Em 24/10/2026, foram verificados os atalhos de execução conjunta e diagnóstic
 - Build do front-end, Ruff e integridade do diff aprovados.
 
 Não foi criada infraestrutura de produção ou realizada implantação externa. `docs/INICIAR.md` documenta os passos e diferencia configuração local, manutenção do banco e execução pública com Waitress, servidor estático HTTPS e serviços auxiliares.
+
+## UCs 03, 04, 06 e 05
+
+Verificação em 25/10/2026, com PostgreSQL 18 em cluster descartável na porta 55446 e SQLite em memória. O `.env` e o banco do usuário não foram alterados. Cada UC tem sua branch, na ordem das dependências UC03 → UC04 → UC06 → UC05.
+
+| Escopo verificado | Resultado |
+| --- | --- |
+| UC03: build, Vitest e navegador | Build aprovado, 11 testes unitários e 6 testes de navegador aprovados |
+| UC04: regressão SQLite e navegador | 67 aprovados, 5 exclusivos de PostgreSQL omitidos; 7 testes de navegador aprovados |
+| UC04: migração e matrícula em PostgreSQL | 4 testes direcionados aprovados |
+| Até UC06: regressão PostgreSQL | 80 testes aprovados, cobertura 94,02% |
+| Até UC06: navegador | 8 testes aprovados |
+| Conjunto até UC05: regressão PostgreSQL | 94 testes aprovados, cobertura 95,15% |
+| Conjunto até UC05: regressão SQLite | 85 aprovados, 9 verificações exclusivas de PostgreSQL omitidas |
+| Conjunto até UC05: navegador | 9 testes aprovados |
+| Front-end integrado | 11 testes Vitest e build aprovados |
+
+O UC03 exercita obrigatoriedade, formato de período, duplicata, manutenção de turma, código de acesso e inativação. UC04 exercita busca real por matrícula, autoinscrição, duplicidade, confirmação de remoção, preservação do histórico, reativação de matrícula, falha de SMTP e reprocessamento sem reenvio de notificações já confirmadas.
+
+UC06 exercita modalidade, campos de artigo publicado, DOI/URL, curso e matrícula compatíveis, herança de nível, edição própria com ETag, orientação pendente/aceita e bloqueio da troca sem RF05. UC05 exercita data, autorização por vínculo, professor somente consultando quando não é orientador, histórico após remoção, notificações às partes, contador, inatividade e estudante ainda sem trabalho. A proteção PostgreSQL rejeitou UPDATE, DELETE e TRUNCATE das atas.
+
+Testes concorrentes confirmaram uma única matrícula para duas inclusões simultâneas, um único trabalho para duas criações simultâneas e uma única resposta de orientação para dois pareceres com o mesmo ETag. O SQL original foi importado em schemas temporários por teste, com aplicação das migrações versionadas.
+
+As verificações axe-core nas telas dos quatro UCs não reportaram violações nos critérios automatizados WCAG 2.1 AA examinados. Capturas de desktop e celular foram inspecionadas; as larguras verificadas não apresentaram rolagem horizontal. Isso não substitui revisão manual completa de acessibilidade ou homologação com usuários.
+
+SMTP foi simulado, inclusive a construção de mensagens, autenticação e TLS. Não foram enviados e-mails a pessoas reais. Não se declara atendimento global de metas de desempenho, disponibilidade ou usabilidade a partir desses testes funcionais. A branch separada do Yarn contém apenas os UCs 01–03 e terá validação própria antes de seu PR em develop.
+
+## UC13 Monitorar Prazos
+
+Verificação em 25/10/2026 na branch `feat/UC13-monitorar-prazos`, baseada no UC05. A numeração segue a ficha atual UC13 de monitoramento, preservando os endpoints legados de autenticação. A configuração Yarn não foi alterada.
+
+| Verificação | Resultado |
+| --- | --- |
+| Regressão completa em PostgreSQL 18 descartável | 108 testes aprovados |
+| Cobertura da API no PostgreSQL | 95,30%, acima da meta de 80% |
+| Regressão rápida SQLite | 98 aprovados; 10 exclusivos de PostgreSQL omitidos |
+| Vitest | 11 testes aprovados |
+| Chromium com API real e banco em memória | 11 testes aprovados, incluindo a regressão dos UCs anteriores |
+| Build, TypeScript, Ruff, formatação e dependências Python | Aprovados |
+
+Foram exercitados turma vazia, ausência de inativos, limite de 30 dias exatos, filtro e paginação, histórico autorizado, restrição por perfil/curso vigente e bloqueio de estudante. Reuniões, entrega final e envio de correções foram avaliados como fontes de atividade em suas respectivas etapas. A conversão de timestamps UTC para o calendário de Manaus foi verificada, inclusive uma data próxima da meia-noite local.
+
+A prévia não enviou e-mails. A confirmação persistiu notificações e auditoria com usuário, timestamp, IP e destinatário. Foram exercitados seleção inválida, exclusões no modo selecionar todos, confirmação expirada, lote restrito ao ator, nova reunião entre prévia e confirmação, falha/reprocessamento de SMTP e cancelamento de cobrança pendente após regularização. Duas confirmações simultâneas no PostgreSQL geraram somente os registros e envios esperados, sem duplicar o lote.
+
+O cenário de navegador tem 22 estudantes sintéticos, 21 inativos, para verificar seleção em todas as páginas, confirmação/cancelamento, envio simulado e resultado do lote. Foram conferidos axe-core nos critérios WCAG 2.1 AA automatizados examinados e ausência de rolagem horizontal da página em largura de celular; a tabela tem rolagem interna. Matriz e modais de histórico/confirmação foram capturados e inspecionados visualmente.
+
+O PostgreSQL de teste usou cluster isolado na porta 55447 e schemas descartáveis por teste, com o SQL original e migrações, sem acesso ao banco do usuário. SQLite usa projeções independentes de leitura das tabelas documentais. As contas e os registros sintéticos não integram a aplicação normal. SMTP foi simulado e nenhuma mensagem real foi enviada.
+
+Esses resultados não comprovam a meta global de carga/latência de produção, usabilidade com participantes reais ou disponibilidade. O envio real exige configuração SMTP e reprocessamento periódico da fila. O guia `UC13.md` documenta a migração 008, permissões, dependências, calendário, idempotência e limites operacionais.
