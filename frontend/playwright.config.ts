@@ -13,7 +13,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'npm run dev',
+      command: 'yarn dev',
       url: 'http://127.0.0.1:5173',
       env: { API_PROXY_TARGET: 'http://127.0.0.1:5001' },
       reuseExistingServer: false,
