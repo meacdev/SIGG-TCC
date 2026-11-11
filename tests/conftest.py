@@ -15,7 +15,8 @@ from backend.models import Curso, Perfil, ProfessorCurso, UsuarioPerfil
 
 @pytest.fixture
 def password():
-    return secrets.token_urlsafe(18)
+    # RF21.1.1: uppercase letter, digit and special character.
+    return "Aa1!" + secrets.token_urlsafe(18)
 
 
 @pytest.fixture

@@ -10,6 +10,8 @@ export interface User {
   id_usuario: number;
   nome_usuario: string;
   email_usuario: string;
+  cpf_usuario: string | null;
+  telefone_usuario: string | null;
   ativo_usuario: boolean;
   data_criacao_usuario: string;
   data_atualizacao_usuario: string;
@@ -38,6 +40,8 @@ export interface FormValues {
   email_usuario: string;
   senha: string;
   confirmacao_senha: string;
+  cpf_usuario: string;
+  telefone_usuario: string;
   tipo_cadastro: 'professor' | 'estudante';
   titulacao_professor: Title | '';
   tipo_professor: 'interno' | 'externo';

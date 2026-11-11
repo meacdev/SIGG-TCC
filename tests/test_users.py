@@ -33,6 +33,16 @@ def test_signup_hash_timestamp_and_optional_fields(app, signup, password):
         ("nome_usuario", " Al ", "VALIDACAO"),
         ("nome_usuario", "x" * 101, "VALIDACAO"),
         ("senha", "curta", "SENHA_INVALIDA"),
+        ("senha", "Ab1!xyz", "SENHA_INVALIDA"),
+        ("senha", "semmaiuscula1!", "SENHA_INVALIDA"),
+        ("senha", "SemNumero!!", "SENHA_INVALIDA"),
+        ("senha", "SemEspecial12", "SENHA_INVALIDA"),
+        ("senha", "A1!" + "x" * 126, "SENHA_INVALIDA"),
+        ("cpf_usuario", "123.456.789-00", "CPF_INVALIDO"),
+        ("cpf_usuario", "111.111.111-11", "CPF_INVALIDO"),
+        ("cpf_usuario", 52998224725, "CPF_INVALIDO"),
+        ("telefone_usuario", "123", "TELEFONE_INVALIDO"),
+        ("telefone_usuario", "92 9999-abcd", "TELEFONE_INVALIDO"),
         ("titulacao_professor", "graduado", "VALIDACAO"),
         ("titulacao_professor", None, "UC_01_M02"),
         ("url_lattes_professor", "javascript:alert(1)", "URL_INVALIDA"),
@@ -172,3 +182,74 @@ def test_email_change_requires_password_and_revokes_session(client, signup, logi
         == 200
     )
     assert client.get("/api/v1/usuarios/me", headers=auth).status_code == 401
+
+
+def test_minimum_password_policy_is_accepted(signup):
+    assert signup(senha="Abcdef1!")["email_usuario"]
+
+
+def test_cpf_and_phone_are_optional_normalized_and_unique(client, signup, login, password):
+    assert signup()["cpf_usuario"] is None
+    user = signup(cpf_usuario="529.982.247-25", telefone_usuario="(92) 99999-9999")
+    assert user["cpf_usuario"] == "52998224725"
+    assert user["telefone_usuario"] == "92999999999"
+    response = client.post(
+        "/api/v1/usuarios",
+        json={
+            "nome_usuario": "Outra Pessoa",
+            "email_usuario": "outra@example.com",
+            "senha": password,
+            "titulacao_professor": "mestre",
+            "cpf_usuario": "52998224725",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json["error"]["code"] == "CPF_DUPLICADO"
+
+    other = signup(cpf_usuario="11144477735")
+    auth = headers(login(other)["access_token"])
+    tag = client.get("/api/v1/usuarios/me", headers=auth).headers["ETag"]
+    duplicate = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"cpf_usuario": "529.982.247-25"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json["error"]["code"] == "CPF_DUPLICADO"
+    # Keeping one's own CPF is not a duplicate; null clears the phone.
+    changed = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"cpf_usuario": "111.444.777-35", "telefone_usuario": "+55 92 3333-4444"},
+    )
+    assert changed.status_code == 200, changed.json
+    assert changed.json["data"]["telefone_usuario"] == "559233334444"
+    cleared = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": changed.headers["ETag"]},
+        json={"cpf_usuario": None, "telefone_usuario": ""},
+    )
+    assert cleared.status_code == 200, cleared.json
+    assert cleared.json["data"]["cpf_usuario"] is None
+    assert cleared.json["data"]["telefone_usuario"] is None
+
+
+def test_student_can_update_contact_fields(client, password, login):
+    payload = {
+        "nome_usuario": "Estudante",
+        "email_usuario": "contato@example.com",
+        "senha": password,
+        "tipo_cadastro": "estudante",
+        "matricula_estudante": "00099",
+        "id_curso": 1,
+    }
+    user = client.post("/api/v1/usuarios", json=payload).json["data"]
+    auth = headers(login(user)["access_token"])
+    tag = client.get("/api/v1/usuarios/me", headers=auth).headers["ETag"]
+    response = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"telefone_usuario": "92988887777"},
+    )
+    assert response.status_code == 200, response.json
+    assert response.json["data"]["telefone_usuario"] == "92988887777"

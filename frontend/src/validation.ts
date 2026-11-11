@@ -5,6 +5,8 @@ export const emptyForm: FormValues = {
   email_usuario: '',
   senha: '',
   confirmacao_senha: '',
+  cpf_usuario: '',
+  telefone_usuario: '',
   tipo_cadastro: 'estudante',
   titulacao_professor: '',
   tipo_professor: 'interno',
@@ -26,11 +28,49 @@ export const parseAreas = (value: string) => [
 ];
 export const validEmail = (email: string) => /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email.trim());
 
+// RF21.1.1: 8 to 128 characters with an uppercase letter, a digit and a special character.
+export const PASSWORD_RULE =
+  'Use de 8 a 128 caracteres, com ao menos 1 letra maiúscula, 1 número e 1 caractere especial.';
+export const validPassword = (value: string) =>
+  value.length >= 8 &&
+  value.length <= 128 &&
+  /\p{Lu}/u.test(value) &&
+  /\p{Nd}/u.test(value) &&
+  /[^\p{L}\p{N}]/u.test(value);
+
+export const digits = (value: string) => value.replace(/\D/g, '');
+
+// RF20.1 / ck_usuario_cpf: 11 digits with valid check digits.
+export function validCpf(value: string) {
+  if (!/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(value.trim())) return false;
+  const cpf = digits(value);
+  if (new Set(cpf).size === 1) return false;
+  return [9, 10].every((size) => {
+    const total = [...cpf.slice(0, size)].reduce(
+      (sum, d, i) => sum + Number(d) * (size + 1 - i),
+      0,
+    );
+    return ((total * 10) % 11) % 10 === Number(cpf[size]);
+  });
+}
+
+export const validPhone = (value: string) =>
+  /^\+?[\d\s().-]{10,30}$/.test(value.trim()) &&
+  digits(value).length >= 10 &&
+  digits(value).length <= 13;
+
+export const formatCpf = (value: string | null) =>
+  value && value.length === 11
+    ? `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`
+    : value || '';
+
 export function fromUser(user: User): FormValues {
   return {
     ...emptyForm,
     nome_usuario: user.nome_usuario,
     email_usuario: user.email_usuario,
+    cpf_usuario: formatCpf(user.cpf_usuario),
+    telefone_usuario: user.telefone_usuario || '',
     tipo_cadastro: user.professor ? 'professor' : 'estudante',
     titulacao_professor: user.professor?.titulacao_professor || '',
     tipo_professor: user.professor?.tipo_professor || 'interno',
@@ -51,9 +91,12 @@ export function validate(values: FormValues, original?: User): FieldErrors {
   if (!values.email_usuario.trim()) errors.email_usuario = 'Informe seu e-mail.';
   else if (!validEmail(values.email_usuario) || values.email_usuario.trim().length > 254)
     errors.email_usuario = 'Informe um endereço de e-mail válido.';
+  if (values.cpf_usuario.trim() && !validCpf(values.cpf_usuario))
+    errors.cpf_usuario = 'Informe um CPF válido.';
+  if (values.telefone_usuario.trim() && !validPhone(values.telefone_usuario))
+    errors.telefone_usuario = 'Informe um telefone válido com DDD.';
   if (!original) {
-    if (values.senha.length < 12 || values.senha.length > 128 || !values.senha.trim())
-      errors.senha = 'A senha deve conter de 12 a 128 caracteres.';
+    if (!validPassword(values.senha)) errors.senha = PASSWORD_RULE;
     if (!values.confirmacao_senha) errors.confirmacao_senha = 'Confirme sua senha.';
     else if (values.confirmacao_senha !== values.senha)
       errors.confirmacao_senha = 'As senhas não coincidem.';
@@ -101,6 +144,11 @@ export function payload(values: FormValues, original?: User) {
   const email = values.email_usuario.trim().toLowerCase();
   if (!original || email !== original.email_usuario) result.email_usuario = email;
   if (original && email !== original.email_usuario) result.senha_atual = values.senha_atual;
+  for (const field of ['cpf_usuario', 'telefone_usuario'] as const) {
+    const value = digits(values[field]);
+    // Sign-up omits empty optional fields; editing sends only what changed (null clears it).
+    if (original ? value !== (original[field] || '') : value) result[field] = value || null;
+  }
   if (!original) {
     result.senha = values.senha;
     result.tipo_cadastro = values.tipo_cadastro;

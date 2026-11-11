@@ -15,6 +15,8 @@ def user_json(user):
         "id_usuario": user.id_usuario,
         "nome_usuario": user.nome_usuario,
         "email_usuario": user.email_usuario,
+        "cpf_usuario": user.cpf_usuario,
+        "telefone_usuario": user.telefone_usuario,
         "ativo_usuario": user.ativo_usuario,
         "data_criacao_usuario": iso(user.data_criacao_usuario),
         "data_atualizacao_usuario": iso(user.data_atualizacao_usuario),

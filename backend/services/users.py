@@ -19,6 +19,8 @@ SIGNUP_FIELDS = {
     "nome_usuario",
     "email_usuario",
     "senha",
+    "cpf_usuario",
+    "telefone_usuario",
     "tipo_cadastro",
     "titulacao_professor",
     "tipo_professor",
@@ -28,9 +30,13 @@ SIGNUP_FIELDS = {
     "matricula_estudante",
     "id_curso",
 }
+# RF20.1: general data shared by every user (both optional).
+CONTACT_FIELDS = {"cpf_usuario", "telefone_usuario"}
 PROFILE_FIELDS = {
     "nome_usuario",
     "email_usuario",
+    "cpf_usuario",
+    "telefone_usuario",
     "titulacao_professor",
     "url_lattes_professor",
     "areas_interesse",
@@ -57,6 +63,18 @@ def require_institution(teacher):
             "Preencha todos os campos obrigatórios.",
             {"instituicao_origem_professor": "Obrigatório para professor externo."},
         )
+
+
+def unique_cpf(value, user_id=None):
+    if value and db.session.scalar(
+        select(Usuario.id_usuario).where(
+            Usuario.cpf_usuario == value, Usuario.id_usuario != (user_id or 0)
+        )
+    ):
+        raise APIError(
+            409, "CPF_DUPLICADO", "Este CPF já está cadastrado.", {"cpf_usuario": "Já cadastrado."}
+        )
+    return value
 
 
 def areas(values):
@@ -91,10 +109,16 @@ def signup(data):
     kind = v.choice(
         data.get("tipo_cadastro", "professor"), "tipo_cadastro", ("professor", "estudante")
     )
+    document = v.cpf(data.get("cpf_usuario"))
+    phone = v.phone(data.get("telefone_usuario"))
     if db.session.scalar(select(Usuario.id_usuario).where(Usuario.email_usuario == address)):
         raise APIError(409, "UC_01_M04", "Este endereço de e-mail já está cadastrado.")
     user = Usuario(
-        nome_usuario=name, email_usuario=address, hash_senha_usuario=hash_password(secret)
+        nome_usuario=name,
+        email_usuario=address,
+        hash_senha_usuario=hash_password(secret),
+        cpf_usuario=unique_cpf(document),
+        telefone_usuario=phone,
     )
     db.session.add(user)
     db.session.flush()
@@ -185,7 +209,15 @@ def update_profile(user, data):
         name = v.name(data["nome_usuario"])
         changes["nome_usuario"] = (user.nome_usuario, name)
         user.nome_usuario = name
-    teacher_fields = set(data) - {"email_usuario", "nome_usuario", "senha_atual"}
+    if "cpf_usuario" in data:
+        document = unique_cpf(v.cpf(data["cpf_usuario"]), user.id_usuario)
+        changes["cpf_usuario"] = (user.cpf_usuario, document)
+        user.cpf_usuario = document
+    if "telefone_usuario" in data:
+        phone = v.phone(data["telefone_usuario"])
+        changes["telefone_usuario"] = (user.telefone_usuario, phone)
+        user.telefone_usuario = phone
+    teacher_fields = set(data) - {"email_usuario", "nome_usuario", "senha_atual"} - CONTACT_FIELDS
     if teacher_fields and not user.professor:
         raise APIError(
             422, "VALIDACAO", "Dados acadêmicos de professor não se aplicam ao estudante."
