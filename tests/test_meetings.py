@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.academic_models import Reuniao
+from backend.academic_models import AtaOrientacao
 from backend.db import db, utcnow
 from backend.defense_models import Matricula
 from tests.test_enrollments import student as student
@@ -68,11 +68,8 @@ def test_registration_history_notifications_and_teacher_read_only(
     assert client.patch(path, headers=student["headers"], json={}).status_code == 405
     assert client.delete(path, headers=student["headers"]).status_code == 405
     with app.app_context():
-        item = db.session.scalar(select(Reuniao))
-        assert (
-            item.resumo_encaminhamentos_reuniao_orientacao
-            == "Revisar os objetivos e a metodologia."
-        )
+        item = db.session.scalar(select(AtaOrientacao))
+        assert item.resumo_encaminhamentos_ata_orientacao == "Revisar os objetivos e a metodologia."
 
 
 @pytest.mark.parametrize("day", ["31/02/2026", "29/02/2026", "2026-10-01", "01/01/9999", []])
@@ -84,7 +81,7 @@ def test_invalid_dates_leave_no_records(app, client, student, accepted_work, day
     )
     assert response.json["error"]["code"] == "UC_05_M03"
     with app.app_context():
-        assert db.session.query(Reuniao).count() == 0
+        assert db.session.query(AtaOrientacao).count() == 0
 
 
 def test_pending_advisor_block_and_absent_work_attendance(
@@ -154,11 +151,11 @@ def test_database_preserves_meeting_history(app, client, student, accepted_work)
     assert result.status_code == 201
     with app.app_context():
         for statement in [
-            "UPDATE reuniao_orientacao SET resumo_encaminhamentos_reuniao_orientacao = 'Alterado'",
-            "DELETE FROM reuniao_orientacao",
-            "TRUNCATE reuniao_orientacao",
+            "UPDATE ata_orientacao SET resumo_encaminhamentos_ata_orientacao = 'Alterado'",
+            "DELETE FROM ata_orientacao",
+            "TRUNCATE ata_orientacao",
         ]:
             with pytest.raises(SQLAlchemyError):
                 db.session.execute(text(statement))
             db.session.rollback()
-        assert db.session.query(Reuniao).count() == 1
+        assert db.session.query(AtaOrientacao).count() == 1

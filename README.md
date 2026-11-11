@@ -8,6 +8,8 @@ Esta branch segue a numeração dos DOCX atualizados: UC01 cadastro, UC02 login,
 
 O [UC13 Monitorar Prazos](docs/UC13.md) amplia essa base com matriz por turma, filtro de inatividade, histórico em modal e cobrança confirmada por e-mail. Professores e coordenadores autorizados monitoram reuniões e entregas; a fila mantém auditoria e permite repetir pendências sem duplicar envios já confirmados. Aplique a migração 008 com `yarn db:upgrade`. A configuração Yarn será retomada separadamente.
 
+O banco segue o [modelo de dados atualizado](docs/MODELO-DADOS.md) (`TCC_atualizado.sql` e dicionário de 09/11/2026), aplicado pela migração 009: `docente`→`professor`, `aluno`→`estudante`, `trabalho`→`trabalho_tcc`, `reuniao_orientacao`→`ata_orientacao`, novas colunas, tabelas e CHECKs. Faça backup e execute `yarn db:upgrade`.
+
 ## Iniciar pela raiz
 
 O guia [Configurar e iniciar](docs/INICIAR.md) explica `.env`, `.venv`, preparação do banco, execução conjunta e produção. Com dependências e banco preparados, execute `yarn dev` na raiz para iniciar back-end e front-end juntos. `yarn test` executa Vitest e pytest; `yarn test:watch` acompanha os testes do front-end. Os scripts também funcionam com `npm run`.
@@ -34,7 +36,7 @@ Com o banco já criado, **não importe novamente o esquema base**. Aplique somen
 
 O comando aplica migrações em uma transação, utiliza lock para evitar execução concorrente e verifica o checksum de migrações já executadas. Faça backup antes de atualizar um banco com dados. Se existirem e-mails que diferem somente por maiúsculas ou códigos equivalentes no mesmo período, resolva essas duplicatas antes da migração: ela aborta sem apagar registros.
 
-Somente para um banco **novo e vazio**, importe primeiro `backend/sql/000_schema_fornecido.sql` pelo pgAdmin ou psql. Esse arquivo é uma cópia integral do SQL entregue; não é uma migração incremental.
+Somente para um banco **novo e vazio**, importe primeiro `backend/sql/000_schema_fornecido.sql` pelo pgAdmin ou psql. Esse arquivo é uma cópia integral do SQL entregue; não é uma migração incremental. Em seguida, o `db-upgrade` aplica as migrações 001 a 009, que levam essa base ao modelo atualizado.
 
 ## Executar
 

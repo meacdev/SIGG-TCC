@@ -8,7 +8,14 @@ from sqlalchemy import select, text
 from backend.academic_models import LoteCobranca, NotificacaoAcademica
 from backend.db import db, utcnow
 from backend.defense_models import Matricula
-from backend.models import Auditoria, AuditoriaAlteracao, DocenteCurso, Perfil, Turma, UsuarioPerfil
+from backend.models import (
+    Auditoria,
+    AuditoriaAlteracao,
+    Perfil,
+    ProfessorCurso,
+    Turma,
+    UsuarioPerfil,
+)
 from backend.services import academic_mail
 from tests.test_concurrency import postgres_only as postgres_only
 from tests.test_enrollments import student as student
@@ -41,15 +48,15 @@ def roster(app, client, teacher, student, accepted_work, password):
                 "nome_usuario": name,
                 "email_usuario": uuid4().hex + "@example.com",
                 "senha": password,
-                "tipo_cadastro": "aluno",
+                "tipo_cadastro": "estudante",
                 "id_curso": 1,
-                "matricula_aluno": "000" + uuid4().hex[:9],
+                "matricula_estudante": "000" + uuid4().hex[:9],
             },
         ).json["data"]
         response = client.post(
             f"/api/v1/turmas/{class_id}/matriculas",
             headers=teacher["headers"],
-            json={"id_aluno": user["id_usuario"]},
+            json={"id_estudante": user["id_usuario"]},
         )
         assert response.status_code == 201
         identifier = response.json["data"]["id_matricula"]
@@ -138,11 +145,12 @@ def test_roles_and_current_course_scope(app, client, teacher, student, roster, s
         role = db.session.scalar(select(Perfil).where(Perfil.codigo_perfil == "coordenador"))
         db.session.add(UsuarioPerfil(id_usuario=other["id_usuario"], id_perfil=role.id_perfil))
         db.session.add(
-            DocenteCurso(
-                id_docente=other["id_usuario"],
+            ProfessorCurso(
+                id_professor=other["id_usuario"],
                 id_curso=1,
-                coordenador_docente_curso=True,
-                data_inicio_docente_curso=utcnow()
+                coordenador_professor_curso=True,
+                departamento_unidade_professor_curso="EST",
+                data_inicio_professor_curso=utcnow()
                 .astimezone(app.config["ACADEMIC_TIMEZONE"])
                 .date()
                 - timedelta(days=1),
@@ -152,8 +160,8 @@ def test_roles_and_current_course_scope(app, client, teacher, student, roster, s
     assert client.get(roster["base"], headers=headers).status_code == 200
     with app.app_context():
         db.session.scalar(
-            select(DocenteCurso).where(DocenteCurso.id_docente == other["id_usuario"])
-        ).data_fim_docente_curso = utcnow().astimezone(
+            select(ProfessorCurso).where(ProfessorCurso.id_professor == other["id_usuario"])
+        ).data_fim_professor_curso = utcnow().astimezone(
             app.config["ACADEMIC_TIMEZONE"]
         ).date() - timedelta(days=1)
         db.session.commit()
@@ -309,7 +317,32 @@ def test_delivery_is_activity_without_becoming_a_meeting(app, client, teacher, s
 
 def test_correction_submission_also_counts_as_activity(app, client, teacher, student, roster):
     now = utcnow().replace(tzinfo=None).isoformat(sep=" ")
+    later = (utcnow() + timedelta(hours=1)).replace(tzinfo=None).isoformat(sep=" ")
     with app.app_context():
+        if db.engine.dialect.name == "postgresql":
+            # The full schema requires the defended manuscript (manuscrito_trabalho).
+            defense = [
+                (
+                    "INSERT INTO manuscrito_trabalho (id_etapa_trabalho,id_arquivo_pdf,"
+                    "versao_manuscrito_trabalho) VALUES (:stage,902,1)"
+                ),
+                (
+                    "INSERT INTO banca_defesa (id_banca_defesa,id_etapa_trabalho,"
+                    "id_rubrica_avaliacao,data_inicio_banca_defesa,data_fim_banca_defesa,"
+                    "local_defesa_banca_defesa,modalidade_banca_defesa,id_arquivo_pdf_manuscrito,"
+                    "id_usuario_agendamento) "
+                    "VALUES (902,:stage,902,:now,:later,'Sala de teste','presencial',902,:teacher)"
+                ),
+            ]
+        else:
+            defense = [
+                (
+                    "INSERT INTO banca_defesa (id_banca_defesa,id_etapa_trabalho,"
+                    "id_rubrica_avaliacao,data_inicio_banca_defesa,data_fim_banca_defesa,"
+                    "local_defesa_banca_defesa,id_usuario_agendamento) "
+                    "VALUES (902,:stage,902,:now,:later,'Sala de teste',:teacher)"
+                ),
+            ]
         records = [
             (
                 "INSERT INTO arquivo_pdf (id_arquivo_pdf,nome_original_arquivo_pdf,"
@@ -318,16 +351,13 @@ def test_correction_submission_also_counts_as_activity(app, client, teacher, stu
                 "'test-only-correction.pdf',100,:sha,:student,:now)"
             ),
             (
-                "INSERT INTO rubrica (id_rubrica,id_turma,nome_rubrica,id_usuario_criacao) "
+                "INSERT INTO rubrica_avaliacao (id_rubrica_avaliacao,id_turma,"
+                "nome_rubrica_avaliacao,id_usuario_criacao) "
                 "VALUES (902,:class,'Rubrica de teste',:teacher)"
             ),
+            *defense,
             (
-                "INSERT INTO banca (id_banca,id_etapa_trabalho,id_rubrica,data_inicio_banca,"
-                "data_fim_banca,local_defesa_banca,id_usuario_agendamento) "
-                "VALUES (902,:stage,902,:now,:now,'Sala de teste',:teacher)"
-            ),
-            (
-                "INSERT INTO solicitacao_correcao (id_solicitacao_correcao,id_banca,"
+                "INSERT INTO solicitacao_correcao (id_solicitacao_correcao,id_banca_defesa,"
                 "descricao_solicitacao_correcao,data_limite_reenvio_solicitacao_correcao,"
                 "id_usuario_registro) VALUES (902,902,'Revisão de teste',:deadline,:teacher)"
             ),
@@ -340,6 +370,7 @@ def test_correction_submission_also_counts_as_activity(app, client, teacher, stu
             "sha": "b" * 64,
             "student": student["id_usuario"],
             "now": now,
+            "later": later,
             "class": roster["class"],
             "teacher": teacher["id_usuario"],
             "stage": roster["work"]["id_etapa"],
@@ -388,11 +419,12 @@ def test_batch_is_actor_bound_and_unknown_fields_are_rejected(
             UsuarioPerfil(id_usuario=coordinator["id_usuario"], id_perfil=role.id_perfil)
         )
         db.session.add(
-            DocenteCurso(
-                id_docente=coordinator["id_usuario"],
+            ProfessorCurso(
+                id_professor=coordinator["id_usuario"],
                 id_curso=1,
-                coordenador_docente_curso=True,
-                data_inicio_docente_curso=utcnow()
+                coordenador_professor_curso=True,
+                departamento_unidade_professor_curso="EST",
+                data_inicio_professor_curso=utcnow()
                 .astimezone(app.config["ACADEMIC_TIMEZONE"])
                 .date()
                 - timedelta(days=1),

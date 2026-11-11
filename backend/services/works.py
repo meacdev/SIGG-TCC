@@ -6,9 +6,9 @@ from sqlalchemy import select
 from backend import validation as v
 from backend.audit import audit
 from backend.db import db, utcnow
-from backend.defense_models import Etapa, Matricula, Orientacao, Trabalho
+from backend.defense_models import Etapa, Matricula, Orientacao, TrabalhoTcc
 from backend.errors import APIError
-from backend.models import Aluno, Curso, Docente, Turma
+from backend.models import Curso, Estudante, Professor, Turma
 from backend.serialization import check_version, iso
 from backend.services import academic_mail
 
@@ -30,13 +30,22 @@ REQUIRED = {"titulo", "tema", "modalidade", "id_curso", "id_matricula", "id_orie
 
 
 def own_work(lock=False):
-    if not g.user.aluno:
+    if not g.user.estudante:
         raise APIError(
             403,
             "UC_06_M05",
             "Você somente pode cadastrar ou atualizar as informações do próprio trabalho.",
         )
-    query = select(Trabalho).where(Trabalho.id_aluno == g.user.id_usuario)
+    # The work in progress comes first; otherwise the latest one (history).
+    query = (
+        select(TrabalhoTcc)
+        .where(TrabalhoTcc.id_estudante == g.user.id_usuario)
+        .order_by(
+            (TrabalhoTcc.situacao_trabalho_tcc == "em_andamento").desc(),
+            TrabalhoTcc.id_trabalho_tcc.desc(),
+        )
+        .limit(1)
+    )
     if lock:
         query = query.with_for_update()
     return db.session.scalar(query.execution_options(populate_existing=True))
@@ -47,7 +56,7 @@ def orientations(work):
         db.session.scalars(
             select(Orientacao)
             .where(
-                Orientacao.id_trabalho == work.id_trabalho,
+                Orientacao.id_trabalho_tcc == work.id_trabalho_tcc,
                 Orientacao.data_encerramento_orientacao.is_(None),
             )
             .order_by(Orientacao.id_orientacao)
@@ -63,7 +72,7 @@ def serialize(work):
     stage = (
         db.session.scalar(
             select(Etapa).where(
-                Etapa.id_trabalho == work.id_trabalho,
+                Etapa.id_trabalho_tcc == work.id_trabalho_tcc,
                 Etapa.id_matricula_turma == work.id_matricula_atual,
             )
         )
@@ -71,34 +80,30 @@ def serialize(work):
         else None
     )
     return {
-        "id_trabalho": work.id_trabalho,
-        "titulo": work.titulo_trabalho,
-        "subtitulo": work.subtitulo_trabalho,
-        "tema": work.tema_trabalho,
-        "modalidade": "monografia" if work.modalidade_trabalho == "monografia" else "artigo",
-        "tipo_artigo": "publicado"
-        if work.modalidade_trabalho == "artigo_publicado"
-        else "a_submeter"
-        if work.modalidade_trabalho == "artigo_a_submeter"
-        else None,
-        "url": work.url_artigo_trabalho,
-        "doi": work.doi_artigo_trabalho,
-        "id_curso": work.aluno.id_curso,
+        "id_trabalho_tcc": work.id_trabalho_tcc,
+        "titulo": work.titulo_trabalho_tcc,
+        "subtitulo": work.subtitulo_trabalho_tcc,
+        "tema": work.tema_trabalho_tcc,
+        "modalidade": work.modalidade_trabalho_tcc,
+        "tipo_artigo": work.tipo_artigo_trabalho_tcc,
+        "url": work.url_artigo_trabalho_tcc,
+        "doi": work.doi_artigo_trabalho_tcc,
+        "id_curso": work.estudante.id_curso,
         "id_matricula": work.id_matricula_atual,
         "id_etapa": stage.id_etapa_trabalho if stage else None,
         "nivel_turma": enrollment.turma.nivel_turma if enrollment else None,
         "codigo_turma": enrollment.turma.codigo_turma if enrollment else None,
-        "palavras_chave": work.palavras_chave_trabalho,
-        "situacao": work.situacao_trabalho,
-        "aluno": work.aluno.usuario.nome_usuario,
-        "id_aluno": work.id_aluno,
-        "data_criacao": iso(work.data_criacao_trabalho),
-        "versao": work.versao_trabalho,
+        "palavras_chave": work.palavras_chave_trabalho_tcc,
+        "situacao": work.situacao_trabalho_tcc,
+        "estudante": work.estudante.usuario.nome_usuario,
+        "id_estudante": work.id_estudante,
+        "data_criacao": iso(work.data_criacao_trabalho_tcc),
+        "versao": work.versao_trabalho_tcc,
         "orientacoes": [
             {
                 "id_orientacao": o.id_orientacao,
-                "id_docente": o.id_docente,
-                "nome": o.docente.usuario.nome_usuario,
+                "id_professor": o.id_professor,
+                "nome": o.professor.usuario.nome_usuario,
                 "papel": o.papel_orientacao,
                 "situacao": o.situacao_aceite_orientacao,
                 "data_resposta": iso(o.data_resposta_orientacao),
@@ -110,11 +115,11 @@ def serialize(work):
 
 def validate(data):
     result = {
-        "titulo_trabalho": v.text(data.get("titulo"), "titulo", 500),
-        "subtitulo_trabalho": v.text(data["subtitulo"], "subtitulo", 500)
+        "titulo_trabalho_tcc": v.text(data.get("titulo"), "titulo", 500),
+        "subtitulo_trabalho_tcc": v.text(data["subtitulo"], "subtitulo", 500)
         if data.get("subtitulo")
         else None,
-        "tema_trabalho": v.text(data.get("tema"), "tema", 5000),
+        "tema_trabalho_tcc": v.text(data.get("tema"), "tema", 5000),
     }
     modality = v.choice(data.get("modalidade"), "modalidade", ("monografia", "artigo"))
     subtype = data.get("tipo_artigo")
@@ -134,7 +139,7 @@ def validate(data):
                 {"url": "Obrigatório.", "doi": "Obrigatório."},
             )
         if subtype == "publicado":
-            url = v.lattes(data["url"])
+            url = v.url(data["url"], "url")
             doi = v.text(data["doi"], "doi", 255)
             if not re.fullmatch(r"10\.\d{4,9}/\S+", doi):
                 raise APIError(
@@ -143,12 +148,11 @@ def validate(data):
                     "Informe um DOI válido, no formato 10.xxxx/identificador.",
                     {"doi": "DOI inválido."},
                 )
-            result.update(url_artigo_trabalho=url, doi_artigo_trabalho=doi)
-    result["modalidade_trabalho"] = (
-        "monografia" if modality == "monografia" else f"artigo_{subtype}"
-    )
-    if result["modalidade_trabalho"] != "artigo_publicado":
-        result.update(url_artigo_trabalho=None, doi_artigo_trabalho=None)
+            result.update(url_artigo_trabalho_tcc=url, doi_artigo_trabalho_tcc=doi)
+    result["modalidade_trabalho_tcc"] = modality
+    result["tipo_artigo_trabalho_tcc"] = subtype if modality == "artigo" else None
+    if result["tipo_artigo_trabalho_tcc"] != "publicado":
+        result.update(url_artigo_trabalho_tcc=None, doi_artigo_trabalho_tcc=None)
     keywords = data.get("palavras_chave", [])
     if not isinstance(keywords, list) or len(keywords) > 10:
         raise APIError(
@@ -157,7 +161,7 @@ def validate(data):
             "Informe até 10 palavras-chave.",
             {"palavras_chave": "Lista de até 10 termos."},
         )
-    result["palavras_chave_trabalho"] = list(
+    result["palavras_chave_trabalho_tcc"] = list(
         dict.fromkeys(v.text(k, "palavras_chave", 100) for k in keywords)
     )
     return result
@@ -168,7 +172,7 @@ def save(data):
     values = validate(data)
     identifier = v.integer(data.get("id_matricula"), "id_matricula")
     membership = db.session.get(Matricula, identifier)
-    if not membership or membership.id_aluno != g.user.id_usuario:
+    if not membership or membership.id_estudante != g.user.id_usuario:
         raise APIError(
             422,
             "UC_06_M06",
@@ -179,7 +183,9 @@ def save(data):
     turma = db.session.scalar(
         select(Turma).where(Turma.id_turma == membership.id_turma).with_for_update(of=Turma)
     )
-    db.session.scalar(select(Aluno).where(Aluno.id_aluno == g.user.id_usuario).with_for_update())
+    db.session.scalar(
+        select(Estudante).where(Estudante.id_estudante == g.user.id_usuario).with_for_update()
+    )
     membership = db.session.scalar(
         select(Matricula)
         .where(Matricula.id_matricula_turma == identifier)
@@ -198,8 +204,8 @@ def save(data):
             "Verifique seu vínculo com a turma.",
         )
     if (
-        v.integer(data.get("id_curso"), "id_curso") != g.user.aluno.id_curso
-        or turma.id_curso != g.user.aluno.id_curso
+        v.integer(data.get("id_curso"), "id_curso") != g.user.estudante.id_curso
+        or turma.id_curso != g.user.estudante.id_curso
     ):
         raise APIError(
             422,
@@ -218,23 +224,23 @@ def save(data):
         )
     for role, teacher_id in advisors.items():
         teacher = db.session.scalar(
-            select(Docente).where(Docente.id_docente == teacher_id).with_for_update()
+            select(Professor).where(Professor.id_professor == teacher_id).with_for_update()
         )
-        if not teacher or not teacher.ativo_docente or not teacher.usuario.ativo_usuario:
+        if not teacher or not teacher.ativo_professor or not teacher.usuario.ativo_usuario:
             raise APIError(422, "DOCENTE_INVALIDO", f"Selecione um {role} ativo.")
     work = own_work(lock=True)
     created = work is None
     if work:
         check_version(work)
-        if work.situacao_trabalho != "em_andamento":
+        if work.situacao_trabalho_tcc != "em_andamento":
             raise APIError(409, "TRABALHO_ENCERRADO", "Este trabalho não admite alterações.")
     else:
-        work = Trabalho(id_aluno=g.user.id_usuario)
+        work = TrabalhoTcc(id_estudante=g.user.id_usuario)
         db.session.add(work)
     records = orientations(work) if not created else []
     current = {o.papel_orientacao: o for o in records}
     for role, record in current.items():
-        if advisors.get(role) != record.id_docente:
+        if advisors.get(role) != record.id_professor:
             raise APIError(
                 409,
                 "TROCA_ORIENTACAO_RF05",
@@ -245,31 +251,31 @@ def save(data):
         setattr(work, key, value)
     work.id_matricula_atual = identifier
     if not created:
-        work.versao_trabalho += 1
+        work.versao_trabalho_tcc += 1
     db.session.flush()
     stage = db.session.scalar(select(Etapa).where(Etapa.id_matricula_turma == identifier))
-    if stage and stage.id_trabalho != work.id_trabalho:
+    if stage and stage.id_trabalho_tcc != work.id_trabalho_tcc:
         raise APIError(409, "ETAPA_DIVERGENTE", "A matrícula já está vinculada a outro trabalho.")
     if not stage:
-        db.session.add(Etapa(id_trabalho=work.id_trabalho, id_matricula_turma=identifier))
+        db.session.add(Etapa(id_trabalho_tcc=work.id_trabalho_tcc, id_matricula_turma=identifier))
     notifications = []
     for role, teacher_id in advisors.items():
         if role in current:
             continue
         record = Orientacao(
-            id_trabalho=work.id_trabalho,
-            id_docente=teacher_id,
+            id_trabalho_tcc=work.id_trabalho_tcc,
+            id_professor=teacher_id,
             papel_orientacao=role,
             id_usuario_registro=g.user.id_usuario,
         )
         db.session.add(record)
         db.session.flush()
-        teacher = db.session.get(Docente, teacher_id)
+        teacher = db.session.get(Professor, teacher_id)
         notification = academic_mail.enqueue(
             teacher.usuario,
             "convite_orientacao",
             "Vínculo de orientação - SIGG-TCC",
-            f"{g.user.nome_usuario} indicou você como {role} de {work.titulo_trabalho}. "
+            f"{g.user.nome_usuario} indicou você como {role} de {work.titulo_trabalho_tcc}. "
             "Entre no SIGG-TCC e acesse Trabalhos para consultar e responder ao vínculo: "
             f"{current_app.config['FRONTEND_URL'].rstrip('/')}/#/trabalhos",
             f"orientacao:{record.id_orientacao}",
@@ -280,8 +286,8 @@ def save(data):
     audit(
         g.user.id_usuario,
         "registro_trabalho" if created else "atualizacao_trabalho",
-        "trabalho",
-        work.id_trabalho,
+        "trabalho_tcc",
+        work.id_trabalho_tcc,
     )
     db.session.commit()
     academic_mail.deliver(notifications)
@@ -291,20 +297,20 @@ def save(data):
 def respond(work, record, decision):
     check_version(work)
     if (
-        not g.user.docente
-        or not g.user.docente.ativo_docente
-        or record.id_docente != g.user.id_usuario
+        not g.user.professor
+        or not g.user.professor.ativo_professor
+        or record.id_professor != g.user.id_usuario
         or record.data_encerramento_orientacao
     ):
         raise APIError(
-            403, "ACESSO_NEGADO", "Somente o docente indicado pode responder ao vínculo."
+            403, "ACESSO_NEGADO", "Somente o professor indicado pode responder ao vínculo."
         )
     if record.situacao_aceite_orientacao != "pendente":
         raise APIError(409, "RESPOSTA_REGISTRADA", "Este vínculo já possui uma resposta.")
     decision = v.choice(decision, "decisao", ("aceito", "recusado"))
     record.situacao_aceite_orientacao = decision
     record.data_resposta_orientacao = utcnow()
-    work.versao_trabalho += 1
+    work.versao_trabalho_tcc += 1
     audit(
         g.user.id_usuario,
         "resposta_orientacao",

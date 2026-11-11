@@ -15,14 +15,14 @@ import {
 
 interface Orientation {
   id_orientacao: number;
-  id_docente: number;
+  id_professor: number;
   nome: string;
   papel: string;
   situacao: string;
   data_resposta: string | null;
 }
 export interface Work {
-  id_trabalho: number;
+  id_trabalho_tcc: number;
   titulo: string;
   subtitulo: string | null;
   tema: string;
@@ -36,12 +36,12 @@ export interface Work {
   nivel_turma: number | null;
   codigo_turma: string | null;
   palavras_chave: string[];
-  aluno: string;
+  estudante: string;
   situacao: string;
   orientacoes: Orientation[];
 }
 interface Teacher {
-  id_docente: number;
+  id_professor: number;
   nome: string;
 }
 const empty = {
@@ -95,10 +95,10 @@ export function Works({ onSessionEnded }: SessionProps) {
         id_curso: String(item.id_curso),
         id_matricula: item.id_matricula ? String(item.id_matricula) : '',
         id_orientador: String(
-          item.orientacoes.find((o) => o.papel === 'orientador')?.id_docente || '',
+          item.orientacoes.find((o) => o.papel === 'orientador')?.id_professor || '',
         ),
         id_coorientador: String(
-          item.orientacoes.find((o) => o.papel === 'coorientador')?.id_docente || '',
+          item.orientacoes.find((o) => o.papel === 'coorientador')?.id_professor || '',
         ),
         palavras_chave: item.palavras_chave.join(', '),
       });
@@ -109,20 +109,20 @@ export function Works({ onSessionEnded }: SessionProps) {
     (async () => {
       const profile = (await api.profile()).body.data;
       if (!active) return;
-      setOwn(!!profile.aluno);
+      setOwn(!!profile.estudante);
       setUserId(profile.id_usuario);
-      if (profile.aluno) {
+      if (profile.estudante) {
         const [courses, members, teachers, current] = await Promise.all([
           api.courses(),
           catalog<Enrollment>('/minhas-matriculas'),
-          catalog<Teacher>('/docentes-orientacao'),
+          catalog<Teacher>('/professores-orientacao'),
           api.request<Work | null>('/meu-trabalho', {}, true),
         ]);
         if (!active) return;
         setCourses(courses);
         setEnrollments(members.filter((m) => m.turma_ativa));
         setTeachers(teachers);
-        setValues({ ...empty, id_curso: String(profile.aluno.id_curso) });
+        setValues({ ...empty, id_curso: String(profile.estudante.id_curso) });
         apply(current.body.data, current.etag || '');
       } else {
         const r = await api.request<Work[]>(`/orientacoes?page=${page}&per_page=20`, {}, true);
@@ -251,7 +251,7 @@ export function Works({ onSessionEnded }: SessionProps) {
         >
           <option value="">{role === 'orientador' ? 'Selecione docente ativo' : 'Nenhum'}</option>
           {teachers.map((t) => (
-            <option key={t.id_docente} value={t.id_docente}>
+            <option key={t.id_professor} value={t.id_professor}>
               {t.nome}
             </option>
           ))}
@@ -400,10 +400,10 @@ export function Works({ onSessionEnded }: SessionProps) {
         <>
           <div className="academic-list">
             {list.map((w) => (
-              <article className="academic-box" key={w.id_trabalho}>
+              <article className="academic-box" key={w.id_trabalho_tcc}>
                 <h3>{w.titulo}</h3>
-                <p>{w.aluno}</p>
-                <button className="secondary" onClick={() => open(w.id_trabalho)}>
+                <p>{w.estudante}</p>
+                <button className="secondary" onClick={() => open(w.id_trabalho_tcc)}>
                   Abrir {w.titulo}
                 </button>
               </article>
@@ -420,7 +420,7 @@ export function Works({ onSessionEnded }: SessionProps) {
             <>
               <h4>{work.titulo}</h4>
               <p>
-                {work.aluno} · {work.codigo_turma || 'Turma não informada'}
+                {work.estudante} · {work.codigo_turma || 'Turma não informada'}
               </p>
               <p className="academic-summary">{work.tema}</p>
             </>
@@ -434,7 +434,7 @@ export function Works({ onSessionEnded }: SessionProps) {
                 Situação: {o.situacao}
                 {o.data_resposta ? ` · ${new Date(o.data_resposta).toLocaleString('pt-BR')}` : ''}
               </p>
-              {!own && o.id_docente === userId && o.situacao === 'pendente' && (
+              {!own && o.id_professor === userId && o.situacao === 'pendente' && (
                 <div className="academic-actions">
                   <button
                     className="primary"

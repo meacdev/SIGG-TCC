@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import select
 
 from backend import validation as v
-from backend.academic_models import Reuniao
+from backend.academic_models import AtaOrientacao
 from backend.db import db
 from backend.defense_models import Etapa, Matricula
 from backend.errors import APIError
@@ -32,10 +32,10 @@ def history(class_id, enrollment_id):
         raise APIError(404, "MATRICULA_AUSENTE", "Estudante não encontrado na turma selecionada.")
     stage = db.session.scalar(select(Etapa).where(Etapa.id_matricula_turma == enrollment_id))
     return page_response(
-        select(Reuniao)
-        .where(Reuniao.id_etapa_trabalho == (stage.id_etapa_trabalho if stage else -1))
+        select(AtaOrientacao)
+        .where(AtaOrientacao.id_etapa_trabalho == (stage.id_etapa_trabalho if stage else -1))
         .order_by(
-            Reuniao.data_encontro_reuniao_orientacao.asc(), Reuniao.id_reuniao_orientacao.asc()
+            AtaOrientacao.data_encontro_ata_orientacao.asc(), AtaOrientacao.id_ata_orientacao.asc()
         ),
         meetings.serialize,
     )

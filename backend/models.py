@@ -8,15 +8,20 @@ from backend.db import ID, UTCDateTime, db, utcnow
 class Usuario(db.Model):
     __tablename__ = "usuario"
     id_usuario = db.Column(ID, primary_key=True)
-    nome_usuario = db.Column(db.String(200), nullable=False)
+    nome_usuario = db.Column(db.String(100), nullable=False)
     email_usuario = db.Column(db.String(254), unique=True, nullable=False)
     hash_senha_usuario = db.Column(db.Text)
+    cpf_usuario = db.Column(db.String(11), unique=True)
+    telefone_usuario = db.Column(db.String(30))
+    email_validado_usuario = db.Column(db.Boolean, nullable=False, default=False)
+    tentativas_login_usuario = db.Column(db.SmallInteger, nullable=False, default=0)
+    bloqueado_ate_usuario = db.Column(UTCDateTime)
     url_foto_usuario = db.Column(db.Text)
     ativo_usuario = db.Column(db.Boolean, nullable=False, default=True)
     data_criacao_usuario = db.Column(UTCDateTime, nullable=False, default=utcnow)
     data_atualizacao_usuario = db.Column(UTCDateTime, nullable=False, default=utcnow)
-    docente = db.relationship("Docente", uselist=False, back_populates="usuario")
-    aluno = db.relationship("Aluno", uselist=False, back_populates="usuario")
+    professor = db.relationship("Professor", uselist=False, back_populates="usuario")
+    estudante = db.relationship("Estudante", uselist=False, back_populates="usuario")
 
 
 class Perfil(db.Model):
@@ -52,24 +57,24 @@ class PeriodoLetivo(db.Model):
     data_fim_periodo_letivo = db.Column(db.Date)
 
 
-class Docente(db.Model):
-    __tablename__ = "docente"
-    id_docente = db.Column(ID, db.ForeignKey("usuario.id_usuario"), primary_key=True)
-    tipo_docente = db.Column(db.String(10), nullable=False)
-    titulacao_docente = db.Column(db.String(20), nullable=False)
-    instituicao_origem_docente = db.Column(db.String(200))
-    url_lattes_docente = db.Column(db.Text)
-    ativo_docente = db.Column(db.Boolean, nullable=False, default=True)
-    usuario = db.relationship(Usuario, back_populates="docente")
-    areas = db.relationship("AreaConhecimento", secondary="docente_area", lazy="selectin")
+class Professor(db.Model):
+    __tablename__ = "professor"
+    id_professor = db.Column(ID, db.ForeignKey("usuario.id_usuario"), primary_key=True)
+    tipo_professor = db.Column(db.String(10), nullable=False)
+    titulacao_professor = db.Column(db.String(20), nullable=False)
+    instituicao_origem_professor = db.Column(db.String(200))
+    url_lattes_professor = db.Column(db.Text)
+    ativo_professor = db.Column(db.Boolean, nullable=False, default=True)
+    usuario = db.relationship(Usuario, back_populates="professor")
+    areas = db.relationship("AreaConhecimento", secondary="professor_area", lazy="selectin")
 
 
-class Aluno(db.Model):
-    __tablename__ = "aluno"
-    id_aluno = db.Column(ID, db.ForeignKey("usuario.id_usuario"), primary_key=True)
-    matricula_aluno = db.Column(db.String(30), unique=True, nullable=False)
+class Estudante(db.Model):
+    __tablename__ = "estudante"
+    id_estudante = db.Column(ID, db.ForeignKey("usuario.id_usuario"), primary_key=True)
+    matricula_estudante = db.Column(db.String(30), unique=True, nullable=False)
     id_curso = db.Column(ID, db.ForeignKey("curso.id_curso"), nullable=False)
-    usuario = db.relationship(Usuario, back_populates="aluno")
+    usuario = db.relationship(Usuario, back_populates="estudante")
 
 
 class AreaConhecimento(db.Model):
@@ -78,9 +83,9 @@ class AreaConhecimento(db.Model):
     nome_area_conhecimento = db.Column(db.String(150), unique=True, nullable=False)
 
 
-docente_area = db.Table(
-    "docente_area",
-    db.Column("id_docente", ID, db.ForeignKey("docente.id_docente"), primary_key=True),
+professor_area = db.Table(
+    "professor_area",
+    db.Column("id_professor", ID, db.ForeignKey("professor.id_professor"), primary_key=True),
     db.Column(
         "id_area_conhecimento",
         ID,
@@ -90,16 +95,20 @@ docente_area = db.Table(
 )
 
 
-class DocenteCurso(db.Model):
-    __tablename__ = "docente_curso"
-    __table_args__ = (db.UniqueConstraint("id_docente", "id_curso", "data_inicio_docente_curso"),)
-    id_docente_curso = db.Column(ID, primary_key=True)
-    id_docente = db.Column(ID, db.ForeignKey("docente.id_docente"), nullable=False)
+class ProfessorCurso(db.Model):
+    __tablename__ = "professor_curso"
+    __table_args__ = (
+        db.UniqueConstraint("id_professor", "id_curso", "data_inicio_professor_curso"),
+    )
+    id_professor_curso = db.Column(ID, primary_key=True)
+    id_professor = db.Column(ID, db.ForeignKey("professor.id_professor"), nullable=False)
     id_curso = db.Column(ID, db.ForeignKey("curso.id_curso"), nullable=False)
-    data_inicio_docente_curso = db.Column(db.Date, nullable=False)
-    data_fim_docente_curso = db.Column(db.Date)
-    coordenador_docente_curso = db.Column(db.Boolean, nullable=False, default=False)
-    capacidade_orientandos_docente_curso = db.Column(db.SmallInteger)
+    data_inicio_professor_curso = db.Column(db.Date, nullable=False)
+    data_fim_professor_curso = db.Column(db.Date)
+    coordenador_professor_curso = db.Column(db.Boolean, nullable=False, default=False)
+    capacidade_orientandos_professor_curso = db.Column(db.SmallInteger)
+    # Required by the dictionary whenever coordenador_professor_curso is true.
+    departamento_unidade_professor_curso = db.Column(db.String(200))
 
 
 class Turma(db.Model):
@@ -110,7 +119,9 @@ class Turma(db.Model):
         ID, db.ForeignKey("periodo_letivo.id_periodo_letivo"), nullable=False
     )
     id_curso = db.Column(ID, db.ForeignKey("curso.id_curso"), nullable=False)
-    id_docente_responsavel = db.Column(ID, db.ForeignKey("docente.id_docente"), nullable=False)
+    id_professor_responsavel = db.Column(
+        ID, db.ForeignKey("professor.id_professor"), nullable=False
+    )
     codigo_turma = db.Column(db.String(40), nullable=False)
     nivel_turma = db.Column(db.SmallInteger, nullable=False)
     hash_codigo_acesso_turma = db.Column(db.String(128), unique=True)

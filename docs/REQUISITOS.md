@@ -6,8 +6,8 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 
 | Tema | Evidência e decisão de implementação |
 | --- | --- |
-| SQL e dicionário | O SQL exportado tem 37 tabelas, mas não reproduz todos os CHECKs, timestamps com fuso e índices parciais descritos no PDF. A aplicação mapeia os nomes reais do SQL; não presume que as restrições do PDF existam. |
-| Titulação no UC01 | O UC lista estudantes entre os atores e exige titulação para todos. O banco armazena titulação em docente; os valores são especialista, mestre e doutor. Foi aplicada a exigência somente a docentes. Estudantes informam matrícula e curso, exigidos pela tabela aluno. |
+| SQL e dicionário | A versão atualizada (`TCC_atualizado.sql`, 41 tabelas, e dicionário de 09/11/2026) foi aplicada pela migração 009, que renomeia as tabelas sem perder dados e acrescenta colunas, tabelas, índices e CHECKs. Desvios intencionais do script estão em `MODELO-DADOS.md`. |
+| Titulação no UC01 | O UC lista estudantes entre os atores e exige titulação para todos. O banco armazena titulação em `professor`; os valores são Especialista, Mestre e Doutor (RF20.2.1). Foi aplicada a exigência somente a professores. Estudantes informam matrícula e curso, exigidos pela tabela `estudante`. |
 | Perfis no cadastro | A autodeclaração de docente não concede permissões. Somente o papel aluno é concedido automaticamente no cadastro de estudante. Papéis docentes são concedidos por CLI, com justificativa, e respeitam expiração e vínculos acadêmicos. |
 | UC01 RN03 | A regra referencia M01 para e-mail duplicado, mas o catálogo contém M04 para esse erro. A API utiliza `409 UC_01_M04`. |
 | Prefixos do UC13 | Fluxos e mensagens usam prefixos de UC01/UC02 copiados de outros casos. A API normaliza os códigos para UC13, mantendo o texto das mensagens de sucesso e conta inexistente. |
@@ -38,8 +38,8 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | RF03 | Dados do TCC; trabalho, etapa_trabalho | Implementado no UC06: trabalho próprio, modalidade, DOI/URL de artigo publicado e nível herdado da matrícula |
 | RF04 | Orientação; orientacao, docente, notificacao | Implementado como pré-requisito do UC06/UC05: seleção de orientador/coorientador, notificação e aceite/recusa autenticados |
 | RF05 | Substituição de orientação; orientacao, auditoria | Infraestrutura de auditoria pronta; fluxo com justificativa é futuro |
-| RF06 | Perfil docente; docente, area_conhecimento, docente_area | Titulação, áreas e Lattes implementados no cadastro e na edição própria |
-| RF07 | Reuniões; reuniao_orientacao, etapa_trabalho | UC05 implementa atas, histórico e assiduidade; UC13 acrescenta matriz filtrável por turma, seleção individual/em lote, cobrança confirmada, revalidação e auditoria |
+| RF06 | Perfil docente; docente, area_conhecimento, professor_area | Titulação, áreas e Lattes implementados no cadastro e na edição própria |
+| RF07 | Reuniões; ata_orientacao, etapa_trabalho | UC05 implementa atas, histórico e assiduidade; UC13 acrescenta matriz filtrável por turma, seleção individual/em lote, cobrança confirmada, revalidação e auditoria |
 | RF08 | Rubricas; rubrica, criterio_rubrica | Futuro; versão, pesos e limites precisam de validação transacional |
 | RF09 | Agendamento; banca | Futuro; validar aluno/etapa, horários, local e conflitos |
 | RF10 | Examinadores; docente, membro_banca | Cadastro docente externo básico disponível; constituição da banca é futura |

@@ -16,7 +16,7 @@ Prefixo: `/api/v1`. Todas as operações com corpo exigem `Content-Type: applica
 | POST | `/auth/recuperacao-senha/redefinir` | Público; redefinir senha e revogar todas as sessões |
 | GET | `/cursos` | Público; cursos ativos para os seletores de cadastro |
 | GET | `/periodos-letivos` | Autenticado; consultar períodos |
-| GET | `/docentes?id_curso=1` | Gestor; responsáveis elegíveis para seu curso |
+| GET | `/professores?id_curso=1` | Gestor; responsáveis elegíveis para seu curso |
 | POST | `/turmas` | Professor autorizado ou coordenador do curso; criar turma |
 | GET | `/turmas` | Listar somente turmas sob sua gestão |
 | GET | `/turmas/{id}` | Consultar turma sob sua gestão e obter ETag |
@@ -35,17 +35,17 @@ Exemplo docente: substitua o valor de `senha` por uma senha escolhida pelo usuá
   "nome_usuario": "Nome do docente",
   "email_usuario": "docente@instituicao.edu.br",
   "senha": "<senha informada no formulário>",
-  "tipo_cadastro": "docente",
-  "tipo_docente": "interno",
-  "titulacao_docente": "mestre",
+  "tipo_cadastro": "professor",
+  "tipo_professor": "interno",
+  "titulacao_professor": "Mestre",
   "areas_interesse": ["Engenharia de Software"],
-  "url_lattes_docente": "https://lattes.cnpq.br/123456"
+  "url_lattes_professor": "https://lattes.cnpq.br/123456"
 }
 ```
 
-Titulações: `especialista`, `mestre`, `doutor`. Áreas e Lattes são opcionais. `instituicao_origem_docente` também é opcional. Um cadastro docente não concede automaticamente papéis administrativos.
+Titulações: `Especialista`, `Mestre`, `Doutor` (a API aceita qualquer combinação de maiúsculas e grava a grafia do dicionário). O nome deve ter de 3 a 100 caracteres. Áreas e Lattes são opcionais; o Lattes, quando informado, deve ser um endereço `https://lattes.cnpq.br/...`. `instituicao_origem_professor` é obrigatória somente para `tipo_professor: "externo"`. Um cadastro de professor não concede automaticamente papéis administrativos.
 
-Para estudante, use `tipo_cadastro: "aluno"`, `matricula_aluno` e `id_curso`, além de nome, e-mail e senha. Não envie campos docentes. O estudante recebe somente o papel `aluno`. A matrícula é texto, preservando zeros iniciais.
+Para estudante, use `tipo_cadastro: "estudante"`, `matricula_estudante` e `id_curso`, além de nome, e-mail e senha. Não envie campos de professor. O estudante recebe somente o papel `estudante`. A matrícula é texto, preservando zeros iniciais.
 
 O login recebe `email_usuario` e `senha` e retorna:
 
@@ -84,7 +84,7 @@ O endpoint de solicitação permite um pedido por minuto e três por hora por IP
   "codigo_turma": "ESTCOMP01",
   "nivel_turma": 1,
   "id_curso": 1,
-  "id_docente_responsavel": 1
+  "id_professor_responsavel": 1
 }
 ```
 

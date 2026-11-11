@@ -14,7 +14,7 @@ import type { ClassItem } from './classes';
 export interface Enrollment {
   id_matricula: number;
   id_turma: number;
-  id_aluno: number;
+  id_estudante: number;
   nome: string;
   matricula: string;
   codigo_turma: string;
@@ -25,7 +25,7 @@ export interface Enrollment {
   notificacao?: string;
 }
 interface Student {
-  id_aluno: number;
+  id_estudante: number;
   nome: string;
   matricula: string;
 }
@@ -57,7 +57,7 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
       .profile()
       .then(async (r) => {
         if (!active) return;
-        const student = !!r.body.data.aluno;
+        const student = !!r.body.data.estudante;
         setOwn(student);
         if (!student) {
           const items = await catalog<ClassItem>('/turmas?ativa_turma=true');
@@ -121,7 +121,10 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
     try {
       const r = await api.request<Enrollment>(
         own ? '/matriculas/autoinscricao' : `/turmas/${classId}/matriculas`,
-        { method: 'POST', body: JSON.stringify(own ? { codigo_acesso: code } : { id_aluno: id }) },
+        {
+          method: 'POST',
+          body: JSON.stringify(own ? { codigo_acesso: code } : { id_estudante: id }),
+        },
         true,
       );
       setSuccess(r.body.message || 'Estudante matriculado com sucesso!');
@@ -257,14 +260,14 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
                 </button>
               </div>
               {students.map((s) => (
-                <article key={s.id_aluno} className="academic-box">
+                <article key={s.id_estudante} className="academic-box">
                   <h4>{s.nome}</h4>
                   <p>Matrícula: {s.matricula}</p>
                   <button
                     type="button"
                     className="secondary"
                     disabled={busy}
-                    onClick={() => add(s.id_aluno)}
+                    onClick={() => add(s.id_estudante)}
                   >
                     Matricular {s.nome}
                   </button>

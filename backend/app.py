@@ -133,6 +133,9 @@ def create_app(test_config=None):
         db.session.execute(text("SELECT id_sessao FROM sessao_autenticacao LIMIT 0"))
         db.session.execute(text("SELECT id_recuperacao FROM recuperacao_senha LIMIT 0"))
         db.session.execute(text("SELECT id_lote FROM lote_cobranca LIMIT 0"))
+        # Migration 009: updated data model (renamed tables and new columns).
+        db.session.execute(text("SELECT tipo_artigo_trabalho_tcc FROM trabalho_tcc LIMIT 0"))
+        db.session.execute(text("SELECT cpf_usuario FROM usuario LIMIT 0"))
         return jsonify(status="ok")
 
     @app.get("/api/v1/openapi.json")

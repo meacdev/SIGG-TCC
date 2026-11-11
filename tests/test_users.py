@@ -11,12 +11,12 @@ def test_signup_hash_timestamp_and_optional_fields(app, signup, password):
     user = signup(
         email_usuario="PROFESSOR@example.com",
         areas_interesse=["IA", "IA", "Engenharia"],
-        url_lattes_docente="https://lattes.cnpq.br/123",
+        url_lattes_professor="https://lattes.cnpq.br/123",
     )
     assert user["email_usuario"] == "professor@example.com"
     assert user["perfis"] == []
     assert user["data_criacao_usuario"].endswith("Z")
-    assert sorted(user["docente"]["areas_interesse"]) == ["Engenharia", "IA"]
+    assert sorted(user["professor"]["areas_interesse"]) == ["Engenharia", "IA"]
     with app.app_context():
         row = db.session.get(Usuario, user["id_usuario"])
         assert row.hash_senha_usuario != password
@@ -30,11 +30,15 @@ def test_signup_hash_timestamp_and_optional_fields(app, signup, password):
     [
         ("email_usuario", "inválido", "UC_01_M03"),
         ("nome_usuario", " ", "VALIDACAO"),
+        ("nome_usuario", " Al ", "VALIDACAO"),
+        ("nome_usuario", "x" * 101, "VALIDACAO"),
         ("senha", "curta", "SENHA_INVALIDA"),
-        ("titulacao_docente", "graduado", "VALIDACAO"),
-        ("titulacao_docente", None, "UC_01_M02"),
-        ("url_lattes_docente", "javascript:alert(1)", "URL_INVALIDA"),
-        ("url_lattes_docente", "https://", "URL_INVALIDA"),
+        ("titulacao_professor", "graduado", "VALIDACAO"),
+        ("titulacao_professor", None, "UC_01_M02"),
+        ("url_lattes_professor", "javascript:alert(1)", "URL_INVALIDA"),
+        ("url_lattes_professor", "https://", "URL_INVALIDA"),
+        ("url_lattes_professor", "https://example.com/lattes.cnpq.br/1", "URL_INVALIDA"),
+        ("tipo_professor", "externo", "UC_01_M02"),
         ("areas_interesse", "IA", "VALIDACAO"),
         ("tipo_cadastro", "admin", "VALIDACAO"),
     ],
@@ -44,12 +48,19 @@ def test_registration_validation(client, password, field, value, code):
         "nome_usuario": "Nome",
         "email_usuario": "pessoa@example.com",
         "senha": password,
-        "titulacao_docente": "mestre",
+        "titulacao_professor": "mestre",
         field: value,
     }
     response = client.post("/api/v1/usuarios", json=payload)
     assert response.status_code == 422
     assert response.json["error"]["code"] == code
+
+
+def test_title_is_stored_with_dictionary_spelling(app, signup):
+    user = signup(titulacao_professor="DOUTOR")
+    assert user["professor"]["titulacao_professor"] == "Doutor"
+    external = signup(tipo_professor="externo", instituicao_origem_professor="UFAM")
+    assert external["professor"]["tipo_professor"] == "externo"
 
 
 def test_duplicate_email_is_case_insensitive(client, signup, password):
@@ -60,7 +71,7 @@ def test_duplicate_email_is_case_insensitive(client, signup, password):
             "nome_usuario": "Outra",
             "email_usuario": "PESSOA@example.com",
             "senha": password,
-            "titulacao_docente": "doutor",
+            "titulacao_professor": "doutor",
         },
     )
     assert response.status_code == 409
@@ -77,19 +88,19 @@ def test_student_registration(client, password):
         "nome_usuario": "Estudante",
         "email_usuario": "aluno@example.com",
         "senha": password,
-        "tipo_cadastro": "aluno",
-        "matricula_aluno": "00012",
+        "tipo_cadastro": "estudante",
+        "matricula_estudante": "00012",
         "id_curso": 1,
     }
     response = client.post("/api/v1/usuarios", json=payload)
     assert response.status_code == 201, response.json
-    assert response.json["data"]["perfis"] == ["aluno"]
-    assert response.json["data"]["aluno"]["matricula_aluno"] == "00012"
+    assert response.json["data"]["perfis"] == ["estudante"]
+    assert response.json["data"]["estudante"]["matricula_estudante"] == "00012"
     payload["email_usuario"] = "outro@example.com"
     assert client.post("/api/v1/usuarios", json=payload).status_code == 409
     payload["id_curso"] = 999
     assert client.post("/api/v1/usuarios", json=payload).status_code == 422
-    payload["titulacao_docente"] = "mestre"
+    payload["titulacao_professor"] = "mestre"
     assert client.post("/api/v1/usuarios", json=payload).status_code == 422
 
 
@@ -105,10 +116,10 @@ def test_profile_update_and_logical_deletion(client, signup, login, password, ap
         headers=auth | {"If-Match": tag},
         json={
             "nome_usuario": "Novo Nome",
-            "titulacao_docente": "doutor",
+            "titulacao_professor": "doutor",
             "areas_interesse": ["IA"],
-            "instituicao_origem_docente": "UFAM",
-            "url_lattes_docente": "https://lattes.cnpq.br/456",
+            "instituicao_origem_professor": "UFAM",
+            "url_lattes_professor": "https://lattes.cnpq.br/456",
         },
     )
     assert changed.status_code == 200, changed.json

@@ -20,18 +20,18 @@ def user_json(user):
         "data_atualizacao_usuario": iso(user.data_atualizacao_usuario),
         "perfis": roles(user.id_usuario),
     }
-    if user.docente:
-        result["docente"] = {
-            "tipo_docente": user.docente.tipo_docente,
-            "titulacao_docente": user.docente.titulacao_docente,
-            "url_lattes_docente": user.docente.url_lattes_docente,
-            "instituicao_origem_docente": user.docente.instituicao_origem_docente,
-            "areas_interesse": [area.nome_area_conhecimento for area in user.docente.areas],
+    if user.professor:
+        result["professor"] = {
+            "tipo_professor": user.professor.tipo_professor,
+            "titulacao_professor": user.professor.titulacao_professor,
+            "url_lattes_professor": user.professor.url_lattes_professor,
+            "instituicao_origem_professor": user.professor.instituicao_origem_professor,
+            "areas_interesse": [area.nome_area_conhecimento for area in user.professor.areas],
         }
-    if user.aluno:
-        result["aluno"] = {
-            "matricula_aluno": user.aluno.matricula_aluno,
-            "id_curso": user.aluno.id_curso,
+    if user.estudante:
+        result["estudante"] = {
+            "matricula_estudante": user.estudante.matricula_estudante,
+            "id_curso": user.estudante.id_curso,
         }
     return result
 
@@ -42,7 +42,7 @@ def class_json(item):
         "codigo_turma": item.codigo_turma,
         "nivel_turma": item.nivel_turma,
         "id_curso": item.id_curso,
-        "id_docente_responsavel": item.id_docente_responsavel,
+        "id_professor_responsavel": item.id_professor_responsavel,
         "periodo_letivo": (
             f"{item.periodo.ano_periodo_letivo}/{item.periodo.semestre_periodo_letivo}"
         ),
@@ -56,8 +56,8 @@ def class_json(item):
 
 
 def etag(item):
-    if hasattr(item, "versao_trabalho"):
-        value = f"trabalho:{item.id_trabalho}:{item.versao_trabalho}"
+    if hasattr(item, "versao_trabalho_tcc"):
+        value = f"trabalho:{item.id_trabalho_tcc}:{item.versao_trabalho_tcc}"
     elif hasattr(item, "id_matricula_turma"):
         value = f"matricula:{item.id_matricula_turma}:{item.versao_matricula}"
     elif hasattr(item, "id_turma"):

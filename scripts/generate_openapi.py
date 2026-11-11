@@ -26,28 +26,33 @@ def string(**extra):
 
 identifier = {"type": "integer", "format": "int64", "minimum": 1}
 timestamp = string(format="date-time")
-title = string(enum=["especialista", "mestre", "doutor"])
+title = string(enum=["Especialista", "Mestre", "Doutor"])
 password = string(minLength=12, maxLength=128, writeOnly=True)
 class_fields = {
     "periodo_letivo": string(pattern=r"^[0-9]{4}/[12]$", examples=["2026/2"]),
     "codigo_turma": string(pattern=r"^EST[A-Za-z]+[0-9]+$", maxLength=40),
     "nivel_turma": {"type": "integer", "enum": [1, 2]},
     "id_curso": identifier,
-    "id_docente_responsavel": identifier,
+    "id_professor_responsavel": identifier,
 }
 profile_fields = {
-    "nome_usuario": string(minLength=1, maxLength=200),
+    "nome_usuario": string(minLength=3, maxLength=100),
     "email_usuario": string(format="email", maxLength=254),
-    "titulacao_docente": title,
-    "url_lattes_docente": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
-    "instituicao_origem_docente": {"type": ["string", "null"], "maxLength": 200},
+    "titulacao_professor": title,
+    "url_lattes_professor": {
+        "type": ["string", "null"],
+        "format": "uri",
+        "maxLength": 2048,
+        "pattern": "^https?://lattes[.]cnpq[.]br/",
+    },
+    "instituicao_origem_professor": {"type": ["string", "null"], "maxLength": 200},
     "areas_interesse": {"type": "array", "maxItems": 20, "items": string(maxLength=150)},
 }
 signup_fields = profile_fields | {
     "senha": password,
-    "tipo_cadastro": string(enum=["docente", "aluno"], default="docente"),
-    "tipo_docente": string(enum=["interno", "externo"], default="interno"),
-    "matricula_aluno": string(minLength=1, maxLength=30),
+    "tipo_cadastro": string(enum=["professor", "estudante"], default="professor"),
+    "tipo_professor": string(enum=["interno", "externo"], default="interno"),
+    "matricula_estudante": string(minLength=1, maxLength=30),
     "id_curso": identifier,
 }
 schemas = {
@@ -68,17 +73,18 @@ schemas = {
         signup_fields,
         ("nome_usuario", "email_usuario", "senha"),
         additionalProperties=False,
-        description="Docente (padrão) exige titulacao_docente. Aluno exige tipo_cadastro=aluno, "
-        "matricula_aluno e id_curso e rejeita campos docentes. Perfis administrativos "
+        description="Professor (padrão) exige titulacao_professor. Estudante exige "
+        "tipo_cadastro=estudante, matricula_estudante e id_curso e rejeita campos de "
+        "professor. Perfis administrativos "
         "são concedidos exclusivamente pela administração via CLI.",
         allOf=[
             {
                 "if": {
-                    "properties": {"tipo_cadastro": {"const": "aluno"}},
+                    "properties": {"tipo_cadastro": {"const": "estudante"}},
                     "required": ["tipo_cadastro"],
                 },
-                "then": {"required": ["matricula_aluno", "id_curso"]},
-                "else": {"required": ["titulacao_docente"]},
+                "then": {"required": ["matricula_estudante", "id_curso"]},
+                "else": {"required": ["titulacao_professor"]},
             }
         ],
     ),
@@ -98,19 +104,25 @@ schemas = {
             "perfis": {
                 "type": "array",
                 "items": string(
-                    enum=["aluno", "professor_disciplina", "orientador", "coordenador", "avaliador"]
+                    enum=[
+                        "estudante",
+                        "professor_disciplina",
+                        "orientador",
+                        "coordenador",
+                        "avaliador",
+                    ]
                 ),
             },
-            "docente": obj(
+            "professor": obj(
                 {
-                    "tipo_docente": string(),
-                    "titulacao_docente": title,
-                    "url_lattes_docente": {"type": ["string", "null"]},
-                    "instituicao_origem_docente": {"type": ["string", "null"]},
+                    "tipo_professor": string(),
+                    "titulacao_professor": title,
+                    "url_lattes_professor": {"type": ["string", "null"]},
+                    "instituicao_origem_professor": {"type": ["string", "null"]},
                     "areas_interesse": {"type": "array", "items": string()},
                 }
             ),
-            "aluno": obj({"matricula_aluno": string(), "id_curso": identifier}),
+            "estudante": obj({"matricula_estudante": string(), "id_curso": identifier}),
         },
         ("id_usuario", "nome_usuario", "email_usuario", "perfis"),
     ),
@@ -154,15 +166,15 @@ schemas = {
             "codigo_turma",
             "nivel_turma",
             "id_curso",
-            "id_docente_responsavel",
+            "id_professor_responsavel",
             "periodo_letivo",
             "ativa_turma",
         ),
     ),
     "Curso": obj({"id_curso": identifier, "codigo_curso": string(), "nome_curso": string()}),
     "Periodo": obj({"id_periodo_letivo": identifier, "periodo_letivo": string()}),
-    "Docente": obj(
-        {"id_docente": identifier, "nome_usuario": string(), "titulacao_docente": title}
+    "Professor": obj(
+        {"id_professor": identifier, "nome_usuario": string(), "titulacao_professor": title}
     ),
     "Paginacao": obj(
         {
@@ -393,10 +405,10 @@ operation(
 for suffix, title_, schema in [
     ("cursos", "cursos", "Curso"),
     ("periodos-letivos", "períodos", "Periodo"),
-    ("docentes", "docentes", "Docente"),
+    ("professores", "professores", "Professor"),
 ]:
     params = pagination.copy()
-    if suffix == "docentes":
+    if suffix == "professores":
         params.append({"name": "id_curso", "in": "query", "required": True, "schema": identifier})
     operation(
         base + "/" + suffix,

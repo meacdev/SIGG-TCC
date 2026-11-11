@@ -1,10 +1,10 @@
-export type Title = 'especialista' | 'mestre' | 'doutor';
+export type Title = 'Especialista' | 'Mestre' | 'Doutor';
 export interface Teacher {
-  tipo_docente: 'interno' | 'externo';
-  titulacao_docente: Title;
+  tipo_professor: 'interno' | 'externo';
+  titulacao_professor: Title;
   areas_interesse: string[];
-  url_lattes_docente: string | null;
-  instituicao_origem_docente: string | null;
+  url_lattes_professor: string | null;
+  instituicao_origem_professor: string | null;
 }
 export interface User {
   id_usuario: number;
@@ -14,8 +14,8 @@ export interface User {
   data_criacao_usuario: string;
   data_atualizacao_usuario: string;
   perfis: string[];
-  docente?: Teacher;
-  aluno?: { matricula_aluno: string; id_curso: number };
+  professor?: Teacher;
+  estudante?: { matricula_estudante: string; id_curso: number };
 }
 export interface Course {
   id_curso: number;
@@ -38,13 +38,13 @@ export interface FormValues {
   email_usuario: string;
   senha: string;
   confirmacao_senha: string;
-  tipo_cadastro: 'docente' | 'aluno';
-  titulacao_docente: Title | '';
-  tipo_docente: 'interno' | 'externo';
-  instituicao_origem_docente: string;
+  tipo_cadastro: 'professor' | 'estudante';
+  titulacao_professor: Title | '';
+  tipo_professor: 'interno' | 'externo';
+  instituicao_origem_professor: string;
   areas_interesse: string;
-  url_lattes_docente: string;
-  matricula_aluno: string;
+  url_lattes_professor: string;
+  matricula_estudante: string;
   id_curso: string;
   senha_atual: string;
 }

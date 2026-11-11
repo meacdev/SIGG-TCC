@@ -3204,10 +3204,10 @@
         ]
       }
     },
-    "/api/v1/docentes": {
+    "/api/v1/professores": {
       "get": {
-        "summary": "Consultar docentes",
-        "operationId": "Consultar_docentes",
+        "summary": "Consultar professores",
+        "operationId": "Consultar_professores",
         "tags": [
           "Catálogos"
         ],
@@ -3227,7 +3227,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Docente"
+                        "$ref": "#/components/schemas/Professor"
                       }
                     },
                     "meta": {
@@ -3859,7 +3859,7 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id_aluno": {
+                          "id_estudante": {
                             "type": "integer",
                             "format": "int64",
                             "minimum": 1
@@ -4409,7 +4409,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id_aluno": {
+                  "id_estudante": {
                     "type": "integer",
                     "format": "int64",
                     "minimum": 1
@@ -4417,7 +4417,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "id_aluno"
+                  "id_estudante"
                 ]
               }
             }
@@ -5230,7 +5230,7 @@
                     "data": {
                       "anyOf": [
                         {
-                          "$ref": "#/components/schemas/Trabalho"
+                          "$ref": "#/components/schemas/TrabalhoTcc"
                         },
                         {
                           "type": "null"
@@ -5400,7 +5400,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Trabalho"
+                      "$ref": "#/components/schemas/TrabalhoTcc"
                     },
                     "code": {
                       "type": "string"
@@ -5551,7 +5551,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Trabalho"
+                      "$ref": "#/components/schemas/TrabalhoTcc"
                     },
                     "code": {
                       "type": "string"
@@ -5595,13 +5595,13 @@
             "description": "Obrigatório ao atualizar trabalho existente ou responder ao vínculo."
           }
         ],
-        "description": "201 na criação; 200 na atualização. Curso e nível vêm da matrícula ativa. Orientações são pendentes até resposta do docente; troca exige RF05."
+        "description": "201 na criação; 200 na atualização. Curso e nível vêm da matrícula ativa. Orientações são pendentes até resposta do professor; troca exige RF05."
       }
     },
-    "/api/v1/docentes-orientacao": {
+    "/api/v1/professores-orientacao": {
       "get": {
-        "summary": "Consultar docentes ativos para orientação",
-        "operationId": "Consultar_docentes_ativos_para_orientação",
+        "summary": "Consultar professores ativos para orientação",
+        "operationId": "Consultar_professores_ativos_para_orientação",
         "tags": [
           "Trabalhos"
         ],
@@ -5623,7 +5623,7 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id_docente": {
+                          "id_professor": {
                             "type": "integer",
                             "format": "int64",
                             "minimum": 1
@@ -5794,8 +5794,8 @@
     },
     "/api/v1/orientacoes": {
       "get": {
-        "summary": "Listar trabalhos indicados ao docente",
-        "operationId": "Listar_trabalhos_indicados_ao_docente",
+        "summary": "Listar trabalhos indicados ao professor",
+        "operationId": "Listar_trabalhos_indicados_ao_professor",
         "tags": [
           "Trabalhos"
         ],
@@ -5815,7 +5815,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Trabalho"
+                        "$ref": "#/components/schemas/TrabalhoTcc"
                       }
                     },
                     "meta": {
@@ -5994,7 +5994,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Trabalho"
+                      "$ref": "#/components/schemas/TrabalhoTcc"
                     },
                     "code": {
                       "type": "string"
@@ -6173,7 +6173,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Trabalho"
+                      "$ref": "#/components/schemas/TrabalhoTcc"
                     },
                     "code": {
                       "type": "string"
@@ -7962,31 +7962,32 @@
         "properties": {
           "nome_usuario": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 3,
+            "maxLength": 100
           },
           "email_usuario": {
             "type": "string",
             "format": "email",
             "maxLength": 254
           },
-          "titulacao_docente": {
+          "titulacao_professor": {
             "type": "string",
             "enum": [
-              "especialista",
-              "mestre",
-              "doutor"
+              "Especialista",
+              "Mestre",
+              "Doutor"
             ]
           },
-          "url_lattes_docente": {
+          "url_lattes_professor": {
             "type": [
               "string",
               "null"
             ],
             "format": "uri",
-            "maxLength": 2048
+            "maxLength": 2048,
+            "pattern": "^https?://lattes[.]cnpq[.]br/"
           },
-          "instituicao_origem_docente": {
+          "instituicao_origem_professor": {
             "type": [
               "string",
               "null"
@@ -8010,12 +8011,12 @@
           "tipo_cadastro": {
             "type": "string",
             "enum": [
-              "docente",
-              "aluno"
+              "professor",
+              "estudante"
             ],
-            "default": "docente"
+            "default": "professor"
           },
-          "tipo_docente": {
+          "tipo_professor": {
             "type": "string",
             "enum": [
               "interno",
@@ -8023,7 +8024,7 @@
             ],
             "default": "interno"
           },
-          "matricula_aluno": {
+          "matricula_estudante": {
             "type": "string",
             "minLength": 1,
             "maxLength": 30
@@ -8035,13 +8036,13 @@
           }
         },
         "additionalProperties": false,
-        "description": "Docente (padrão) exige titulacao_docente. Aluno exige tipo_cadastro=aluno, matricula_aluno e id_curso e rejeita campos docentes. Perfis administrativos são concedidos exclusivamente pela administração via CLI.",
+        "description": "Professor (padrão) exige titulacao_professor. Estudante exige tipo_cadastro=estudante, matricula_estudante e id_curso e rejeita campos de professor. Perfis administrativos são concedidos exclusivamente pela administração via CLI.",
         "allOf": [
           {
             "if": {
               "properties": {
                 "tipo_cadastro": {
-                  "const": "aluno"
+                  "const": "estudante"
                 }
               },
               "required": [
@@ -8050,13 +8051,13 @@
             },
             "then": {
               "required": [
-                "matricula_aluno",
+                "matricula_estudante",
                 "id_curso"
               ]
             },
             "else": {
               "required": [
-                "titulacao_docente"
+                "titulacao_professor"
               ]
             }
           }
@@ -8072,31 +8073,32 @@
         "properties": {
           "nome_usuario": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 3,
+            "maxLength": 100
           },
           "email_usuario": {
             "type": "string",
             "format": "email",
             "maxLength": 254
           },
-          "titulacao_docente": {
+          "titulacao_professor": {
             "type": "string",
             "enum": [
-              "especialista",
-              "mestre",
-              "doutor"
+              "Especialista",
+              "Mestre",
+              "Doutor"
             ]
           },
-          "url_lattes_docente": {
+          "url_lattes_professor": {
             "type": [
               "string",
               "null"
             ],
             "format": "uri",
-            "maxLength": 2048
+            "maxLength": 2048,
+            "pattern": "^https?://lattes[.]cnpq[.]br/"
           },
-          "instituicao_origem_docente": {
+          "instituicao_origem_professor": {
             "type": [
               "string",
               "null"
@@ -8150,7 +8152,7 @@
             "items": {
               "type": "string",
               "enum": [
-                "aluno",
+                "estudante",
                 "professor_disciplina",
                 "orientador",
                 "coordenador",
@@ -8158,27 +8160,27 @@
               ]
             }
           },
-          "docente": {
+          "professor": {
             "type": "object",
             "properties": {
-              "tipo_docente": {
+              "tipo_professor": {
                 "type": "string"
               },
-              "titulacao_docente": {
+              "titulacao_professor": {
                 "type": "string",
                 "enum": [
-                  "especialista",
-                  "mestre",
-                  "doutor"
+                  "Especialista",
+                  "Mestre",
+                  "Doutor"
                 ]
               },
-              "url_lattes_docente": {
+              "url_lattes_professor": {
                 "type": [
                   "string",
                   "null"
                 ]
               },
-              "instituicao_origem_docente": {
+              "instituicao_origem_professor": {
                 "type": [
                   "string",
                   "null"
@@ -8192,10 +8194,10 @@
               }
             }
           },
-          "aluno": {
+          "estudante": {
             "type": "object",
             "properties": {
-              "matricula_aluno": {
+              "matricula_estudante": {
                 "type": "string"
               },
               "id_curso": {
@@ -8285,7 +8287,7 @@
             "format": "int64",
             "minimum": 1
           },
-          "id_docente_responsavel": {
+          "id_professor_responsavel": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8297,7 +8299,7 @@
           "codigo_turma",
           "nivel_turma",
           "id_curso",
-          "id_docente_responsavel"
+          "id_professor_responsavel"
         ]
       },
       "AtualizarTurma": {
@@ -8327,7 +8329,7 @@
             "format": "int64",
             "minimum": 1
           },
-          "id_docente_responsavel": {
+          "id_professor_responsavel": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8368,7 +8370,7 @@
             "format": "int64",
             "minimum": 1
           },
-          "id_docente_responsavel": {
+          "id_professor_responsavel": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8414,7 +8416,7 @@
           "codigo_turma",
           "nivel_turma",
           "id_curso",
-          "id_docente_responsavel",
+          "id_professor_responsavel",
           "periodo_letivo",
           "ativa_turma"
         ]
@@ -8448,10 +8450,10 @@
           }
         }
       },
-      "Docente": {
+      "Professor": {
         "type": "object",
         "properties": {
-          "id_docente": {
+          "id_professor": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8459,12 +8461,12 @@
           "nome_usuario": {
             "type": "string"
           },
-          "titulacao_docente": {
+          "titulacao_professor": {
             "type": "string",
             "enum": [
-              "especialista",
-              "mestre",
-              "doutor"
+              "Especialista",
+              "Mestre",
+              "Doutor"
             ]
           }
         }
@@ -8499,7 +8501,7 @@
             "format": "int64",
             "minimum": 1
           },
-          "id_aluno": {
+          "id_estudante": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8633,7 +8635,7 @@
           "id_orientador"
         ]
       },
-      "Trabalho": {
+      "TrabalhoTcc": {
         "type": "object",
         "properties": {
           "titulo": {
@@ -8707,7 +8709,7 @@
             },
             "maxItems": 10
           },
-          "id_trabalho": {
+          "id_trabalho_tcc": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8730,10 +8732,10 @@
               "null"
             ]
           },
-          "aluno": {
+          "estudante": {
             "type": "string"
           },
-          "id_aluno": {
+          "id_estudante": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8760,7 +8762,7 @@
                   "format": "int64",
                   "minimum": 1
                 },
-                "id_docente": {
+                "id_professor": {
                   "type": "integer",
                   "format": "int64",
                   "minimum": 1
@@ -8802,7 +8804,7 @@
             "format": "int64",
             "minimum": 1
           },
-          "id_trabalho": {
+          "id_trabalho_tcc": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
@@ -8810,7 +8812,7 @@
           "titulo": {
             "type": "string"
           },
-          "aluno": {
+          "estudante": {
             "type": "string"
           },
           "codigo_turma": {
@@ -8869,7 +8871,7 @@
               "null"
             ]
           },
-          "aluno": {
+          "estudante": {
             "type": "string"
           },
           "matricula": {

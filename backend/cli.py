@@ -8,11 +8,11 @@ from sqlalchemy import inspect, select, text
 
 from backend.audit import audit
 from backend.db import db, utcnow
-from backend.models import Curso, DocenteCurso, Perfil, Usuario, UsuarioPerfil
+from backend.models import Curso, Perfil, ProfessorCurso, Usuario, UsuarioPerfil
 from backend.services.classes import get_period
 
 PROFILES = {
-    "aluno": "Estudante",
+    "estudante": "Estudante",
     "professor_disciplina": "Professor da disciplina de TCC",
     "orientador": "Orientador ou coorientador",
     "coordenador": "Coordenador de curso",
@@ -101,10 +101,11 @@ def register_cli(app):
     @click.option("--perfil", type=click.Choice(list(PROFILES)), required=True)
     @click.option("--id-curso", type=int)
     @click.option("--expira-em", help="ISO 8601 com fuso, por exemplo 2027-01-01T00:00:00Z.")
+    @click.option("--departamento", help="Departamento/unidade; obrigatório para coordenador.")
     @click.option("--revogar", is_flag=True)
     @click.option("--justificativa", required=True)
     @with_appcontext
-    def grant(email, perfil, id_curso, expira_em, revogar, justificativa):
+    def grant(email, perfil, id_curso, expira_em, departamento, revogar, justificativa):
         """Grant/revoke privileges through a trusted administrator's terminal."""
         user = db.session.scalar(
             select(Usuario).where(Usuario.email_usuario == email.strip().lower()).with_for_update()
@@ -124,34 +125,42 @@ def register_cli(app):
                 raise click.ClickException(
                     "Informe uma expiração futura com fuso horário."
                 ) from None
-        if perfil == "aluno" and not user.aluno:
+        if perfil == "estudante" and not user.estudante:
             raise click.ClickException("O usuário não possui cadastro de estudante.")
-        if perfil != "aluno" and (not user.docente or not user.docente.ativo_docente):
-            raise click.ClickException("O usuário não possui cadastro docente ativo.")
+        if perfil != "estudante" and (not user.professor or not user.professor.ativo_professor):
+            raise click.ClickException("O usuário não possui cadastro de professor ativo.")
         if perfil in {"professor_disciplina", "coordenador"}:
-            if user.docente.tipo_docente != "interno":
-                raise click.ClickException("Esse perfil exige docente interno.")
+            if user.professor.tipo_professor != "interno":
+                raise click.ClickException("Esse perfil exige professor interno.")
             course = db.session.get(Curso, id_curso) if id_curso else None
             if not course or not course.ativo_curso:
                 raise click.ClickException("Informe --id-curso de um curso ativo.")
             link = db.session.scalar(
-                select(DocenteCurso).where(
-                    DocenteCurso.id_docente == user.id_usuario,
-                    DocenteCurso.id_curso == id_curso,
-                    DocenteCurso.data_fim_docente_curso.is_(None),
+                select(ProfessorCurso).where(
+                    ProfessorCurso.id_professor == user.id_usuario,
+                    ProfessorCurso.id_curso == id_curso,
+                    ProfessorCurso.data_fim_professor_curso.is_(None),
                 )
             )
             if not link and not revogar:
-                link = DocenteCurso(
-                    id_docente=user.id_usuario,
+                link = ProfessorCurso(
+                    id_professor=user.id_usuario,
                     id_curso=id_curso,
-                    data_inicio_docente_curso=(
+                    data_inicio_professor_curso=(
                         utcnow().astimezone(app.config["ACADEMIC_TIMEZONE"]).date()
                     ),
                 )
                 db.session.add(link)
             if link and perfil == "coordenador":
-                link.coordenador_docente_curso = not revogar
+                if not revogar:
+                    # ck_professor_curso_coordenador_departamento
+                    department = (departamento or "").strip() or (
+                        link.departamento_unidade_professor_curso
+                    )
+                    if not department:
+                        raise click.ClickException("Informe --departamento para o coordenador.")
+                    link.departamento_unidade_professor_curso = department[:200]
+                link.coordenador_professor_curso = not revogar
         seed_profiles()
         profile = db.session.scalar(select(Perfil).where(Perfil.codigo_perfil == perfil))
         association = db.session.get(UsuarioPerfil, (user.id_usuario, profile.id_perfil))

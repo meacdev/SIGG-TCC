@@ -34,7 +34,7 @@ test('UC05: ata, histórico, notificação e alerta de assiduidade', async ({ pa
           codigo_turma: 'ESTSI05',
           nivel_turma: 1,
           id_curso: 1,
-          id_docente_responsavel: teacher.usuario.id_usuario,
+          id_professor_responsavel: teacher.usuario.id_usuario,
         },
       })
     ).json()
@@ -43,7 +43,7 @@ test('UC05: ata, histórico, notificação e alerta de assiduidade', async ({ pa
     await (
       await request.post(api + `/turmas/${turma.id_turma}/matriculas`, {
         headers,
-        data: { id_aluno: student.usuario.id_usuario },
+        data: { id_estudante: student.usuario.id_usuario },
       })
     ).json()
   ).data.id_matricula;

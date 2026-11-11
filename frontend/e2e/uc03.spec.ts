@@ -14,7 +14,7 @@ test('UC03: cadastro, duplicata, alteração, código e inativação de turma', 
   await page.getByLabel('Código da turma', { exact: true }).fill('ESTSI03');
   await page.getByLabel('Curso da turma', { exact: true }).selectOption('1');
   await page
-    .getByLabel('Docente responsável', { exact: true })
+    .getByLabel('Professor responsável', { exact: true })
     .selectOption({ label: 'Professora de Teste' });
   await page.getByRole('button', { name: 'Cadastrar turma', exact: true }).click();
   await expect(page.getByLabel('Ano/Semestre letivo', { exact: true })).toHaveAttribute(
@@ -34,7 +34,7 @@ test('UC03: cadastro, duplicata, alteração, código e inativação de turma', 
   await page.getByLabel('Código da turma', { exact: true }).fill('ESTSI03');
   await page.getByLabel('Curso da turma', { exact: true }).selectOption('1');
   await page
-    .getByLabel('Docente responsável', { exact: true })
+    .getByLabel('Professor responsável', { exact: true })
     .selectOption({ label: 'Professora de Teste' });
   await page.getByRole('button', { name: 'Cadastrar turma', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Já existe uma turma');

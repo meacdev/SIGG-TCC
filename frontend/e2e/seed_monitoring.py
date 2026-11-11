@@ -5,7 +5,7 @@ from datetime import timedelta
 from flask import g
 from sqlalchemy import select
 
-from backend.academic_models import Reuniao
+from backend.academic_models import AtaOrientacao
 from backend.db import db, utcnow
 from backend.defense_models import Matricula, Orientacao
 from backend.models import Usuario
@@ -29,7 +29,7 @@ def seed(app):
                 "codigo_turma": code,
                 "nivel_turma": 1,
                 "id_curso": 1,
-                "id_docente_responsavel": teacher.id_usuario,
+                "id_professor_responsavel": teacher.id_usuario,
             }
         )[0]
 
@@ -41,17 +41,17 @@ def seed(app):
         for index in range(1, 23):
             student = signup(
                 {
-                    "nome_usuario": f"Aluno Monitoramento {index:02}",
+                    "nome_usuario": f"Estudante Monitoramento {index:02}",
                     "email_usuario": f"monitoramento{index:02}@example.com",
                     "senha": "Senha de teste UC03 123",
-                    "tipo_cadastro": "aluno",
+                    "tipo_cadastro": "estudante",
                     "id_curso": 1,
-                    "matricula_aluno": f"000UC13{index:04}",
+                    "matricula_estudante": f"000UC13{index:04}",
                 }
             )
             membership = Matricula(
                 id_turma=target.id_turma,
-                id_aluno=student.id_usuario,
+                id_estudante=student.id_usuario,
                 id_usuario_inclusao=teacher.id_usuario,
                 data_matricula_matricula_turma=utcnow() - timedelta(days=40 if index <= 21 else 2),
             )
@@ -62,7 +62,7 @@ def seed(app):
         db.session.add(
             Matricula(
                 id_turma=fresh.id_turma,
-                id_aluno=primary[0].id_usuario,
+                id_estudante=primary[0].id_usuario,
                 id_usuario_inclusao=teacher.id_usuario,
                 data_matricula_matricula_turma=utcnow(),
             )
@@ -81,7 +81,7 @@ def seed(app):
             }
         )
         orientation = db.session.scalar(
-            select(Orientacao).where(Orientacao.id_trabalho == work.id_trabalho)
+            select(Orientacao).where(Orientacao.id_trabalho_tcc == work.id_trabalho_tcc)
         )
         identifier = orientation.id_orientacao
         version = etag(work)
@@ -90,13 +90,13 @@ def seed(app):
         works.respond(work, orientation, "aceito")
     from backend.defense_models import Etapa
 
-    stage = db.session.scalar(select(Etapa).where(Etapa.id_trabalho == work.id_trabalho))
+    stage = db.session.scalar(select(Etapa).where(Etapa.id_trabalho_tcc == work.id_trabalho_tcc))
     db.session.add(
-        Reuniao(
+        AtaOrientacao(
             id_etapa_trabalho=stage.id_etapa_trabalho,
             id_orientacao=identifier,
-            data_encontro_reuniao_orientacao=utcnow().date() - timedelta(days=40),
-            resumo_encaminhamentos_reuniao_orientacao="Revisar os objetivos do trabalho.",
+            data_encontro_ata_orientacao=utcnow().date() - timedelta(days=40),
+            resumo_encaminhamentos_ata_orientacao="Revisar os objetivos do trabalho.",
             id_usuario_registro=student.id_usuario,
         )
     )

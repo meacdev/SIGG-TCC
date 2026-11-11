@@ -6,7 +6,7 @@ import { catalog, failure, Pager, sessionError, type SessionProps } from './acad
 interface Stage {
   id_etapa: number;
   titulo: string;
-  aluno: string;
+  estudante: string;
   codigo_turma: string;
   nivel_turma: number;
   pode_registrar: boolean;
@@ -22,7 +22,7 @@ interface Meeting {
 interface Attendance {
   id_matricula: number;
   id_etapa: number | null;
-  aluno: string;
+  estudante: string;
   matricula: string;
   codigo_turma: string;
   titulo: string | null;
@@ -170,7 +170,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
           <option value="">Selecione um trabalho</option>
           {stages.map((s) => (
             <option key={s.id_etapa} value={s.id_etapa}>
-              {s.titulo} · {s.aluno} · {s.codigo_turma}
+              {s.titulo} · {s.estudante} · {s.codigo_turma}
             </option>
           ))}
         </select>
@@ -186,7 +186,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
           <div className="academic-box">
             <h3>{stage.titulo}</h3>
             <p>
-              {stage.aluno} · {stage.codigo_turma} · TCC {stage.nivel_turma}
+              {stage.estudante} · {stage.codigo_turma} · TCC {stage.nivel_turma}
             </p>
           </div>
           {stage.pode_registrar ? (
@@ -278,7 +278,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
             {overview.map((r) => (
               <article className="academic-box" key={r.id_matricula}>
                 <h4>
-                  {r.aluno} · {r.codigo_turma}
+                  {r.estudante} · {r.codigo_turma}
                 </h4>
                 <p>
                   {r.quantidade_reunioes} {r.quantidade_reunioes === 1 ? 'reunião' : 'reuniões'} ·
@@ -291,7 +291,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
                 {!r.id_etapa && <p className="academic-hint">Trabalho ainda não cadastrado.</p>}
                 {r.id_etapa && (
                   <button className="secondary" onClick={() => choose(String(r.id_etapa))}>
-                    Ver histórico de {r.aluno}
+                    Ver histórico de {r.estudante}
                   </button>
                 )}
               </article>
