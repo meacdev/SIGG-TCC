@@ -5,13 +5,13 @@ export const emptyForm: FormValues = {
   email_usuario: '',
   senha: '',
   confirmacao_senha: '',
-  tipo_cadastro: 'aluno',
-  titulacao_docente: '',
-  tipo_docente: 'interno',
-  instituicao_origem_docente: '',
+  tipo_cadastro: 'estudante',
+  titulacao_professor: '',
+  tipo_professor: 'interno',
+  instituicao_origem_professor: '',
   areas_interesse: '',
-  url_lattes_docente: '',
-  matricula_aluno: '',
+  url_lattes_professor: '',
+  matricula_estudante: '',
   id_curso: '',
   senha_atual: '',
 };
@@ -31,21 +31,23 @@ export function fromUser(user: User): FormValues {
     ...emptyForm,
     nome_usuario: user.nome_usuario,
     email_usuario: user.email_usuario,
-    tipo_cadastro: user.docente ? 'docente' : 'aluno',
-    titulacao_docente: user.docente?.titulacao_docente || '',
-    tipo_docente: user.docente?.tipo_docente || 'interno',
-    areas_interesse: user.docente?.areas_interesse.join(', ') || '',
-    url_lattes_docente: user.docente?.url_lattes_docente || '',
-    instituicao_origem_docente: user.docente?.instituicao_origem_docente || '',
-    matricula_aluno: user.aluno?.matricula_aluno || '',
-    id_curso: String(user.aluno?.id_curso || ''),
+    tipo_cadastro: user.professor ? 'professor' : 'estudante',
+    titulacao_professor: user.professor?.titulacao_professor || '',
+    tipo_professor: user.professor?.tipo_professor || 'interno',
+    areas_interesse: user.professor?.areas_interesse.join(', ') || '',
+    url_lattes_professor: user.professor?.url_lattes_professor || '',
+    instituicao_origem_professor: user.professor?.instituicao_origem_professor || '',
+    matricula_estudante: user.estudante?.matricula_estudante || '',
+    id_curso: String(user.estudante?.id_curso || ''),
   };
 }
 
 export function validate(values: FormValues, original?: User): FieldErrors {
   const errors: FieldErrors = {};
+  // RF20.1.1 / ck_usuario_nome: 3 to 100 characters.
   if (!values.nome_usuario.trim()) errors.nome_usuario = 'Informe seu nome completo.';
-  else if (values.nome_usuario.trim().length > 200) errors.nome_usuario = 'Use até 200 caracteres.';
+  else if (values.nome_usuario.trim().length < 3 || values.nome_usuario.trim().length > 100)
+    errors.nome_usuario = 'Use de 3 a 100 caracteres.';
   if (!values.email_usuario.trim()) errors.email_usuario = 'Informe seu e-mail.';
   else if (!validEmail(values.email_usuario) || values.email_usuario.trim().length > 254)
     errors.email_usuario = 'Informe um endereço de e-mail válido.';
@@ -61,31 +63,34 @@ export function validate(values: FormValues, original?: User): FieldErrors {
   ) {
     errors.senha_atual = 'Confirme sua senha atual para alterar o e-mail.';
   }
-  if (values.tipo_cadastro === 'docente') {
-    if (!values.titulacao_docente) errors.titulacao_docente = 'Selecione sua titulação.';
+  if (values.tipo_cadastro === 'professor') {
+    if (!values.titulacao_professor) errors.titulacao_professor = 'Selecione sua titulação.';
     const areas = parseAreas(values.areas_interesse);
     if (areas.length > 20 || areas.some((area) => area.length > 150))
       errors.areas_interesse = 'Informe até 20 áreas, com até 150 caracteres cada.';
-    if (values.instituicao_origem_docente.trim().length > 200)
-      errors.instituicao_origem_docente = 'Use até 200 caracteres.';
-    if (values.url_lattes_docente.trim()) {
+    if (values.instituicao_origem_professor.trim().length > 200)
+      errors.instituicao_origem_professor = 'Use até 200 caracteres.';
+    else if (values.tipo_professor === 'externo' && !values.instituicao_origem_professor.trim())
+      errors.instituicao_origem_professor = 'Informe a instituição de origem.';
+    if (values.url_lattes_professor.trim()) {
       try {
-        const url = new URL(values.url_lattes_docente.trim());
+        const url = new URL(values.url_lattes_professor.trim());
         if (
           !['http:', 'https:'].includes(url.protocol) ||
-          !url.hostname ||
+          // RF20.2.2 / ck_professor_lattes: only lattes.cnpq.br links.
+          url.hostname !== 'lattes.cnpq.br' ||
           url.username ||
-          values.url_lattes_docente.trim().length > 2048
+          values.url_lattes_professor.trim().length > 2048
         )
           throw new Error();
       } catch {
-        errors.url_lattes_docente = 'Informe uma URL HTTP ou HTTPS válida.';
+        errors.url_lattes_professor = 'Informe o link do Lattes (https://lattes.cnpq.br/...).';
       }
     }
   } else if (!original) {
-    if (!values.matricula_aluno.trim()) errors.matricula_aluno = 'Informe sua matrícula.';
-    else if (values.matricula_aluno.trim().length > 30)
-      errors.matricula_aluno = 'Use até 30 caracteres.';
+    if (!values.matricula_estudante.trim()) errors.matricula_estudante = 'Informe sua matrícula.';
+    else if (values.matricula_estudante.trim().length > 30)
+      errors.matricula_estudante = 'Use até 30 caracteres.';
     if (!values.id_curso) errors.id_curso = 'Selecione seu curso.';
   }
   return errors;
@@ -100,16 +105,16 @@ export function payload(values: FormValues, original?: User) {
     result.senha = values.senha;
     result.tipo_cadastro = values.tipo_cadastro;
   }
-  if (values.tipo_cadastro === 'docente') {
+  if (values.tipo_cadastro === 'professor') {
     Object.assign(result, {
-      titulacao_docente: values.titulacao_docente,
+      titulacao_professor: values.titulacao_professor,
       areas_interesse: parseAreas(values.areas_interesse),
-      url_lattes_docente: values.url_lattes_docente.trim() || null,
-      instituicao_origem_docente: values.instituicao_origem_docente.trim() || null,
+      url_lattes_professor: values.url_lattes_professor.trim() || null,
+      instituicao_origem_professor: values.instituicao_origem_professor.trim() || null,
     });
-    if (!original) result.tipo_docente = values.tipo_docente;
+    if (!original) result.tipo_professor = values.tipo_professor;
   } else if (!original) {
-    result.matricula_aluno = values.matricula_aluno.trim();
+    result.matricula_estudante = values.matricula_estudante.trim();
     result.id_curso = Number(values.id_curso);
   }
   return result;

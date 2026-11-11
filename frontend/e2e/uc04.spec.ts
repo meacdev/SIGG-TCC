@@ -28,7 +28,7 @@ test('UC04: autoinscrição, busca, duplicata, confirmação e remoção', async
           codigo_turma: 'ESTSI04',
           nivel_turma: 1,
           id_curso: 1,
-          id_docente_responsavel: teacher.id_usuario,
+          id_professor_responsavel: teacher.id_usuario,
         },
       })
     ).json()

@@ -8,12 +8,14 @@ from backend.audit import audit
 from backend.db import db, utcnow
 from backend.defense_models import Matricula
 from backend.errors import APIError
-from backend.models import Aluno, Turma
+from backend.models import Estudante, Turma
 from backend.services import academic_mail
 
 
 def student(identifier):
-    item = db.session.scalar(select(Aluno).where(Aluno.id_aluno == identifier).with_for_update())
+    item = db.session.scalar(
+        select(Estudante).where(Estudante.id_estudante == identifier).with_for_update()
+    )
     if not item or not item.usuario.ativo_usuario:
         raise APIError(404, "UC_04_M02", "Cadastro de estudante não encontrado!")
     return item
@@ -22,19 +24,19 @@ def student(identifier):
 def enroll(turma, identifier, origin="professor"):
     if not turma.ativa_turma:
         raise APIError(409, "TURMA_INATIVA", "A turma está inativa.")
-    aluno = student(identifier)
-    if aluno.id_curso != turma.id_curso:
+    estudante = student(identifier)
+    if estudante.id_curso != turma.id_curso:
         raise APIError(422, "CURSO_DIVERGENTE", "O estudante deve pertencer ao curso da turma.")
     item = db.session.scalar(
         select(Matricula).where(
-            Matricula.id_turma == turma.id_turma, Matricula.id_aluno == identifier
+            Matricula.id_turma == turma.id_turma, Matricula.id_estudante == identifier
         )
     )
     if item and item.situacao_matricula_turma == "ativa":
         raise APIError(409, "MATRICULA_DUPLICADA", "O estudante já está matriculado nesta turma.")
     if not item:
         item = Matricula(
-            id_turma=turma.id_turma, id_aluno=identifier, id_usuario_inclusao=g.user.id_usuario
+            id_turma=turma.id_turma, id_estudante=identifier, id_usuario_inclusao=g.user.id_usuario
         )
         db.session.add(item)
     else:
@@ -52,7 +54,7 @@ def enroll(turma, identifier, origin="professor"):
 
 
 def self_enroll(code):
-    if not g.user.aluno:
+    if not g.user.estudante:
         raise APIError(403, "ACESSO_NEGADO", "A autoinscrição exige uma conta de estudante.")
     if (
         not isinstance(code, str)
@@ -83,9 +85,9 @@ def serialize(item):
     return {
         "id_matricula": item.id_matricula_turma,
         "id_turma": item.id_turma,
-        "id_aluno": item.id_aluno,
-        "nome": item.aluno.usuario.nome_usuario,
-        "matricula": item.aluno.matricula_aluno,
+        "id_estudante": item.id_estudante,
+        "nome": item.estudante.usuario.nome_usuario,
+        "matricula": item.estudante.matricula_estudante,
         "situacao": item.situacao_matricula_turma,
         "codigo_turma": item.turma.codigo_turma,
         "periodo_letivo": (
@@ -100,7 +102,7 @@ def serialize(item):
 
 
 def remove(item, confirmation, reason):
-    expected = f"{item.aluno.usuario.nome_usuario}/{item.turma.codigo_turma}"
+    expected = f"{item.estudante.usuario.nome_usuario}/{item.turma.codigo_turma}"
     if confirmation != expected:
         raise APIError(
             422,
@@ -114,7 +116,7 @@ def remove(item, confirmation, reason):
     item.motivo_remocao_matricula_turma = reason
     item.versao_matricula += 1
     notification = academic_mail.enqueue(
-        item.aluno.usuario,
+        item.estudante.usuario,
         "remocao_matricula",
         "Desligamento de turma - SIGG-TCC",
         f"Sua matrícula na turma {item.turma.codigo_turma} foi removida pelo responsável. "

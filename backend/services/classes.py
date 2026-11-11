@@ -11,7 +11,7 @@ from backend import validation as v
 from backend.audit import audit
 from backend.db import db, utcnow
 from backend.errors import APIError
-from backend.models import Curso, Docente, DocenteCurso, PeriodoLetivo, Turma, Usuario
+from backend.models import Curso, PeriodoLetivo, Professor, ProfessorCurso, Turma, Usuario
 from backend.security import roles
 
 CREATE_FIELDS = {
@@ -19,7 +19,7 @@ CREATE_FIELDS = {
     "codigo_turma",
     "nivel_turma",
     "id_curso",
-    "id_docente_responsavel",
+    "id_professor_responsavel",
 }
 UPDATE_FIELDS = CREATE_FIELDS | {"ativa_turma", "autoinscricao_ativa_turma"}
 
@@ -27,28 +27,30 @@ UPDATE_FIELDS = CREATE_FIELDS | {"ativa_turma", "autoinscricao_ativa_turma"}
 def current_link():
     today = utcnow().astimezone(current_app.config["ACADEMIC_TIMEZONE"]).date()
     return and_(
-        DocenteCurso.data_inicio_docente_curso <= today,
+        ProfessorCurso.data_inicio_professor_curso <= today,
         or_(
-            DocenteCurso.data_fim_docente_curso.is_(None),
-            DocenteCurso.data_fim_docente_curso >= today,
+            ProfessorCurso.data_fim_professor_curso.is_(None),
+            ProfessorCurso.data_fim_professor_curso >= today,
         ),
     )
 
 
 def course_scope(user_id, coordinator=False):
-    query = select(DocenteCurso.id_curso).where(DocenteCurso.id_docente == user_id, current_link())
+    query = select(ProfessorCurso.id_curso).where(
+        ProfessorCurso.id_professor == user_id, current_link()
+    )
     if coordinator:
-        query = query.where(DocenteCurso.coordenador_docente_curso.is_(True))
+        query = query.where(ProfessorCurso.coordenador_professor_curso.is_(True))
     return query
 
 
 def manager():
-    teacher = db.session.get(Docente, g.user.id_usuario)
+    teacher = db.session.get(Professor, g.user.id_usuario)
     profiles = set(roles(g.user.id_usuario))
     if (
         not teacher
-        or not teacher.ativo_docente
-        or teacher.tipo_docente != "interno"
+        or not teacher.ativo_professor
+        or teacher.tipo_professor != "interno"
         or not profiles & {"professor_disciplina", "coordenador"}
     ):
         raise APIError(403, "ACESSO_NEGADO", "Esta operação exige um docente autorizado.")
@@ -61,7 +63,7 @@ def visible_classes():
     if "professor_disciplina" in profiles:
         conditions.append(
             and_(
-                Turma.id_docente_responsavel == g.user.id_usuario,
+                Turma.id_professor_responsavel == g.user.id_usuario,
                 Turma.id_curso.in_(course_scope(g.user.id_usuario)),
             )
         )
@@ -90,9 +92,9 @@ def validate_assignment(course_id, teacher_id):
     coordinator = "coordenador" in profiles and db.session.scalar(
         select(
             exists().where(
-                DocenteCurso.id_docente == g.user.id_usuario,
-                DocenteCurso.id_curso == course_id,
-                DocenteCurso.coordenador_docente_curso.is_(True),
+                ProfessorCurso.id_professor == g.user.id_usuario,
+                ProfessorCurso.id_curso == course_id,
+                ProfessorCurso.coordenador_professor_curso.is_(True),
                 current_link(),
             )
         )
@@ -101,22 +103,22 @@ def validate_assignment(course_id, teacher_id):
         linked = db.session.scalar(
             select(
                 exists().where(
-                    DocenteCurso.id_docente == g.user.id_usuario,
-                    DocenteCurso.id_curso == course_id,
+                    ProfessorCurso.id_professor == g.user.id_usuario,
+                    ProfessorCurso.id_curso == course_id,
                     current_link(),
                 )
             )
         )
         if "professor_disciplina" not in profiles or teacher_id != g.user.id_usuario or not linked:
             raise APIError(403, "ACESSO_NEGADO", "Você não pode gerenciar turmas neste curso.")
-    teacher_id = v.integer(teacher_id, "id_docente_responsavel")
-    teacher = db.session.get(Docente, teacher_id)
+    teacher_id = v.integer(teacher_id, "id_professor_responsavel")
+    teacher = db.session.get(Professor, teacher_id)
     identity = db.session.get(Usuario, teacher_id)
     linked = db.session.scalar(
         select(
             exists().where(
-                DocenteCurso.id_docente == teacher_id,
-                DocenteCurso.id_curso == course_id,
+                ProfessorCurso.id_professor == teacher_id,
+                ProfessorCurso.id_curso == course_id,
                 current_link(),
             )
         )
@@ -125,9 +127,9 @@ def validate_assignment(course_id, teacher_id):
         not teacher
         or not identity
         or not identity.ativo_usuario
-        or not teacher.ativo_docente
+        or not teacher.ativo_professor
         or (
-            teacher.tipo_docente != "interno"
+            teacher.tipo_professor != "interno"
             or not linked
             or "professor_disciplina" not in roles(teacher_id)
         )
@@ -175,7 +177,7 @@ def duplicate_check(period_id, code, exclude=None):
 
 
 def create_class(data):
-    validate_assignment(data["id_curso"], data["id_docente_responsavel"])
+    validate_assignment(data["id_curso"], data["id_professor_responsavel"])
     period = get_period(data["periodo_letivo"])
     code = v.class_code(data["codigo_turma"])
     level = v.integer(data["nivel_turma"], "nivel_turma", 1, 2)
@@ -185,7 +187,7 @@ def create_class(data):
         codigo_turma=code,
         nivel_turma=level,
         id_curso=data["id_curso"],
-        id_docente_responsavel=data["id_docente_responsavel"],
+        id_professor_responsavel=data["id_professor_responsavel"],
     )
     access_code = generate_code(item)
     db.session.add(item)
@@ -200,7 +202,7 @@ def create_class(data):
             for k in (
                 "id_curso",
                 "id_periodo_letivo",
-                "id_docente_responsavel",
+                "id_professor_responsavel",
                 "codigo_turma",
                 "nivel_turma",
             )
@@ -212,9 +214,9 @@ def create_class(data):
 
 def update_class(item, data):
     course_id = data.get("id_curso", item.id_curso)
-    teacher_id = data.get("id_docente_responsavel", item.id_docente_responsavel)
+    teacher_id = data.get("id_professor_responsavel", item.id_professor_responsavel)
     validate_assignment(course_id, teacher_id)
-    values = {"id_curso": course_id, "id_docente_responsavel": teacher_id}
+    values = {"id_curso": course_id, "id_professor_responsavel": teacher_id}
     if "periodo_letivo" in data:
         values["id_periodo_letivo"] = get_period(data["periodo_letivo"]).id_periodo_letivo
     if "codigo_turma" in data:

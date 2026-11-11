@@ -5,10 +5,10 @@ from flask import current_app, g
 from sqlalchemy import exists, func, or_, select
 
 from backend import validation as v
-from backend.academic_models import Reuniao
+from backend.academic_models import AtaOrientacao
 from backend.audit import audit
 from backend.db import db, utcnow
-from backend.defense_models import Etapa, Matricula, Orientacao, Trabalho
+from backend.defense_models import Etapa, Matricula, Orientacao, TrabalhoTcc
 from backend.errors import APIError
 from backend.models import Turma
 from backend.security import roles
@@ -18,9 +18,9 @@ from backend.services import academic_mail, classes
 
 def teacher_classes():
     if (
-        g.user.docente
-        and g.user.docente.ativo_docente
-        and g.user.docente.tipo_docente == "interno"
+        g.user.professor
+        and g.user.professor.ativo_professor
+        and g.user.professor.tipo_professor == "interno"
         and set(roles(g.user.id_usuario)) & {"professor_disciplina", "coordenador"}
     ):
         return classes.visible_classes().with_only_columns(Turma.id_turma)
@@ -30,21 +30,21 @@ def teacher_classes():
 def visible_stages():
     advisor = exists(
         select(Orientacao.id_orientacao).where(
-            Orientacao.id_trabalho == Trabalho.id_trabalho,
-            Orientacao.id_docente == g.user.id_usuario,
+            Orientacao.id_trabalho_tcc == TrabalhoTcc.id_trabalho_tcc,
+            Orientacao.id_professor == g.user.id_usuario,
             Orientacao.situacao_aceite_orientacao == "aceito",
             Orientacao.data_encerramento_orientacao.is_(None),
         )
     )
-    if not g.user.docente or not g.user.docente.ativo_docente:
+    if not g.user.professor or not g.user.professor.ativo_professor:
         advisor = False
     return (
         select(Etapa)
-        .join(Trabalho, Etapa.id_trabalho == Trabalho.id_trabalho)
+        .join(TrabalhoTcc, Etapa.id_trabalho_tcc == TrabalhoTcc.id_trabalho_tcc)
         .join(Matricula, Etapa.id_matricula_turma == Matricula.id_matricula_turma)
         .where(
             or_(
-                Trabalho.id_aluno == g.user.id_usuario,
+                TrabalhoTcc.id_estudante == g.user.id_usuario,
                 advisor,
                 Matricula.id_turma.in_(teacher_classes()),
             )
@@ -54,13 +54,13 @@ def visible_stages():
 
 def can_register(stage):
     membership = stage.matricula
-    linked = stage.trabalho.id_aluno == g.user.id_usuario or bool(
-        g.user.docente
-        and g.user.docente.ativo_docente
+    linked = stage.trabalho.id_estudante == g.user.id_usuario or bool(
+        g.user.professor
+        and g.user.professor.ativo_professor
         and db.session.scalar(
             select(Orientacao.id_orientacao).where(
-                Orientacao.id_trabalho == stage.id_trabalho,
-                Orientacao.id_docente == g.user.id_usuario,
+                Orientacao.id_trabalho_tcc == stage.id_trabalho_tcc,
+                Orientacao.id_professor == g.user.id_usuario,
                 Orientacao.situacao_aceite_orientacao == "aceito",
                 Orientacao.data_encerramento_orientacao.is_(None),
             )
@@ -79,14 +79,15 @@ def can_register(stage):
 def current_advisor(stage):
     records = db.session.scalars(
         select(Orientacao).where(
-            Orientacao.id_trabalho == stage.id_trabalho,
+            Orientacao.id_trabalho_tcc == stage.id_trabalho_tcc,
             Orientacao.papel_orientacao == "orientador",
             Orientacao.situacao_aceite_orientacao == "aceito",
             Orientacao.data_encerramento_orientacao.is_(None),
         )
     )
     return next(
-        (o for o in records if o.docente.ativo_docente and o.docente.usuario.ativo_usuario), None
+        (o for o in records if o.professor.ativo_professor and o.professor.usuario.ativo_usuario),
+        None,
     )
 
 
@@ -108,15 +109,15 @@ def get_stage(identifier, lock=False):
             .execution_options(populate_existing=True)
         )
         db.session.scalar(
-            select(Trabalho)
-            .where(Trabalho.id_trabalho == stage.id_trabalho)
+            select(TrabalhoTcc)
+            .where(TrabalhoTcc.id_trabalho_tcc == stage.id_trabalho_tcc)
             .with_for_update()
             .execution_options(populate_existing=True)
         )
         list(
             db.session.scalars(
                 select(Orientacao)
-                .where(Orientacao.id_trabalho == stage.id_trabalho)
+                .where(Orientacao.id_trabalho_tcc == stage.id_trabalho_tcc)
                 .order_by(Orientacao.id_orientacao)
                 .with_for_update()
                 .execution_options(populate_existing=True)
@@ -128,9 +129,9 @@ def get_stage(identifier, lock=False):
 def stage_json(stage):
     return {
         "id_etapa": stage.id_etapa_trabalho,
-        "id_trabalho": stage.id_trabalho,
-        "titulo": stage.trabalho.titulo_trabalho,
-        "aluno": stage.trabalho.aluno.usuario.nome_usuario,
+        "id_trabalho_tcc": stage.id_trabalho_tcc,
+        "titulo": stage.trabalho.titulo_trabalho_tcc,
+        "estudante": stage.trabalho.estudante.usuario.nome_usuario,
         "codigo_turma": stage.matricula.turma.codigo_turma,
         "nivel_turma": stage.matricula.turma.nivel_turma,
         "pode_registrar": can_register(stage),
@@ -139,13 +140,13 @@ def stage_json(stage):
 
 def serialize(item):
     return {
-        "id_reuniao": item.id_reuniao_orientacao,
+        "id_reuniao": item.id_ata_orientacao,
         "id_etapa": item.id_etapa_trabalho,
-        "data_encontro": item.data_encontro_reuniao_orientacao.strftime("%d/%m/%Y"),
-        "resumo": item.resumo_encaminhamentos_reuniao_orientacao,
-        "orientador": item.orientacao.docente.usuario.nome_usuario,
+        "data_encontro": item.data_encontro_ata_orientacao.strftime("%d/%m/%Y"),
+        "resumo": item.resumo_encaminhamentos_ata_orientacao,
+        "orientador": item.orientacao.professor.usuario.nome_usuario,
         "autor": item.autor.nome_usuario,
-        "data_registro": iso(item.data_registro_reuniao_orientacao),
+        "data_registro": iso(item.data_registro_ata_orientacao),
     }
 
 
@@ -173,31 +174,30 @@ def register(stage, data):
         ) from None
     summary = v.text(data.get("resumo"), "resumo", 10000)
     advisor = current_advisor(stage)
-    item = Reuniao(
+    item = AtaOrientacao(
         id_etapa_trabalho=stage.id_etapa_trabalho,
         id_orientacao=advisor.id_orientacao,
-        data_encontro_reuniao_orientacao=day,
-        resumo_encaminhamentos_reuniao_orientacao=summary,
+        data_encontro_ata_orientacao=day,
+        resumo_encaminhamentos_ata_orientacao=summary,
         id_usuario_registro=g.user.id_usuario,
     )
     db.session.add(item)
     db.session.flush()
     notifications = []
-    for user in (stage.trabalho.aluno.usuario, advisor.docente.usuario):
+    for user in (stage.trabalho.estudante.usuario, advisor.professor.usuario):
         notification = academic_mail.enqueue(
             user,
             "ata_reuniao",
             "Ata de reunião registrada - SIGG-TCC",
-            f"Ata de reunião em {value} do trabalho {stage.trabalho.titulo_trabalho}.\n{summary}\n"
+            f"Ata de reunião em {value} do trabalho "
+            f"{stage.trabalho.titulo_trabalho_tcc}.\n{summary}\n"
             f"Consulte o histórico em {current_app.config['FRONTEND_URL'].rstrip('/')}/#/reunioes",
-            f"ata:{item.id_reuniao_orientacao}:{user.id_usuario}",
-            id_reuniao_orientacao=item.id_reuniao_orientacao,
+            f"ata:{item.id_ata_orientacao}:{user.id_usuario}",
+            id_ata_orientacao=item.id_ata_orientacao,
         )
         db.session.flush()
         notifications.append(notification.id_notificacao)
-    audit(
-        g.user.id_usuario, "registro_ata_reuniao", "reuniao_orientacao", item.id_reuniao_orientacao
-    )
+    audit(g.user.id_usuario, "registro_ata_reuniao", "ata_orientacao", item.id_ata_orientacao)
     db.session.commit()
     academic_mail.deliver(notifications)
     return item
@@ -210,9 +210,9 @@ def attendance(membership):
     count, last = (
         db.session.execute(
             select(
-                func.count(Reuniao.id_reuniao_orientacao),
-                func.max(Reuniao.data_encontro_reuniao_orientacao),
-            ).where(Reuniao.id_etapa_trabalho == stage.id_etapa_trabalho)
+                func.count(AtaOrientacao.id_ata_orientacao),
+                func.max(AtaOrientacao.data_encontro_ata_orientacao),
+            ).where(AtaOrientacao.id_etapa_trabalho == stage.id_etapa_trabalho)
         ).one()
         if stage
         else (0, None)
@@ -229,10 +229,10 @@ def attendance(membership):
     return {
         "id_matricula": membership.id_matricula_turma,
         "id_etapa": stage.id_etapa_trabalho if stage else None,
-        "aluno": membership.aluno.usuario.nome_usuario,
-        "matricula": membership.aluno.matricula_aluno,
+        "estudante": membership.estudante.usuario.nome_usuario,
+        "matricula": membership.estudante.matricula_estudante,
         "codigo_turma": membership.turma.codigo_turma,
-        "titulo": stage.trabalho.titulo_trabalho if stage else None,
+        "titulo": stage.trabalho.titulo_trabalho_tcc if stage else None,
         "quantidade_reunioes": count,
         "ultimo_encontro": last.strftime("%d/%m/%Y") if last else None,
         "dias_sem_reuniao": days,

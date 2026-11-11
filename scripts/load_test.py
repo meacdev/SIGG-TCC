@@ -38,7 +38,7 @@ def call(index):
                 "codigo_turma": f"ESTLOAD{prefix}{index}",
                 "nivel_turma": 1,
                 "id_curso": args.create_course_id,
-                "id_docente_responsavel": args.teacher_id,
+                "id_professor_responsavel": args.teacher_id,
             }
         ).encode()
         headers["Content-Type"] = "application/json"

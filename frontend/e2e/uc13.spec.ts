@@ -26,7 +26,7 @@ test('UC13: matriz, histórico, filtro e confirmação de cobrança em todas as 
   await expect(page.getByText('Inativo > 30 dias', { exact: true })).toHaveCount(20);
   await page.getByRole('button', { name: 'Disparar Notificação de Cobrança', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Selecione ao menos um estudante');
-  await page.getByRole('button', { name: 'Aluno Monitoramento 01', exact: true }).click();
+  await page.getByRole('button', { name: 'Estudante Monitoramento 01', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Revisar os objetivos do trabalho.');
   await page.screenshot({ path: 'test-results/uc13-historico.png' });
   await page.getByRole('button', { name: 'Fechar histórico', exact: true }).click();
@@ -38,7 +38,7 @@ test('UC13: matriz, histórico, filtro e confirmação de cobrança em todas as 
   ).toBeVisible();
   await page.getByRole('button', { name: 'Próxima', exact: true }).click();
   await expect(
-    page.getByRole('checkbox', { name: /Selecionar Aluno Monitoramento 21/ }),
+    page.getByRole('checkbox', { name: /Selecionar Estudante Monitoramento 21/ }),
   ).toBeChecked();
   await page.getByRole('button', { name: 'Disparar Notificação de Cobrança', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('21 destinatário(s) selecionado(s).');

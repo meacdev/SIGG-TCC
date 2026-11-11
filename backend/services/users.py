@@ -4,7 +4,15 @@ from backend import validation as v
 from backend.audit import audit
 from backend.db import db, utcnow
 from backend.errors import APIError
-from backend.models import Aluno, AreaConhecimento, Curso, Docente, Perfil, Usuario, UsuarioPerfil
+from backend.models import (
+    AreaConhecimento,
+    Curso,
+    Estudante,
+    Perfil,
+    Professor,
+    Usuario,
+    UsuarioPerfil,
+)
 from backend.security import hash_password, revoke_sessions, verify_password
 
 SIGNUP_FIELDS = {
@@ -12,24 +20,43 @@ SIGNUP_FIELDS = {
     "email_usuario",
     "senha",
     "tipo_cadastro",
-    "titulacao_docente",
-    "tipo_docente",
-    "instituicao_origem_docente",
-    "url_lattes_docente",
+    "titulacao_professor",
+    "tipo_professor",
+    "instituicao_origem_professor",
+    "url_lattes_professor",
     "areas_interesse",
-    "matricula_aluno",
+    "matricula_estudante",
     "id_curso",
 }
 PROFILE_FIELDS = {
     "nome_usuario",
     "email_usuario",
-    "titulacao_docente",
-    "url_lattes_docente",
+    "titulacao_professor",
+    "url_lattes_professor",
     "areas_interesse",
-    "instituicao_origem_docente",
+    "instituicao_origem_professor",
     "senha_atual",
 }
-TITLES = ("especialista", "mestre", "doutor")
+# RF20.2.1 and ck_professor_titulacao.
+TITLES = ("Especialista", "Mestre", "Doutor")
+
+
+def title(value, field="titulacao_professor"):
+    """Accept any letter case and store the dictionary spelling."""
+    canonical = {t.lower(): t for t in TITLES}
+    key = value.strip().lower() if isinstance(value, str) else None
+    return v.choice(canonical.get(key, value), field, TITLES)
+
+
+def require_institution(teacher):
+    """ck_professor_instituicao_externo: external professors need their institution."""
+    if teacher.tipo_professor == "externo" and not teacher.instituicao_origem_professor:
+        raise APIError(
+            422,
+            "UC_01_M02",
+            "Preencha todos os campos obrigatórios.",
+            {"instituicao_origem_professor": "Obrigatório para professor externo."},
+        )
 
 
 def areas(values):
@@ -58,10 +85,12 @@ def areas(values):
 
 
 def signup(data):
-    name = v.text(data["nome_usuario"], "nome_usuario")
+    name = v.name(data["nome_usuario"])
     address = v.email(data["email_usuario"], "UC_01_M03")
     secret = v.password(data["senha"])
-    kind = v.choice(data.get("tipo_cadastro", "docente"), "tipo_cadastro", ("docente", "aluno"))
+    kind = v.choice(
+        data.get("tipo_cadastro", "professor"), "tipo_cadastro", ("professor", "estudante")
+    )
     if db.session.scalar(select(Usuario.id_usuario).where(Usuario.email_usuario == address)):
         raise APIError(409, "UC_01_M04", "Este endereço de e-mail já está cadastrado.")
     user = Usuario(
@@ -69,58 +98,63 @@ def signup(data):
     )
     db.session.add(user)
     db.session.flush()
-    if kind == "docente":
-        if not data.get("titulacao_docente"):
+    if kind == "professor":
+        if not data.get("titulacao_professor"):
             raise APIError(
                 422,
                 "UC_01_M02",
                 "Preencha todos os campos obrigatórios.",
-                {"titulacao_docente": "Obrigatório para docente."},
+                {"titulacao_professor": "Obrigatório para professor."},
             )
-        if {"matricula_aluno", "id_curso"}.intersection(data):
+        if {"matricula_estudante", "id_curso"}.intersection(data):
             raise APIError(
-                422, "VALIDACAO", "Campos de estudante não pertencem ao cadastro docente."
+                422, "VALIDACAO", "Campos de estudante não pertencem ao cadastro de professor."
             )
-        teacher = Docente(
-            id_docente=user.id_usuario,
-            tipo_docente=v.choice(
-                data.get("tipo_docente", "interno"), "tipo_docente", ("interno", "externo")
+        teacher = Professor(
+            id_professor=user.id_usuario,
+            tipo_professor=v.choice(
+                data.get("tipo_professor", "interno"), "tipo_professor", ("interno", "externo")
             ),
-            titulacao_docente=v.choice(data["titulacao_docente"], "titulacao_docente", TITLES),
-            url_lattes_docente=v.lattes(data.get("url_lattes_docente")),
-            instituicao_origem_docente=(
-                v.text(data["instituicao_origem_docente"], "instituicao_origem_docente")
-                if data.get("instituicao_origem_docente")
+            titulacao_professor=title(data["titulacao_professor"]),
+            url_lattes_professor=v.lattes(data.get("url_lattes_professor")),
+            instituicao_origem_professor=(
+                v.text(data["instituicao_origem_professor"], "instituicao_origem_professor")
+                if data.get("instituicao_origem_professor")
                 else None
             ),
         )
+        require_institution(teacher)
         db.session.add(teacher)
         teacher.areas = areas(data.get("areas_interesse", []))
     else:
         if any(
             k in data
             for k in {
-                "titulacao_docente",
-                "tipo_docente",
+                "titulacao_professor",
+                "tipo_professor",
                 "areas_interesse",
-                "url_lattes_docente",
-                "instituicao_origem_docente",
+                "url_lattes_professor",
+                "instituicao_origem_professor",
             }
         ):
             raise APIError(
-                422, "VALIDACAO", "Campos docentes não pertencem ao cadastro de estudante."
+                422, "VALIDACAO", "Campos de professor não pertencem ao cadastro de estudante."
             )
         course_id = v.integer(data.get("id_curso"), "id_curso")
         course = db.session.get(Curso, course_id)
         if not course or not course.ativo_curso:
             raise APIError(422, "CURSO_INVALIDO", "Selecione um curso ativo.")
-        enrollment = v.text(data.get("matricula_aluno"), "matricula_aluno", 30)
-        if db.session.scalar(select(Aluno.id_aluno).where(Aluno.matricula_aluno == enrollment)):
+        enrollment = v.text(data.get("matricula_estudante"), "matricula_estudante", 30)
+        if db.session.scalar(
+            select(Estudante.id_estudante).where(Estudante.matricula_estudante == enrollment)
+        ):
             raise APIError(409, "MATRICULA_DUPLICADA", "Matrícula já cadastrada.")
         db.session.add(
-            Aluno(id_aluno=user.id_usuario, matricula_aluno=enrollment, id_curso=course_id)
+            Estudante(
+                id_estudante=user.id_usuario, matricula_estudante=enrollment, id_curso=course_id
+            )
         )
-        profile = db.session.scalar(select(Perfil).where(Perfil.codigo_perfil == "aluno"))
+        profile = db.session.scalar(select(Perfil).where(Perfil.codigo_perfil == "estudante"))
         if not profile:
             raise APIError(503, "CONFIGURACAO_PENDENTE", "Inicialize os perfis do sistema.")
         db.session.add(UsuarioPerfil(id_usuario=user.id_usuario, id_perfil=profile.id_perfil))
@@ -148,27 +182,31 @@ def update_profile(user, data):
         user.email_usuario = address
         revoke_sessions(user.id_usuario)
     if "nome_usuario" in data:
-        name = v.text(data["nome_usuario"], "nome_usuario")
+        name = v.name(data["nome_usuario"])
         changes["nome_usuario"] = (user.nome_usuario, name)
         user.nome_usuario = name
     teacher_fields = set(data) - {"email_usuario", "nome_usuario", "senha_atual"}
-    if teacher_fields and not user.docente:
-        raise APIError(422, "VALIDACAO", "Dados acadêmicos de docente não se aplicam ao estudante.")
-    teacher = user.docente
+    if teacher_fields and not user.professor:
+        raise APIError(
+            422, "VALIDACAO", "Dados acadêmicos de professor não se aplicam ao estudante."
+        )
+    teacher = user.professor
     for field in teacher_fields:
         if field == "areas_interesse":
             old = ", ".join(a.nome_area_conhecimento for a in teacher.areas)
             teacher.areas = areas(data[field])
             changes[field] = (old, ", ".join(a.nome_area_conhecimento for a in teacher.areas))
             continue
-        if field == "titulacao_docente":
-            value = v.choice(data[field], field, TITLES)
-        elif field == "url_lattes_docente":
+        if field == "titulacao_professor":
+            value = title(data[field])
+        elif field == "url_lattes_professor":
             value = v.lattes(data[field])
         else:
             value = v.text(data[field], field) if data[field] else None
         changes[field] = (getattr(teacher, field), value)
         setattr(teacher, field, value)
+    if teacher_fields:
+        require_institution(teacher)
     user.data_atualizacao_usuario = utcnow()
     audit(user.id_usuario, "atualizacao_cadastro", "usuario", user.id_usuario, changes)
     db.session.commit()
@@ -178,8 +216,8 @@ def deactivate(user, secret):
     if not verify_password(user.hash_senha_usuario, secret):
         raise APIError(401, "CREDENCIAIS_INVALIDAS", "Confirme sua senha atual.")
     user.ativo_usuario = False
-    if user.docente:
-        user.docente.ativo_docente = False
+    if user.professor:
+        user.professor.ativo_professor = False
     user.data_atualizacao_usuario = utcnow()
     revoke_sessions(user.id_usuario)
     audit(

@@ -14,7 +14,7 @@ class NotificacaoAcademica(db.Model):
     id_matricula_turma = db.Column(ID, db.ForeignKey("matricula_turma.id_matricula_turma"))
     # These nullable references have their foreign keys in the supplied PostgreSQL schema.
     id_orientacao = db.Column(ID)
-    id_reuniao_orientacao = db.Column(ID)
+    id_ata_orientacao = db.Column(ID)
     chave_idempotencia_notificacao = db.Column(db.String(200), nullable=False, unique=True)
     data_agendamento_notificacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
     data_envio_notificacao = db.Column(UTCDateTime)
@@ -24,17 +24,17 @@ class NotificacaoAcademica(db.Model):
     data_tentativa_notificacao = db.Column(UTCDateTime)
 
 
-class Reuniao(db.Model):
-    __tablename__ = "reuniao_orientacao"
-    id_reuniao_orientacao = db.Column(ID, primary_key=True)
+class AtaOrientacao(db.Model):
+    __tablename__ = "ata_orientacao"
+    id_ata_orientacao = db.Column(ID, primary_key=True)
     id_etapa_trabalho = db.Column(
         ID, db.ForeignKey("etapa_trabalho.id_etapa_trabalho"), nullable=False
     )
     id_orientacao = db.Column(ID, db.ForeignKey("orientacao.id_orientacao"), nullable=False)
-    data_encontro_reuniao_orientacao = db.Column(db.Date, nullable=False)
-    resumo_encaminhamentos_reuniao_orientacao = db.Column(db.Text, nullable=False)
+    data_encontro_ata_orientacao = db.Column(db.Date, nullable=False)
+    resumo_encaminhamentos_ata_orientacao = db.Column(db.Text, nullable=False)
     id_usuario_registro = db.Column(ID, db.ForeignKey("usuario.id_usuario"), nullable=False)
-    data_registro_reuniao_orientacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
+    data_registro_ata_orientacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
     orientacao = db.relationship("Orientacao")
     autor = db.relationship("Usuario")
 

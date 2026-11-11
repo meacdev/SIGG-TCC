@@ -51,7 +51,7 @@ def test_duplicate_registration_race_is_conflict(postgres_only, app, password):
         "nome_usuario": "Concorrente",
         "email_usuario": "race@example.com",
         "senha": password,
-        "titulacao_docente": "mestre",
+        "titulacao_professor": "mestre",
     }
 
     def action():

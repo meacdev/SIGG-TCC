@@ -6,12 +6,12 @@ from flask import current_app, g
 from sqlalchemy import Integer, case, cast, func, literal, select
 
 from backend import validation as v
-from backend.academic_models import LoteCobranca, NotificacaoAcademica, Reuniao
+from backend.academic_models import AtaOrientacao, LoteCobranca, NotificacaoAcademica
 from backend.audit import audit
 from backend.db import db, utcnow
 from backend.defense_models import Etapa, Matricula
 from backend.errors import APIError
-from backend.models import Aluno, Usuario
+from backend.models import Estudante, Usuario
 from backend.services import academic_mail, classes, monitoring_sources
 
 M01 = "Alertas enviados com sucesso aos estudantes selecionados!"
@@ -54,12 +54,12 @@ def matrix(class_id):
     )
     meetings = (
         select(
-            Reuniao.id_etapa_trabalho.label("stage"),
-            func.count(Reuniao.id_reuniao_orientacao).label("meeting_count"),
-            func.max(Reuniao.data_encontro_reuniao_orientacao).label("last_meeting"),
+            AtaOrientacao.id_etapa_trabalho.label("stage"),
+            func.count(AtaOrientacao.id_ata_orientacao).label("meeting_count"),
+            func.max(AtaOrientacao.data_encontro_ata_orientacao).label("last_meeting"),
         )
-        .where(Reuniao.id_etapa_trabalho.in_(stage_ids))
-        .group_by(Reuniao.id_etapa_trabalho)
+        .where(AtaOrientacao.id_etapa_trabalho.in_(stage_ids))
+        .group_by(AtaOrientacao.id_etapa_trabalho)
         .subquery()
     )
     deliveries = monitoring_sources.deliveries(stage_ids)
@@ -80,10 +80,10 @@ def matrix(class_id):
     return (
         select(
             Matricula.id_matricula_turma.label("id_matricula"),
-            Aluno.id_aluno,
+            Estudante.id_estudante,
             Usuario.nome_usuario.label("nome"),
             Usuario.email_usuario.label("email"),
-            Aluno.matricula_aluno.label("matricula"),
+            Estudante.matricula_estudante.label("matricula"),
             Etapa.id_etapa_trabalho.label("id_etapa"),
             func.coalesce(meetings.c.meeting_count, 0).label("total_atas"),
             last_meeting.label("ultima_reuniao"),
@@ -92,8 +92,8 @@ def matrix(class_id):
             days.label("dias_inatividade"),
         )
         .select_from(Matricula)
-        .join(Aluno, Matricula.id_aluno == Aluno.id_aluno)
-        .join(Usuario, Aluno.id_aluno == Usuario.id_usuario)
+        .join(Estudante, Matricula.id_estudante == Estudante.id_estudante)
+        .join(Usuario, Estudante.id_estudante == Usuario.id_usuario)
         .outerjoin(Etapa, Etapa.id_matricula_turma == Matricula.id_matricula_turma)
         .outerjoin(meetings, meetings.c.stage == Etapa.id_etapa_trabalho)
         .outerjoin(deliveries, deliveries.c.stage == Etapa.id_etapa_trabalho)
@@ -271,7 +271,7 @@ def confirm(turma, identifier):
                 "A turma mudou desde a confirmação. Recarregue e confira a seleção novamente.",
             )
         for row in rows:
-            user = db.session.get(Usuario, row["id_aluno"])
+            user = db.session.get(Usuario, row["id_estudante"])
             notification = academic_mail.enqueue(
                 user,
                 "cobranca_inatividade",

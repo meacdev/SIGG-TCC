@@ -15,7 +15,7 @@ async function teacherSignup(page: Page, email: string) {
   await page.goto('/#/cadastro');
   await page.getByRole('radio', { name: /Sou docente/ }).check();
   await accessFields(page, email);
-  await page.getByLabel('Titulação', { exact: true }).selectOption('mestre');
+  await page.getByLabel('Titulação', { exact: true }).selectOption('Mestre');
   await page.getByRole('button', { name: 'Criar minha conta' }).click();
 }
 
@@ -110,7 +110,7 @@ test('obrigatoriedade, e-mail duplicado e campos opcionais de docente', async ({
   await page.getByRole('button', { name: 'Criar minha conta' }).click();
   await expect(page.getByRole('alert')).toContainText('Preencha todos os campos obrigatórios');
   await accessFields(page, email);
-  await page.getByLabel('Titulação', { exact: true }).selectOption('doutor');
+  await page.getByLabel('Titulação', { exact: true }).selectOption('Doutor');
   await page.getByRole('button', { name: 'Criar minha conta' }).click();
   await expect(page.getByRole('alert')).toHaveText('Este endereço de e-mail já está cadastrado.');
   await expect(page.getByLabel('E-mail', { exact: true })).toHaveAttribute('aria-invalid', 'true');
@@ -128,7 +128,7 @@ test('falhas de conexão e de catálogo não confirmam cadastro nem inventam cur
   await expect(page.getByRole('button', { name: 'Criar minha conta' })).toBeDisabled();
   await page.getByRole('radio', { name: /Sou docente/ }).check();
   await accessFields(page, address());
-  await page.getByLabel('Titulação', { exact: true }).selectOption('especialista');
+  await page.getByLabel('Titulação', { exact: true }).selectOption('Especialista');
   await page.route('**/api/v1/usuarios', (route) => route.abort());
   await page.getByRole('button', { name: 'Criar minha conta' }).click();
   await expect(page.getByRole('alert')).toContainText('Não foi possível conectar ao servidor');

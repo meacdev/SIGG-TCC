@@ -66,10 +66,8 @@ def choice(value, field, choices):
     return value
 
 
-def lattes(value):
-    if value in (None, ""):
-        return None
-    value = text(value, "url_lattes_docente", 2048)
+def _parsed_url(value, field):
+    value = text(value, field, 2048)
     try:
         parsed = urlparse(value)
         valid = parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username
@@ -79,7 +77,33 @@ def lattes(value):
         valid = False
     if not valid:
         raise APIError(422, "URL_INVALIDA", "Informe uma URL HTTP ou HTTPS válida.")
+    return value, parsed
+
+
+def url(value, field):
+    return _parsed_url(value, field)[0]
+
+
+def lattes(value):
+    """RF20.2.2 and ck_professor_lattes: http(s)://lattes.cnpq.br/..."""
+    if value in (None, ""):
+        return None
+    value, parsed = _parsed_url(value, "url_lattes_professor")
+    if parsed.hostname != "lattes.cnpq.br" or not value.lower().startswith(
+        ("http://lattes.cnpq.br/", "https://lattes.cnpq.br/")
+    ):
+        raise APIError(
+            422,
+            "URL_INVALIDA",
+            "Informe o link do Currículo Lattes (https://lattes.cnpq.br/...).",
+            {"url_lattes_professor": "Use um endereço de lattes.cnpq.br."},
+        )
     return value
+
+
+def name(value, field="nome_usuario"):
+    """RF20.1.1 and ck_usuario_nome: 3 to 100 characters."""
+    return text(value, field, 100, 3)
 
 
 def period(value):

@@ -46,8 +46,8 @@ function errorDetails(error: unknown): { message: string; fields: FieldErrors } 
   const fields: FieldErrors = { ...error.fields };
   if (['UC_01_M03', 'UC_01_M04'].includes(error.code)) fields.email_usuario = error.message;
   if (error.code === 'SENHA_INVALIDA') fields.senha = error.message;
-  if (error.code === 'URL_INVALIDA') fields.url_lattes_docente = error.message;
-  if (error.code === 'MATRICULA_DUPLICADA') fields.matricula_aluno = error.message;
+  if (error.code === 'URL_INVALIDA') fields.url_lattes_professor = error.message;
+  if (error.code === 'MATRICULA_DUPLICADA') fields.matricula_estudante = error.message;
   if (error.code === 'CURSO_INVALIDO') fields.id_curso = error.message;
   return { message: error.message, fields };
 }
@@ -312,7 +312,7 @@ function AccountForm({
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseStatus, setCourseStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [courseAttempt, setCourseAttempt] = useState(0);
-  const student = values.tipo_cadastro === 'aluno';
+  const student = values.tipo_cadastro === 'estudante';
 
   useEffect(() => {
     if (!student) return;
@@ -429,10 +429,10 @@ function AccountForm({
           </div>
           <div>
             <dt>Tipo de cadastro</dt>
-            <dd>{receipt.docente ? 'Docente / avaliador' : 'Estudante'}</dd>
+            <dd>{receipt.professor ? 'Professor / avaliador' : 'Estudante'}</dd>
           </div>
         </dl>
-        {receipt.docente && (
+        {receipt.professor && (
           <p className="muted">
             As permissões de orientação, avaliação e gestão são atribuídas pela administração
             conforme seu vínculo acadêmico.
@@ -465,7 +465,7 @@ function AccountForm({
           <fieldset className="account-type" disabled={busy}>
             <legend>Como você participa do TCC?</legend>
             <div className="type-options">
-              {(['aluno', 'docente'] as const).map((kind) => (
+              {(['estudante', 'professor'] as const).map((kind) => (
                 <label
                   key={kind}
                   className={`type-option ${values.tipo_cadastro === kind ? 'selected' : ''}`}
@@ -482,14 +482,14 @@ function AccountForm({
                     }}
                   />
                   <span className="type-icon">
-                    <Icon name={kind === 'aluno' ? 'cap' : 'book'} size={23} />
+                    <Icon name={kind === 'estudante' ? 'cap' : 'book'} size={23} />
                   </span>
                   <span>
                     <strong>
-                      {kind === 'aluno' ? 'Sou estudante' : 'Sou docente / avaliador'}
+                      {kind === 'estudante' ? 'Sou estudante' : 'Sou docente / avaliador'}
                     </strong>
                     <small>
-                      {kind === 'aluno'
+                      {kind === 'estudante'
                         ? 'Estudante de TCC1 ou TCC2'
                         : 'Orientação, banca ou gestão'}
                     </small>
@@ -590,9 +590,9 @@ function AccountForm({
         <div className="fields-grid">
           {student ? (
             <>
-              <Field name="matricula_aluno" label="Matrícula" errors={errors}>
+              <Field name="matricula_estudante" label="Matrícula" errors={errors}>
                 <input
-                  {...field('matricula_aluno')}
+                  {...field('matricula_estudante')}
                   disabled={busy || !!original}
                   autoComplete="off"
                   maxLength={30}
@@ -654,29 +654,29 @@ function AccountForm({
             </>
           ) : (
             <>
-              <Field name="titulacao_docente" label="Titulação" errors={errors}>
-                <select {...field('titulacao_docente')} required>
+              <Field name="titulacao_professor" label="Titulação" errors={errors}>
+                <select {...field('titulacao_professor')} required>
                   <option value="">Selecione sua titulação</option>
-                  <option value="especialista">Especialista</option>
-                  <option value="mestre">Mestre</option>
-                  <option value="doutor">Doutor</option>
+                  <option value="Especialista">Especialista</option>
+                  <option value="Mestre">Mestre</option>
+                  <option value="Doutor">Doutor</option>
                 </select>
               </Field>
-              <Field name="tipo_docente" label="Vínculo institucional" errors={errors}>
-                <select {...field('tipo_docente')} disabled={busy || !!original}>
-                  <option value="interno">Docente interno · UEA</option>
-                  <option value="externo">Docente / avaliador externo</option>
+              <Field name="tipo_professor" label="Vínculo institucional" errors={errors}>
+                <select {...field('tipo_professor')} disabled={busy || !!original}>
+                  <option value="interno">Professor interno · UEA</option>
+                  <option value="externo">Professor / avaliador externo</option>
                 </select>
               </Field>
               <div className="full">
                 <Field
-                  name="instituicao_origem_docente"
+                  name="instituicao_origem_professor"
                   label="Instituição de origem"
-                  optional
+                  optional={values.tipo_professor !== 'externo'}
                   errors={errors}
                 >
                   <input
-                    {...field('instituicao_origem_docente')}
+                    {...field('instituicao_origem_professor')}
                     autoComplete="organization"
                     maxLength={200}
                     placeholder="Nome da instituição"
@@ -699,13 +699,13 @@ function AccountForm({
               </div>
               <div className="full">
                 <Field
-                  name="url_lattes_docente"
+                  name="url_lattes_professor"
                   label="Link do Currículo Lattes"
                   optional
                   errors={errors}
                 >
                   <input
-                    {...field('url_lattes_docente')}
+                    {...field('url_lattes_professor')}
                     type="url"
                     maxLength={2048}
                     placeholder="https://lattes.cnpq.br/…"
@@ -912,7 +912,8 @@ function Profile({
             <div>
               <strong>{user.nome_usuario}</strong>
               <small>
-                Cadastro #{user.id_usuario} · {user.docente ? 'Docente / avaliador' : 'Estudante'}
+                Cadastro #{user.id_usuario} ·{' '}
+                {user.professor ? 'Professor / avaliador' : 'Estudante'}
               </small>
             </div>
             <span className="active-badge">Conta ativa</span>

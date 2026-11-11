@@ -4,7 +4,7 @@ from sqlalchemy import select
 from backend import validation as v
 from backend.db import db
 from backend.errors import APIError
-from backend.models import Curso, Docente, DocenteCurso, PeriodoLetivo, Usuario
+from backend.models import Curso, PeriodoLetivo, Professor, ProfessorCurso, Usuario
 from backend.security import authenticated
 from backend.services.classes import course_scope, current_link, manager
 
@@ -47,7 +47,7 @@ def periods():
     )
 
 
-@bp.get("/docentes")
+@bp.get("/professores")
 @authenticated()
 def teachers():
     profiles = manager()
@@ -63,19 +63,19 @@ def teachers():
     else:
         only_self = False
     query = (
-        select(Docente)
+        select(Professor)
         .join(Usuario)
-        .join(DocenteCurso)
+        .join(ProfessorCurso)
         .where(
-            Docente.ativo_docente.is_(True),
-            Docente.tipo_docente == "interno",
+            Professor.ativo_professor.is_(True),
+            Professor.tipo_professor == "interno",
             Usuario.ativo_usuario.is_(True),
-            DocenteCurso.id_curso == course_id,
+            ProfessorCurso.id_curso == course_id,
             current_link(),
         )
     )
     if only_self:
-        query = query.where(Docente.id_docente == g.user.id_usuario)
+        query = query.where(Professor.id_professor == g.user.id_usuario)
     # Only teachers with an effective professor role can be responsible for a class.
     from sqlalchemy import exists, or_
 
@@ -87,7 +87,7 @@ def teachers():
             select(UsuarioPerfil.id_usuario)
             .join(Perfil)
             .where(
-                UsuarioPerfil.id_usuario == Docente.id_docente,
+                UsuarioPerfil.id_usuario == Professor.id_professor,
                 Perfil.codigo_perfil == "professor_disciplina",
                 UsuarioPerfil.data_concessao_usuario_perfil <= utcnow(),
                 or_(
@@ -97,12 +97,12 @@ def teachers():
             )
         )
     )
-    query = query.order_by(Docente.id_docente)
+    query = query.order_by(Professor.id_professor)
     return page_response(
         query,
         lambda d: {
-            "id_docente": d.id_docente,
+            "id_professor": d.id_professor,
             "nome_usuario": d.usuario.nome_usuario,
-            "titulacao_docente": d.titulacao_docente,
+            "titulacao_professor": d.titulacao_professor,
         },
     )

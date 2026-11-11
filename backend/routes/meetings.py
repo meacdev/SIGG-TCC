@@ -2,7 +2,7 @@ from flask import Blueprint, request
 from sqlalchemy import select
 
 from backend import validation as v
-from backend.academic_models import Reuniao
+from backend.academic_models import AtaOrientacao
 from backend.defense_models import Etapa, Matricula
 from backend.routes.catalogs import page_response
 from backend.security import authenticated
@@ -36,10 +36,11 @@ def records(stage_id):
             "Ata registrada com sucesso!",
         )
     return page_response(
-        select(Reuniao)
-        .where(Reuniao.id_etapa_trabalho == stage_id)
+        select(AtaOrientacao)
+        .where(AtaOrientacao.id_etapa_trabalho == stage_id)
         .order_by(
-            Reuniao.data_encontro_reuniao_orientacao.desc(), Reuniao.id_reuniao_orientacao.desc()
+            AtaOrientacao.data_encontro_ata_orientacao.desc(),
+            AtaOrientacao.id_ata_orientacao.desc(),
         ),
         meetings.serialize,
     )

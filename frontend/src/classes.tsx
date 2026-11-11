@@ -19,14 +19,14 @@ export interface ClassItem {
   periodo_letivo: string;
   nivel_turma: number;
   id_curso: number;
-  id_docente_responsavel: number;
+  id_professor_responsavel: number;
   ativa_turma: boolean;
   autoinscricao_ativa_turma: boolean;
   data_expiracao_acesso_turma: string | null;
   codigo_acesso?: string;
 }
 interface Teacher {
-  id_docente: number;
+  id_professor: number;
   nome_usuario: string;
 }
 const empty = {
@@ -34,7 +34,7 @@ const empty = {
   codigo_turma: '',
   nivel_turma: '',
   id_curso: '',
-  id_docente_responsavel: '',
+  id_professor_responsavel: '',
 };
 export function Classes({ onSessionEnded }: SessionProps) {
   const [items, setItems] = useState<ClassItem[]>([]),
@@ -100,7 +100,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
     let active = true;
     setTeachers([]);
     if (values.id_curso)
-      catalog<Teacher>(`/docentes?id_curso=${values.id_curso}`)
+      catalog<Teacher>(`/professores?id_curso=${values.id_curso}`)
         .then((data) => {
           if (active) setTeachers(data);
         })
@@ -135,7 +135,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
         codigo_turma: v.codigo_turma,
         nivel_turma: String(v.nivel_turma),
         id_curso: String(v.id_curso),
-        id_docente_responsavel: String(v.id_docente_responsavel),
+        id_professor_responsavel: String(v.id_professor_responsavel),
       });
       setErrors({});
     } catch (e) {
@@ -171,7 +171,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
             ...values,
             nivel_turma: Number(values.nivel_turma),
             id_curso: Number(values.id_curso),
-            id_docente_responsavel: Number(values.id_docente_responsavel),
+            id_professor_responsavel: Number(values.id_professor_responsavel),
           }),
         },
         true,
@@ -294,7 +294,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
               aria-invalid={!!errors.id_curso}
               value={values.id_curso}
               onChange={(e) => {
-                setValues({ ...values, id_curso: e.target.value, id_docente_responsavel: '' });
+                setValues({ ...values, id_curso: e.target.value, id_professor_responsavel: '' });
                 setMessage('');
               }}
               disabled={busy || !courses.length}
@@ -309,15 +309,15 @@ export function Classes({ onSessionEnded }: SessionProps) {
             </select>
           </AcademicField>
           <AcademicField
-            name="id_docente_responsavel"
-            label="Docente responsável"
-            error={errors.id_docente_responsavel}
+            name="id_professor_responsavel"
+            label="Professor responsável"
+            error={errors.id_professor_responsavel}
           >
             <select
-              id="id_docente_responsavel"
-              aria-invalid={!!errors.id_docente_responsavel}
-              value={values.id_docente_responsavel}
-              onChange={(e) => setValues({ ...values, id_docente_responsavel: e.target.value })}
+              id="id_professor_responsavel"
+              aria-invalid={!!errors.id_professor_responsavel}
+              value={values.id_professor_responsavel}
+              onChange={(e) => setValues({ ...values, id_professor_responsavel: e.target.value })}
               disabled={busy || !teachers.length}
               required
             >
@@ -325,7 +325,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
                 {teachers.length ? 'Selecione' : 'Selecione um curso com docentes autorizados'}
               </option>
               {teachers.map((t) => (
-                <option key={t.id_docente} value={t.id_docente}>
+                <option key={t.id_professor} value={t.id_professor}>
                   {t.nome_usuario}
                 </option>
               ))}

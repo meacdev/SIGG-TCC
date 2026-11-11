@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, text
 from backend.app import create_app
 from backend.cli import seed_profiles
 from backend.db import db, utcnow
-from backend.models import Curso, DocenteCurso, Perfil, UsuarioPerfil
+from backend.models import Curso, Perfil, ProfessorCurso, UsuarioPerfil
 
 
 @pytest.fixture
@@ -87,10 +87,10 @@ def client(app):
 def signup(client, password):
     def register(**overrides):
         payload = {
-            "nome_usuario": "Docente Teste",
+            "nome_usuario": "Professor Teste",
             "email_usuario": f"{uuid4().hex}@example.com",
             "senha": password,
-            "titulacao_docente": "mestre",
+            "titulacao_professor": "mestre",
         }
         payload.update(overrides)
         response = client.post("/api/v1/usuarios", json=payload)
@@ -126,10 +126,10 @@ def teacher(app, signup, login):
         )
         db.session.add(UsuarioPerfil(id_usuario=user["id_usuario"], id_perfil=profile.id_perfil))
         db.session.add(
-            DocenteCurso(
-                id_docente=user["id_usuario"],
+            ProfessorCurso(
+                id_professor=user["id_usuario"],
                 id_curso=1,
-                data_inicio_docente_curso=utcnow().date() - timedelta(days=1),
+                data_inicio_professor_curso=utcnow().date() - timedelta(days=1),
             )
         )
         db.session.commit()
@@ -145,7 +145,7 @@ def class_payload(teacher):
         "codigo_turma": "ESTCOMP01",
         "nivel_turma": 1,
         "id_curso": 1,
-        "id_docente_responsavel": teacher["id_usuario"],
+        "id_professor_responsavel": teacher["id_usuario"],
     }
 
 

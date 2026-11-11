@@ -94,8 +94,8 @@ export function Monitoring({ onSessionEnded }: SessionProps) {
       .then(async (r) => {
         const user = r.body.data;
         const permitted =
-          !!user.docente &&
-          user.docente.tipo_docente === 'interno' &&
+          !!user.professor &&
+          user.professor.tipo_professor === 'interno' &&
           user.perfis.some((p) => ['professor_disciplina', 'coordenador'].includes(p));
         if (!active) return;
         setAllowed(permitted);

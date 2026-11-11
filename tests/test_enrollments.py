@@ -18,9 +18,9 @@ def student(client, password, login):
             "nome_usuario": "Estudante Teste",
             "email_usuario": "estudante@example.com",
             "senha": password,
-            "tipo_cadastro": "aluno",
+            "tipo_cadastro": "estudante",
             "id_curso": 1,
-            "matricula_aluno": "000123",
+            "matricula_estudante": "000123",
         },
     )
     assert response.status_code == 201
@@ -36,18 +36,18 @@ def test_enroll_search_duplicate_remove_history_and_reenroll(
     base = f"/api/v1/turmas/{class_id}"
     headers = teacher["headers"]
     assert (
-        client.get(base + "/estudantes?q=000", headers=headers).json["data"][0]["id_aluno"]
+        client.get(base + "/estudantes?q=000", headers=headers).json["data"][0]["id_estudante"]
         == student["id_usuario"]
     )
     assert client.get(base + "/estudantes?q=%25%25", headers=headers).json["data"] == []
     response = client.post(
-        base + "/matriculas", headers=headers, json={"id_aluno": student["id_usuario"]}
+        base + "/matriculas", headers=headers, json={"id_estudante": student["id_usuario"]}
     )
     assert response.status_code == 201, response.json
     identifier = response.json["data"]["id_matricula"]
     assert (
         client.post(
-            base + "/matriculas", headers=headers, json={"id_aluno": student["id_usuario"]}
+            base + "/matriculas", headers=headers, json={"id_estudante": student["id_usuario"]}
         ).status_code
         == 409
     )
@@ -73,7 +73,7 @@ def test_enroll_search_duplicate_remove_history_and_reenroll(
     assert len(app.outbox) == 1
     assert client.get("/api/v1/minhas-matriculas", headers=student["headers"]).json["data"] == []
     enrolled = client.post(
-        base + "/matriculas", headers=headers, json={"id_aluno": student["id_usuario"]}
+        base + "/matriculas", headers=headers, json={"id_estudante": student["id_usuario"]}
     )
     assert enrolled.json["data"]["id_matricula"] == identifier
     assert client.delete(removal, headers=version, json=payload).status_code == 412
@@ -98,9 +98,9 @@ def test_self_enrollment_scope_expiry_and_rotation(
             "nome_usuario": "Outro estudante",
             "email_usuario": "outro@example.com",
             "senha": "Senha de teste UC04 123",
-            "tipo_cadastro": "aluno",
+            "tipo_cadastro": "estudante",
             "id_curso": 2,
-            "matricula_aluno": "000999",
+            "matricula_estudante": "000999",
         },
     ).json["data"]
     headers = {"Authorization": f"Bearer {login(wrong, 'Senha de teste UC04 123')['access_token']}"}
@@ -138,7 +138,7 @@ def test_self_enrollment_scope_expiry_and_rotation(
 def test_failed_email_is_persisted_and_retried(app, client, created_class, teacher, student):
     base = f"/api/v1/turmas/{created_class.json['data']['id_turma']}/matriculas"
     response = client.post(
-        base, headers=teacher["headers"], json={"id_aluno": student["id_usuario"]}
+        base, headers=teacher["headers"], json={"id_estudante": student["id_usuario"]}
     )
 
     def fail(*args):
