@@ -28,7 +28,7 @@ As listas têm `page` (1 a 100000) e `per_page` (1 a 100, padrão 20), com `meta
 
 ## Cadastro e login
 
-Exemplo docente: substitua o valor de `senha` por uma senha escolhida pelo usuário, com 12 a 128 caracteres. Não registre o corpo da requisição em logs.
+Exemplo docente: substitua o valor de `senha` por uma senha escolhida pelo usuário, com 8 a 128 caracteres, ao menos 1 letra maiúscula, 1 número e 1 caractere especial (RF21.1.1). `cpf_usuario` e `telefone_usuario` são opcionais (RF20.1). Não registre o corpo da requisição em logs.
 
 ```json
 {
@@ -110,6 +110,6 @@ Na criação e na rotação, a resposta contém `data.codigo_acesso`: uma chave 
 }
 ```
 
-`201`: criado; `204`: operação sem corpo; `401`: autenticação/token; `403`: permissão ou conta inativa no login; `404`: recurso inexistente ou turma fora do escopo; `409`: duplicata ou conflito de negócio; `412/428`: concorrência; `422`: validação; `429`: limite de tentativas; `503`: serviço/banco/e-mail indisponível. O cabeçalho `Retry-After` orienta quando repetir uma requisição limitada.
+`201`: criado; `204`: operação sem corpo; `401`: autenticação/token; `403`: permissão ou conta inativa no login; `404`: recurso inexistente ou turma fora do escopo; `409`: duplicata ou conflito de negócio; `412/428`: concorrência; `422`: validação; `423`: conta bloqueada por 15 minutos após 5 senhas incorretas seguidas (`CONTA_BLOQUEADA`); `429`: limite de tentativas; `503`: serviço/banco/e-mail indisponível. O cabeçalho `Retry-After` orienta quando repetir uma requisição limitada.
 
 O frontend deve associar as mensagens aos campos, anunciar erros para leitores de tela, mascarar a senha e obter confirmação antes da inativação. Essas ações de interface não são implementadas pela API.

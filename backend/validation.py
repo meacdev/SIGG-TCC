@@ -48,10 +48,57 @@ def email(value, code="EMAIL_INVALIDO"):
         raise APIError(422, code, "Informe um endereço de e-mail válido.") from None
 
 
+PASSWORD_RULE = (
+    "A senha deve ter de 8 a 128 caracteres, com ao menos 1 letra maiúscula, "
+    "1 número e 1 caractere especial."
+)
+
+
 def password(value):
-    if not isinstance(value, str) or not 12 <= len(value) <= 128 or value.isspace():
-        raise APIError(422, "SENHA_INVALIDA", "A senha deve conter de 12 a 128 caracteres.")
+    """RF21.1.1: 8 to 128 characters, with an uppercase letter, a digit and a special one."""
+    if (
+        not isinstance(value, str)
+        or not 8 <= len(value) <= 128
+        or not any(c.isupper() for c in value)
+        or not any(c.isdigit() for c in value)
+        or all(c.isalnum() for c in value)
+    ):
+        raise APIError(422, "SENHA_INVALIDA", PASSWORD_RULE)
     return value
+
+
+def cpf(value):
+    """RF20.1 and ck_usuario_cpf: optional, stored as 11 digits with valid check digits."""
+    if value in (None, ""):
+        return None
+    digits = re.sub(r"[.\-\s]", "", value) if isinstance(value, str) else ""
+    valid = re.fullmatch(r"[0-9]{11}", digits) is not None and len(set(digits)) > 1
+    for size in (9, 10):
+        if not valid:
+            break
+        total = sum(int(d) * (size + 1 - i) for i, d in enumerate(digits[:size]))
+        valid = int(digits[size]) == total * 10 % 11 % 10
+    if not valid:
+        raise APIError(
+            422, "CPF_INVALIDO", "Informe um CPF válido.", {"cpf_usuario": "CPF inválido."}
+        )
+    return digits
+
+
+def phone(value):
+    """RF20.1: optional contact phone, stored as digits (DDD + number, optional country code)."""
+    if value in (None, ""):
+        return None
+    valid = isinstance(value, str) and re.fullmatch(r"\+?[0-9\s().\-]{10,30}", value.strip())
+    digits = re.sub(r"[^0-9]", "", value) if valid else ""
+    if not 10 <= len(digits) <= 13:
+        raise APIError(
+            422,
+            "TELEFONE_INVALIDO",
+            "Informe um telefone válido com DDD.",
+            {"telefone_usuario": "Use de 10 a 13 dígitos, por exemplo (92) 99999-9999."},
+        )
+    return digits
 
 
 def integer(value, field, minimum=1, maximum=9223372036854775807):

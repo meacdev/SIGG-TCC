@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError } from './api';
 import { Field, Icon, Notice, Password, inputA11y } from './components';
 import type { Course, FieldErrors, FormValues, User } from './types';
-import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
+import { PASSWORD_RULE, emptyForm, fromUser, payload, validEmail, validate } from './validation';
 import { RecoveryForm } from './RecoveryForm';
 import { Classes } from './classes';
 import { Enrollments } from './enrollments';
@@ -46,6 +46,8 @@ function errorDetails(error: unknown): { message: string; fields: FieldErrors } 
   const fields: FieldErrors = { ...error.fields };
   if (['UC_01_M03', 'UC_01_M04'].includes(error.code)) fields.email_usuario = error.message;
   if (error.code === 'SENHA_INVALIDA') fields.senha = error.message;
+  if (['CPF_INVALIDO', 'CPF_DUPLICADO'].includes(error.code)) fields.cpf_usuario = error.message;
+  if (error.code === 'TELEFONE_INVALIDO') fields.telefone_usuario = error.message;
   if (error.code === 'URL_INVALIDA') fields.url_lattes_professor = error.message;
   if (error.code === 'MATRICULA_DUPLICADA') fields.matricula_estudante = error.message;
   if (error.code === 'CURSO_INVALIDO') fields.id_curso = error.message;
@@ -540,14 +542,32 @@ function AccountForm({
               />
             </Field>
           </div>
+          <Field name="cpf_usuario" label="CPF" errors={errors} optional>
+            <input
+              {...field('cpf_usuario')}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+          </Field>
+          <Field name="telefone_usuario" label="Telefone de contato" errors={errors} optional>
+            <input
+              {...field('telefone_usuario')}
+              type="tel"
+              autoComplete="tel"
+              placeholder="(92) 99999-9999"
+              maxLength={30}
+            />
+          </Field>
           {!original && (
             <>
-              <Field name="senha" label="Senha" errors={errors} hint="Use de 12 a 128 caracteres.">
+              <Field name="senha" label="Senha" errors={errors} hint={PASSWORD_RULE}>
                 <Password
                   {...field('senha', true)}
                   label="Senha"
                   autoComplete="new-password"
-                  minLength={12}
+                  minLength={8}
                   maxLength={128}
                   required
                   placeholder="Crie uma senha segura"

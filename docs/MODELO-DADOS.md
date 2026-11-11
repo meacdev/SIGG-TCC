@@ -52,15 +52,16 @@ Registros antigos de `auditoria` continuam com `entidade_auditoria = 'trabalho'`
 - **Estruturas do projeto mantidas.** `sessao_autenticacao`, `recuperacao_senha`, `lote_cobranca`, colunas de versão (`versao_*`), `ativa_turma`, `palavras_chave_trabalho_tcc`, `id_matricula_atual` e os triggers de imutabilidade.
 - **CHECKs sobre dados legados.** São criados `NOT VALID` e validados em seguida. Uma linha antiga que viole uma regra gera `WARNING` em vez de bloquear a atualização; linhas novas e alteradas são sempre verificadas.
 
+## Regras do RF20/RF21 já implementadas
+
+- **CPF e telefone (RF20.1).** `cpf_usuario` e `telefone_usuario` são opcionais no cadastro e na edição do perfil (`null` ou `""` apaga). O CPF aceita pontuação, é validado pelos dígitos verificadores e gravado com 11 dígitos; duplicado retorna `409 CPF_DUPLICADO`. O telefone aceita `+`, espaços, parênteses e hífens e é gravado só com dígitos (10 a 13, com DDD).
+- **Bloqueio de login (RF21.1.3).** Cada senha errada soma 1 em `tentativas_login_usuario`. Na 5ª, `bloqueado_ate_usuario` recebe agora + 15 min e o login responde `423 CONTA_BLOQUEADA`, mesmo com a senha certa, até o prazo acabar. Expirado o prazo, a contagem recomeça; login correto e redefinição de senha zeram contagem e bloqueio. O bloqueio é auditado (`bloqueio_login`).
+- **Política de senha (RF21.1.1).** 8 a 128 caracteres, com ao menos 1 letra maiúscula, 1 número e 1 caractere especial (qualquer caractere que não seja letra ou número, inclusive espaço). Vale para cadastro e redefinição; senhas antigas continuam aceitas no login.
+
 ## Ainda não usado pela API
 
-As colunas e tabelas abaixo já existem, mas as regras de negócio do RF20/RF21 ainda não foram implementadas:
-
-- CPF e telefone no cadastro.
-- Validação de e-mail por token (`email_validado_usuario`, `token_usuario`).
-- Bloqueio de 15 min após 5 tentativas de login (`tentativas_login_usuario`, `bloqueado_ate_usuario`).
-- Política de senha do RF21.1.1. A API ainda exige 12 a 128 caracteres.
-- `sessao_usuario`. A API continua usando `sessao_autenticacao`, que guarda expiração absoluta e o JTI do refresh token.
+- Validação e alteração de e-mail por token (`email_validado_usuario`, `token_usuario`, RF20.3.1). Hoje a troca de e-mail exige a senha atual e revoga as sessões, sem confirmação no novo endereço.
+- `sessao_usuario`. A API continua usando `sessao_autenticacao`, que guarda expiração absoluta e o JTI do refresh token, e `recuperacao_senha` para o código de recuperação.
 
 ## Mudanças no contrato da API
 

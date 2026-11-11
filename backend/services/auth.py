@@ -1,4 +1,5 @@
 import hmac
+import math
 import secrets
 from datetime import timedelta
 from uuid import uuid4
@@ -21,6 +22,26 @@ from backend.security import (
 )
 from backend.services.mail import require_mail, send_reset_email
 
+# RF21.1.3 and ck_usuario_tentativas_login (0 to 5).
+MAX_LOGIN_ATTEMPTS = 5
+LOCK_MINUTES = 15
+
+
+def locked_error(until):
+    minutes = max(1, math.ceil((until - utcnow()).total_seconds() / 60))
+    unit = "minuto" if minutes == 1 else "minutos"
+    return APIError(
+        423,
+        "CONTA_BLOQUEADA",
+        "Conta bloqueada temporariamente após 5 tentativas de login incorretas. "
+        f"Tente novamente em {minutes} {unit} ou redefina sua senha.",
+    )
+
+
+def clear_lock(user):
+    user.tentativas_login_usuario = 0
+    user.bloqueado_ate_usuario = None
+
 
 def login(data):
     address = v.email(data["email_usuario"])
@@ -30,6 +51,10 @@ def login(data):
     user = db.session.scalar(
         select(Usuario).where(Usuario.email_usuario == address).with_for_update()
     )
+    now = utcnow()
+    locked_until = user.bloqueado_ate_usuario if user else None
+    if locked_until and locked_until > now:
+        raise locked_error(locked_until)
     valid = verify_password(user.hash_senha_usuario if user else None, secret)
     if not user:
         raise APIError(
@@ -37,8 +62,20 @@ def login(data):
             "UC_02_M03",
             "Conta não cadastrada, entre em contato com a secretaria.",
         )
+    if locked_until:
+        # The previous lock expired: start a new cycle of attempts.
+        clear_lock(user)
     if not valid:
+        user.tentativas_login_usuario += 1
+        if user.tentativas_login_usuario >= MAX_LOGIN_ATTEMPTS:
+            user.bloqueado_ate_usuario = now + timedelta(minutes=LOCK_MINUTES)
+            audit(user.id_usuario, "bloqueio_login", "usuario", user.id_usuario)
+        # Commit before raising: the APIError handler rolls the session back.
+        db.session.commit()
+        if user.bloqueado_ate_usuario:
+            raise locked_error(user.bloqueado_ate_usuario)
         raise APIError(401, "CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos.")
+    clear_lock(user)
     if not user.ativo_usuario:
         raise APIError(403, "CONTA_INATIVA", "A conta está inativa.")
     if hasher.check_needs_rehash(user.hash_senha_usuario):
@@ -140,6 +177,8 @@ def reset_password(data):
         raise APIError(422, "RECUPERACAO_INVALIDA", "Recuperação inválida ou expirada.")
     user.hash_senha_usuario = hash_password(secret)
     user.data_atualizacao_usuario = utcnow()
+    # Proving ownership of the e-mail ends a temporary login lock.
+    clear_lock(user)
     db.session.execute(
         update(RecuperacaoSenha)
         .where(RecuperacaoSenha.id_usuario == user.id_usuario, RecuperacaoSenha.usada_em.is_(None))

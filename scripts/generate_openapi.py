@@ -27,7 +27,23 @@ def string(**extra):
 identifier = {"type": "integer", "format": "int64", "minimum": 1}
 timestamp = string(format="date-time")
 title = string(enum=["Especialista", "Mestre", "Doutor"])
-password = string(minLength=12, maxLength=128, writeOnly=True)
+password = string(
+    minLength=8,
+    maxLength=128,
+    pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,128}$",
+    writeOnly=True,
+    description="RF21.1.1: ao menos 1 letra maiúscula, 1 número e 1 caractere especial.",
+)
+cpf = {
+    "type": ["string", "null"],
+    "pattern": r"^[0-9]{3}[.]?[0-9]{3}[.]?[0-9]{3}-?[0-9]{2}$",
+    "description": "Opcional e único. Aceita pontuação; é armazenado com 11 dígitos.",
+}
+phone = {
+    "type": ["string", "null"],
+    "maxLength": 30,
+    "description": "Opcional. Telefone com DDD (10 a 13 dígitos); é armazenado só com dígitos.",
+}
 class_fields = {
     "periodo_letivo": string(pattern=r"^[0-9]{4}/[12]$", examples=["2026/2"]),
     "codigo_turma": string(pattern=r"^EST[A-Za-z]+[0-9]+$", maxLength=40),
@@ -38,6 +54,8 @@ class_fields = {
 profile_fields = {
     "nome_usuario": string(minLength=3, maxLength=100),
     "email_usuario": string(format="email", maxLength=254),
+    "cpf_usuario": cpf,
+    "telefone_usuario": phone,
     "titulacao_professor": title,
     "url_lattes_professor": {
         "type": ["string", "null"],
@@ -98,6 +116,8 @@ schemas = {
             "id_usuario": identifier,
             "nome_usuario": string(),
             "email_usuario": string(format="email"),
+            "cpf_usuario": {"type": ["string", "null"], "pattern": "^[0-9]{11}$"},
+            "telefone_usuario": {"type": ["string", "null"]},
             "ativo_usuario": {"type": "boolean"},
             "data_criacao_usuario": timestamp,
             "data_atualizacao_usuario": timestamp,
@@ -295,9 +315,14 @@ operation(
     "Tokens",
     "Login",
     public=True,
-    description="Usuário inexistente: UC_02_M03. "
+    description="Usuário inexistente: UC_02_M03. Após 5 senhas incorretas seguidas a conta "
+    "fica bloqueada por 15 minutos (423 CONTA_BLOQUEADA); a redefinição de senha desbloqueia. "
     "Permissões e rota do painel são interpretadas pelo frontend a partir de usuario.perfis.",
 )
+paths[base + "/auth/login"]["post"]["responses"]["423"] = {
+    "description": "Conta bloqueada temporariamente (RF21.1.3).",
+    "content": {"application/json": {"schema": ref("Erro")}},
+}
 operation(
     base + "/auth/refresh",
     "post",

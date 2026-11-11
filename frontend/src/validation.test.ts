@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { emptyForm, fromUser, payload, validate } from './validation';
+import {
+  emptyForm,
+  fromUser,
+  payload,
+  validCpf,
+  validPassword,
+  validPhone,
+  validate,
+} from './validation';
 import type { FormValues, User } from './types';
 
 const teacher: FormValues = {
@@ -96,6 +104,8 @@ describe('regras do cadastro', () => {
       ativo_usuario: true,
       data_criacao_usuario: '2026-10-23T12:00:00Z',
       data_atualizacao_usuario: '2026-10-23T12:00:00Z',
+      cpf_usuario: null,
+      telefone_usuario: null,
       perfis: [],
       professor: {
         tipo_professor: 'interno',
@@ -115,5 +125,59 @@ describe('regras do cadastro', () => {
     expect(
       payload({ ...values, email_usuario: 'nova@example.com', senha_atual: 'atual' }, user),
     ).toMatchObject({ email_usuario: 'nova@example.com', senha_atual: 'atual' });
+  });
+});
+
+describe('RF20.1 e RF21.1.1', () => {
+  it('aplica a política mínima de senha', () => {
+    expect(validPassword('Abcdef1!')).toBe(true);
+    expect(validPassword('Senha de teste 123')).toBe(true);
+    for (const weak of [
+      'Ab1!xyz',
+      'semmaiuscula1!',
+      'SemNumero!!',
+      'SemEspecial12',
+      'A1!' + 'x'.repeat(126),
+    ])
+      expect(validPassword(weak)).toBe(false);
+    expect(validate({ ...teacher, senha: 'fraca', confirmacao_senha: 'fraca' }).senha).toMatch(
+      /maiúscula/,
+    );
+  });
+  it('valida CPF e telefone opcionais', () => {
+    expect(validCpf('529.982.247-25')).toBe(true);
+    expect(validCpf('52998224725')).toBe(true);
+    expect(validCpf('123.456.789-00')).toBe(false);
+    expect(validCpf('111.111.111-11')).toBe(false);
+    expect(validPhone('(92) 99999-9999')).toBe(true);
+    expect(validPhone('123')).toBe(false);
+    expect(validate({ ...teacher, cpf_usuario: '123', telefone_usuario: 'abc' })).toMatchObject({
+      cpf_usuario: expect.any(String),
+      telefone_usuario: expect.any(String),
+    });
+  });
+  it('envia CPF e telefone normalizados no cadastro e só quando mudam na edição', () => {
+    expect(payload(teacher)).not.toHaveProperty('cpf_usuario');
+    expect(
+      payload({ ...teacher, cpf_usuario: '529.982.247-25', telefone_usuario: '(92) 99999-9999' }),
+    ).toMatchObject({ cpf_usuario: '52998224725', telefone_usuario: '92999999999' });
+    const user: User = {
+      id_usuario: 1,
+      nome_usuario: 'Maria',
+      email_usuario: 'maria@example.com',
+      cpf_usuario: '52998224725',
+      telefone_usuario: '92999999999',
+      ativo_usuario: true,
+      data_criacao_usuario: '2026-10-23T12:00:00Z',
+      data_atualizacao_usuario: '2026-10-23T12:00:00Z',
+      perfis: ['estudante'],
+      estudante: { matricula_estudante: '1', id_curso: 1 },
+    };
+    const values = fromUser(user);
+    expect(values.cpf_usuario).toBe('529.982.247-25');
+    expect(payload(values, user)).not.toHaveProperty('cpf_usuario');
+    expect(payload({ ...values, telefone_usuario: '' }, user)).toMatchObject({
+      telefone_usuario: null,
+    });
   });
 });

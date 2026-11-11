@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Field, Icon, Notice, Password, inputA11y } from './components';
-import { validEmail } from './validation';
+import { PASSWORD_RULE, validEmail, validPassword } from './validation';
 
 type Step = 'email' | 'codigo' | 'senha';
 type Errors = Record<string, string | undefined>;
@@ -61,8 +61,7 @@ export function RecoveryForm({
     if (step === 'codigo' && !/^[0-9]{10}$/.test(code))
       issues.codigo = 'Informe os 10 dígitos do código recebido por e-mail.';
     if (step === 'senha') {
-      if (password.length < 12 || password.length > 128 || !password.trim())
-        issues.nova_senha = 'Use de 12 a 128 caracteres.';
+      if (!validPassword(password)) issues.nova_senha = PASSWORD_RULE;
       if (password !== confirmation)
         issues.confirmacao_senha = 'A confirmação da senha não confere.';
     }
@@ -187,17 +186,12 @@ export function RecoveryForm({
         )}
         {step === 'senha' && (
           <>
-            <Field
-              name="nova_senha"
-              label="Nova senha"
-              errors={errors}
-              hint="Use de 12 a 128 caracteres."
-            >
+            <Field name="nova_senha" label="Nova senha" errors={errors} hint={PASSWORD_RULE}>
               <Password
                 {...inputA11y('nova_senha', errors, true)}
                 label="Nova senha"
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 maxLength={128}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -210,7 +204,7 @@ export function RecoveryForm({
                 {...inputA11y('confirmacao_senha', errors)}
                 label="Confirmação de senha"
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 maxLength={128}
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
