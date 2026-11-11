@@ -1,0 +1,25 @@
+name: Frontend
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global corepack@0.34.6
+      - run: corepack enable
+      - run: corepack prepare yarn@1.22.22 --activate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r backend/requirements-dev.txt
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+      - run: yarn workspace sigg-tcc-frontend format:check
+      - run: yarn test:frontend
+      - run: yarn workspace sigg-tcc-frontend playwright install --with-deps chromium
+      - run: yarn test:e2e
