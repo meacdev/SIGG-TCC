@@ -9,6 +9,9 @@ import { Enrollments } from './enrollments';
 import { Works } from './works';
 import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
+import { Defenses } from './defenses';
+import { DefenseManagement } from './defense-management';
+import { StudentDocuments, VerifyDocument } from './documents';
 import './academic.css';
 
 type Page =
@@ -20,9 +23,14 @@ type Page =
   | 'matriculas'
   | 'trabalhos'
   | 'reunioes'
-  | 'monitoramento';
+  | 'monitoramento'
+  | 'organizar-defesas'
+  | 'bancas'
+  | 'documentos'
+  | 'verificar-documento';
 const currentPage = (): Page => {
-  const page = window.location.hash.replace('#/', '');
+  const page = window.location.hash.replace('#/', '').split('?')[0];
+  if (page === 'verificar-documento') return page;
   return [
     'entrar',
     'recuperar-senha',
@@ -32,6 +40,9 @@ const currentPage = (): Page => {
     'trabalhos',
     'reunioes',
     'monitoramento',
+    'organizar-defesas',
+    'bancas',
+    'documentos',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -56,6 +67,7 @@ function errorDetails(error: unknown): { message: string; fields: FieldErrors } 
 
 export function App() {
   const [page, setPage] = useState<Page>(currentPage);
+  const returnAfterLogin = useRef('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
   const protectedPage = [
@@ -65,6 +77,9 @@ export function App() {
     'trabalhos',
     'reunioes',
     'monitoramento',
+    'organizar-defesas',
+    'bancas',
+    'documentos',
   ].includes(page);
   useEffect(() => {
     const change = () => {
@@ -85,10 +100,15 @@ export function App() {
       trabalhos: 'Trabalhos',
       reunioes: 'Reuniões',
       monitoramento: 'Monitorar Prazos',
+      'organizar-defesas': 'Organizar defesas',
+      bancas: 'Minhas bancas',
+      documentos: 'Minhas atas',
+      'verificar-documento': 'Verificar documento',
     };
     document.title = `${titles[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
     if (protectedPage && !api.hasSession()) {
+      returnAfterLogin.current = window.location.hash;
       navigate('entrar');
     }
   }, [page]);
@@ -234,6 +254,18 @@ export function App() {
               >
                 Monitorar Prazos
               </a>
+              <a
+                href="#/organizar-defesas"
+                aria-current={page === 'organizar-defesas' ? 'page' : undefined}
+              >
+                Organizar defesas
+              </a>
+              <a href="#/bancas" aria-current={page === 'bancas' ? 'page' : undefined}>
+                Minhas bancas
+              </a>
+              <a href="#/documentos" aria-current={page === 'documentos' ? 'page' : undefined}>
+                Minhas atas
+              </a>
             </nav>
           )}
           {page === 'cadastro' && (
@@ -250,8 +282,10 @@ export function App() {
               initialEmail={email}
               notice={notice}
               onLogin={() => {
-                window.history.replaceState(null, '', '#/perfil');
-                setPage('perfil');
+                const next = returnAfterLogin.current || '#/perfil';
+                returnAfterLogin.current = '';
+                window.history.replaceState(null, '', next);
+                setPage(currentPage());
                 setNotice('Login realizado com sucesso!');
               }}
               onForgot={setEmail}
@@ -275,6 +309,14 @@ export function App() {
           )}
           {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
           {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
+          {page === 'organizar-defesas' && api.hasSession() && (
+            <DefenseManagement onSessionEnded={sessionEnded} />
+          )}
+          {page === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
+          {page === 'documentos' && api.hasSession() && (
+            <StudentDocuments onSessionEnded={sessionEnded} />
+          )}
+          {page === 'verificar-documento' && <VerifyDocument />}
           {page === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}
