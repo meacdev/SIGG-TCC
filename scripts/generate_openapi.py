@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 
 from openapi_academic import extend
+from openapi_defense_management import extend as extend_defense_management
+from openapi_defenses import extend as extend_defenses
+from openapi_documents import extend as extend_documents
 from openapi_meetings import extend as extend_meetings
 from openapi_monitoring import extend as extend_monitoring
 from openapi_works import extend as extend_works
@@ -454,6 +457,9 @@ operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Opera√ß√
 
 extend(paths, schemas, operation, obj, string, identifier)
 extend_works(paths, schemas, operation, obj, string, identifier)
+extend_defenses(paths, schemas, operation, obj, string, identifier)
+extend_documents(paths, schemas, operation, obj, string, identifier)
+extend_defense_management(paths, schemas, operation, obj, string, identifier)
 extend_meetings(paths, schemas, operation, obj, string, identifier)
 extend_monitoring(paths, schemas, operation, obj, string, identifier)
 

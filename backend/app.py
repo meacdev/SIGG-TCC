@@ -67,6 +67,9 @@ def create_app(test_config=None):
         auth,
         catalogs,
         classes,
+        defense_management,
+        defenses,
+        documents,
         enrollments,
         meetings,
         monitoring,
@@ -83,15 +86,20 @@ def create_app(test_config=None):
         works.bp,
         meetings.bp,
         monitoring.bp,
+        defense_management.bp,
+        defenses.bp,
+        documents.bp,
     ):
         app.register_blueprint(blueprint)
     register_cli(app)
 
     @app.cli.command("enviar-notificacoes-academicas")
     def academic_notifications():
+        from backend.services import document_mail
         from backend.services.academic_mail import deliver
 
         deliver()
+        document_mail.deliver()
 
     @app.before_request
     def start_request():
