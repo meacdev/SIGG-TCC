@@ -263,7 +263,7 @@ export function Works({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">PESQUISA E ORIENTAÇÃO</span>
-        <h2>{own ? 'Meu trabalho' : 'Trabalhos'}</h2>
+        <h1>{own ? 'Meu trabalho' : 'Trabalhos'}</h1>
         <p>
           {own
             ? 'Registre seu TCC e acompanhe os vínculos de orientação.'
@@ -287,7 +287,7 @@ export function Works({ onSessionEnded }: SessionProps) {
       {own === null && <p aria-live="polite">Carregando trabalhos…</p>}
       {own && (
         <form className="academic-box" aria-label="Dados do trabalho" onSubmit={save} noValidate>
-          <h3>Dados do TCC</h3>
+          <h2>Dados do TCC</h2>
           <div className="academic-grid">
             {input('titulo', 'Título do trabalho')}
             {input('subtitulo', 'Subtítulo (opcional)')}
@@ -401,7 +401,7 @@ export function Works({ onSessionEnded }: SessionProps) {
           <div className="academic-list">
             {list.map((w) => (
               <article className="academic-box" key={w.id_trabalho_tcc}>
-                <h3>{w.titulo}</h3>
+                <h2>{w.titulo}</h2>
                 <p>{w.estudante}</p>
                 <button className="secondary" onClick={() => open(w.id_trabalho_tcc)}>
                   Abrir {w.titulo}
@@ -415,10 +415,10 @@ export function Works({ onSessionEnded }: SessionProps) {
       )}
       {work && (
         <div className="academic-box">
-          <h3>Vínculos de orientação</h3>
+          <h2>Vínculos de orientação</h2>
           {!own && (
             <>
-              <h4>{work.titulo}</h4>
+              <h3>{work.titulo}</h3>
               <p>
                 {work.estudante} · {work.codigo_turma || 'Turma não informada'}
               </p>
@@ -427,9 +427,9 @@ export function Works({ onSessionEnded }: SessionProps) {
           )}
           {work.orientacoes.map((o) => (
             <article key={o.id_orientacao}>
-              <h4>
+              <h3>
                 {o.nome} · {o.papel}
-              </h4>
+              </h3>
               <p>
                 Situação: {o.situacao}
                 {o.data_resposta ? ` · ${new Date(o.data_resposta).toLocaleString('pt-BR')}` : ''}

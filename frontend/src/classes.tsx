@@ -233,7 +233,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">ORGANIZAÇÃO DO SEMESTRE</span>
-        <h2>Turmas</h2>
+        <h1>Turmas</h1>
         <p>Cadastre as ofertas de TCC e acompanhe as turmas sob sua responsabilidade.</p>
       </div>
       {message && (
@@ -247,7 +247,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
       )}
       {success && <Notice success message={success} />}
       <form className="academic-box" onSubmit={save} noValidate aria-label="Cadastro de turma">
-        <h3>{selected ? 'Editar turma' : 'Nova turma'}</h3>
+        <h2>{selected ? 'Editar turma' : 'Nova turma'}</h2>
         <div className="academic-grid">
           <AcademicField
             name="periodo_letivo"
@@ -349,7 +349,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
       </form>
       {selected && (
         <div className="academic-box">
-          <h3>Acesso e situação da turma</h3>
+          <h2>Acesso e situação da turma</h2>
           <p>
             {selected.ativa_turma ? 'Turma ativa' : 'Turma inativa'} ·{' '}
             {selected.autoinscricao_ativa_turma
@@ -425,9 +425,9 @@ export function Classes({ onSessionEnded }: SessionProps) {
         <div className="academic-list">
           {items.map((item) => (
             <article className="academic-box" key={item.id_turma}>
-              <h3>
+              <h2>
                 {item.codigo_turma} · {item.periodo_letivo}
-              </h3>
+              </h2>
               <p className="academic-meta">
                 TCC {item.nivel_turma} · {item.ativa_turma ? 'Ativa' : 'Inativa'} ·{' '}
                 {courses.find((c) => c.id_curso === item.id_curso)?.nome_curso ||

@@ -92,6 +92,8 @@ test('UC05: ata, histórico, notificação e alerta de assiduidade', async ({ pa
     true,
   );
   await page.screenshot({ path: 'test-results/uc05-mobile.png', fullPage: true });
+  // No celular a navegação fica recolhida no botão de menu; volta ao desktop para seguir o fluxo.
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('button', { name: 'Sair da conta' }).click();
   await login(page, 'professora@example.com');
   await expect(
