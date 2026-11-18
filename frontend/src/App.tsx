@@ -11,6 +11,7 @@ import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
 import { DefenseManagement } from './defense-management';
 import { Defenses } from './defenses';
+import { StudentDocuments, VerifyDocument } from './documents';
 import './academic.css';
 
 type Page =
@@ -24,7 +25,9 @@ type Page =
   | 'reunioes'
   | 'monitoramento'
   | 'organizar-defesas'
-  | 'bancas';
+  | 'bancas'
+  | 'documentos'
+  | 'verificar-documento';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '').split('?')[0];
   return [
@@ -38,6 +41,8 @@ const currentPage = (): Page => {
     'monitoramento',
     'organizar-defesas',
     'bancas',
+    'documentos',
+    'verificar-documento',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -58,6 +63,8 @@ const TITLES: Record<Page, string> = {
   monitoramento: 'Monitorar Prazos',
   'organizar-defesas': 'Organizar defesas',
   bancas: 'Minhas bancas',
+  documentos: 'Minhas atas',
+  'verificar-documento': 'Verificar documento',
 };
 
 type NavLink = { page: Page; label: string; icon: IconName };
@@ -70,11 +77,13 @@ const ACADEMIC_LINKS: NavLink[] = [
   { page: 'monitoramento', label: 'Monitorar Prazos', icon: 'clock' },
   { page: 'organizar-defesas', label: 'Organizar defesas', icon: 'cal' },
   { page: 'bancas', label: 'Minhas bancas', icon: 'users' },
+  { page: 'documentos', label: 'Minhas atas', icon: 'file' },
 ];
 const ACCESS_LINKS: NavLink[] = [
   { page: 'entrar', label: 'Entrar', icon: 'key' },
   { page: 'cadastro', label: 'Criar conta', icon: 'plus' },
   { page: 'recuperar-senha', label: 'Recuperar senha', icon: 'shield' },
+  { page: 'verificar-documento', label: 'Verificar documento', icon: 'file' },
 ];
 
 function errorDetails(error: unknown): { message: string; fields: FieldErrors } {
@@ -302,6 +311,10 @@ export function App() {
             <DefenseManagement onSessionEnded={sessionEnded} />
           )}
           {page === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
+          {page === 'documentos' && api.hasSession() && (
+            <StudentDocuments onSessionEnded={sessionEnded} />
+          )}
+          {page === 'verificar-documento' && <VerifyDocument />}
           {page === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}

@@ -1,6 +1,4 @@
-from io import BytesIO
-
-from flask import Blueprint, g, jsonify, request, send_file
+from flask import Blueprint, g, jsonify, request
 from sqlalchemy import select
 
 from backend import validation as v
@@ -10,6 +8,7 @@ from backend.defense_models import Banca, Etapa, Manuscrito, Matricula, Rubrica
 from backend.document_models import ArquivoPDF
 from backend.errors import APIError
 from backend.models import Professor, Usuario
+from backend.routes.documents import pdf_response
 from backend.security import authenticated
 from backend.services import classes, pdf_storage
 from backend.services import defense_management as management
@@ -196,10 +195,4 @@ def manuscript(identifier):
     )
     if item.etapa.trabalho.id_estudante != user and not eligible:
         classes.get_class(item.etapa.matricula.id_turma)
-    file = db.session.get(ArquivoPDF, item.id_arquivo_pdf_manuscrito)
-    return send_file(
-        BytesIO(pdf_storage.read(file)),
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=file.nome_original_arquivo_pdf,
-    )
+    return pdf_response(db.session.get(ArquivoPDF, item.id_arquivo_pdf_manuscrito))
