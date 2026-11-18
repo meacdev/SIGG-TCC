@@ -22,12 +22,14 @@ export interface Defense {
   situacao: string;
   resultado: string | null;
   pode_avaliar: boolean;
+  avaliacao_iniciada: boolean;
   avaliador: string;
   criterios: Criterion[];
   avaliacao: {
     id_avaliacao: number;
     data_envio: string;
     nota_individual: string;
+    parecer: string | null;
     notas: { id_criterio: number; nota: string }[];
   } | null;
   avaliacoes_enviadas: number;
@@ -74,8 +76,10 @@ export function Defenses({ onSessionEnded }: { onSessionEnded: (message: string)
       const result = await api.request<Defense>(`/bancas/${id}`, {}, true);
       setSelected(result.body.data);
       setEtag(result.etag || '');
+      return true;
     } catch (error) {
       handle(error);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -236,27 +240,34 @@ function EvaluationForm({
   defense: Defense;
   etag: string;
   onSaved: (defense: Defense, etag: string) => void;
-  onReload: () => void;
+  onReload: () => Promise<boolean>;
   onError: (error: unknown) => void;
 }) {
   const [notes, setNotes] = useState<Record<number, string>>({});
+  const [opinion, setOpinion] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const locked = !defense.pode_avaliar || !!defense.avaliacao || busy;
+  const locked =
+    !defense.pode_avaliar || !defense.avaliacao_iniciada || !!defense.avaliacao || busy;
   const actual = Object.fromEntries(
     defense.avaliacao?.notas.map((item) => [item.id_criterio, item.nota]) || [],
   );
   const numeric = (c: Criterion) => Number((notes[c.id_criterio] || '').replace(',', '.'));
-  const complete = defense.criterios.every(
-    (c) =>
-      notes[c.id_criterio]?.trim() &&
-      Number.isFinite(numeric(c)) &&
-      numeric(c) >= 0 &&
-      numeric(c) <= Number(c.pontuacao_maxima),
-  );
+  function gradeError(c: Criterion) {
+    const raw = notes[c.id_criterio]?.trim();
+    if (!raw) return 'Informe a nota deste critério.';
+    if (!/^-?\d+(?:[.,]\d{1,2})?$/.test(raw)) return 'Use um número com até duas casas decimais.';
+    if (numeric(c) < 0) return 'A nota deve ser igual ou maior que zero.';
+    if (numeric(c) > Number(c.pontuacao_maxima)) {
+      return `A pontuação máxima é ${gradeText(c.pontuacao_maxima)}.`;
+    }
+    return '';
+  }
+  const complete = defense.criterios.every((c) => !gradeError(c));
   const preview = complete
     ? (defense.criterios.reduce(
         (sum, c) => sum + (numeric(c) / Number(c.pontuacao_maxima)) * Number(c.peso),
@@ -265,11 +276,43 @@ function EvaluationForm({
         10) /
       defense.criterios.reduce((sum, c) => sum + Number(c.peso), 0)
     : null;
+  async function start() {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await api.request<Defense>(
+        `/bancas/${defense.id_banca}/avaliacao/inicio`,
+        { method: 'POST', headers: { 'If-Match': etag } },
+        true,
+      );
+      onSaved(result.body.data, result.etag || '');
+    } catch (error) {
+      handleWriteError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleWriteError(error: unknown) {
+    setMessage(failure(error));
+    if (!(error instanceof ApiError)) return;
+    setFieldErrors(error.fields);
+    if ([0, 412, 428, 503].includes(error.status) || error.code === 'AVALIACAO_ENVIADA') {
+      setConflict(true);
+    }
+    if (error.status === 401) onError(error);
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (locked) return;
     if (!complete) {
+      const invalid = defense.criterios.filter((criterion) => gradeError(criterion));
+      setFieldErrors(
+        Object.fromEntries(invalid.map((c) => [`notas.${c.id_criterio}`, gradeError(c)])),
+      );
       setMessage('Preencha as notas de todos os critérios obrigatórios, respeitando os limites.');
+      document.getElementById(`nota-${invalid[0].id_criterio}`)?.focus();
       return;
     }
     if (!confirm) {
@@ -278,6 +321,7 @@ function EvaluationForm({
     }
     setBusy(true);
     setMessage('');
+    setFieldErrors({});
     try {
       const result = await api.request<Defense>(
         `/bancas/${defense.id_banca}/avaliacao`,
@@ -285,6 +329,7 @@ function EvaluationForm({
           method: 'POST',
           headers: { 'If-Match': etag },
           body: JSON.stringify({
+            parecer: opinion,
             notas: defense.criterios.map((c) => ({
               id_criterio: c.id_criterio,
               nota: (notes[c.id_criterio] || '').replace(',', '.'),
@@ -297,9 +342,7 @@ function EvaluationForm({
       setSuccess(true);
       setNotes({});
     } catch (error) {
-      setMessage(failure(error));
-      if (error instanceof ApiError && [412, 428].includes(error.status)) setConflict(true);
-      if (error instanceof ApiError && error.status === 401) onError(error);
+      handleWriteError(error);
     } finally {
       setBusy(false);
     }
@@ -313,10 +356,17 @@ function EvaluationForm({
             <button
               type="button"
               className="text-button"
-              onClick={() => {
-                setConflict(false);
-                setMessage('');
-                onReload();
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  if (await onReload()) {
+                    setConflict(false);
+                    setMessage('');
+                  }
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               Atualizar dados da banca
@@ -326,6 +376,16 @@ function EvaluationForm({
       )}
       {!defense.pode_avaliar && !defense.avaliacao && (
         <Notice message="O formulário de avaliação está disponível somente no dia da defesa, no horário de Manaus, enquanto a banca estiver aberta." />
+      )}
+      {defense.pode_avaliar && !defense.avaliacao_iniciada && (
+        <button
+          className="primary"
+          type="button"
+          disabled={busy || !etag || conflict}
+          onClick={() => void start()}
+        >
+          {busy ? 'Abrindo ficha…' : 'Iniciar avaliação'}
+        </button>
       )}
       <form onSubmit={submit} aria-label="Ficha de avaliação" noValidate aria-busy={busy}>
         <div className="section-heading">
@@ -348,7 +408,8 @@ function EvaluationForm({
               </div>
               <input
                 id={`nota-${c.id_criterio}`}
-                aria-describedby={`descricao-${c.id_criterio}`}
+                aria-describedby={`descricao-${c.id_criterio}${fieldErrors[`notas.${c.id_criterio}`] ? ` erro-nota-${c.id_criterio}` : ''}`}
+                aria-invalid={Boolean(fieldErrors[`notas.${c.id_criterio}`])}
                 aria-label={`Nota de ${c.nome}`}
                 inputMode="decimal"
                 required
@@ -357,12 +418,32 @@ function EvaluationForm({
                 placeholder="0,00"
                 onChange={(event) => {
                   setNotes({ ...notes, [c.id_criterio]: event.target.value });
+                  setFieldErrors((previous) => ({ ...previous, [`notas.${c.id_criterio}`]: '' }));
                   setConfirm(false);
                 }}
               />
+              {fieldErrors[`notas.${c.id_criterio}`] && (
+                <small id={`erro-nota-${c.id_criterio}`}>
+                  {fieldErrors[`notas.${c.id_criterio}`]}
+                </small>
+              )}
             </div>
           ))}
         </div>
+        <label className="field" htmlFor="evaluation-opinion">
+          Parecer do avaliador (opcional)
+          <textarea
+            id="evaluation-opinion"
+            rows={4}
+            maxLength={4000}
+            value={defense.avaliacao ? defense.avaliacao.parecer || '' : opinion}
+            disabled={locked}
+            onChange={(event) => {
+              setOpinion(event.target.value);
+              setConfirm(false);
+            }}
+          />
+        </label>
         <div className="grade-result">
           <span>
             {defense.avaliacao ? 'Nota individual registrada' : 'Prévia da nota individual'}

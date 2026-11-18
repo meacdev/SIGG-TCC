@@ -37,7 +37,21 @@ def emit(defense_id):
     banca = defenses.get_defense(defense_id, lock=True)
     data = v.body({"resultado", "prazo", "correcoes", "justificativa"})
     result = documents.emit(banca, data)
-    return resource_response(banca, result, 201, "UC_10_M01", "Ata de Defesa gerada com sucesso!")
+    if not declarations_sent(result):
+        return resource_response(
+            banca,
+            result,
+            201,
+            "UC_10_M07",
+            "Ata gerada. Há declarações pendentes de envio. Você pode tentar o envio novamente.",
+        )
+    return resource_response(
+        banca, result, 201, "UC_10_M01", "Ata gerada e declarações enviadas com sucesso!"
+    )
+
+
+def declarations_sent(result):
+    return bool(result["emails"]) and all(n["situacao"] == "enviada" for n in result["emails"])
 
 
 @bp.get("/bancas/<int:defense_id>/ata")
@@ -112,7 +126,7 @@ def retry_mail(defense_id):
     banca = defenses.get_defense(defense_id)
     document_mail.deliver(banca.id_banca)
     result = documents.info(banca)
-    all_sent = bool(result["emails"]) and all(n["situacao"] == "enviada" for n in result["emails"])
+    all_sent = declarations_sent(result)
     return resource_response(
         banca,
         result,

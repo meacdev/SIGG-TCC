@@ -147,6 +147,29 @@ def render(snapshot, code, examiner=None):
                     small,
                 )
             )
+        story.append(para("Notas por critério", heading))
+        for member in snapshot["membros"]:
+            story.append(para(member["nome"]))
+            rows = [[para("Critério", small), para("Nota", small)]]
+            for criterion in snapshot["criterios"]:
+                note = member["notas_por_criterio"][str(criterion["id_criterio"])]
+                rows.append([para(criterion["nome"], small), para(note.replace(".", ","), small)])
+            detail = Table(
+                rows,
+                colWidths=[document.width * 0.78, document.width * 0.22],
+                repeatRows=1,
+                hAlign="LEFT",
+            )
+            detail.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf1e9")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#c9d1c8")),
+                    ]
+                )
+            )
+            story.extend([detail, Spacer(1, 4 * mm)])
         story.extend(
             [
                 para("Assinaturas dos membros da banca", heading),

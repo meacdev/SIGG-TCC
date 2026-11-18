@@ -162,9 +162,11 @@ def emit(banca, data):
             "Não foi possível calcular a média final. Verifique os critérios de avaliação.",
         ) from None
     if consolidated["media_final"] is None:
-        raise APIError(
-            409, "UC_10_M02", "Não é possível gerar a ata. Existem avaliações pendentes."
+        missing = ", ".join(
+            examiner["nome"] for examiner in consolidated["avaliadores"] if not examiner["enviada"]
         )
+        hint = f" Avaliações pendentes: {missing}." if missing else ""
+        raise APIError(409, "UC_10_M02", f"A ata exige todas as avaliações definitivas.{hint}")
     if banca.situacao_banca == "cancelada":
         raise APIError(
             409, "BANCA_CANCELADA", "Não é possível gerar documentos de uma banca cancelada."
@@ -226,6 +228,10 @@ def emit(banca, data):
                 "titulacao": m.avaliador.titulacao_avaliador,
                 "email": m.avaliador.usuario.email_usuario,
                 "nota": defenses.decimal_text(defenses.weighted(m.avaliacao.notas, rubric)),
+                "notas_por_criterio": {
+                    str(n.id_criterio_rubrica): defenses.decimal_text(n.valor_nota_criterio)
+                    for n in m.avaliacao.notas
+                },
             }
             for m in defenses.accepted_members(banca)
         ],
