@@ -28,6 +28,9 @@ def test_defense_from_rubric_to_issued_documents(
     class_id = created_class.json["data"]["id_turma"]
     prefix = f"/api/v1/turmas/{class_id}"
     auth = teacher["headers"]
+    waiting = client.get(f"{prefix}/bancas", headers=auth)
+    assert waiting.status_code == 200, waiting.json
+    assert waiting.json["data"]["trabalhos"] == []
     current = client.get(f"/api/v1/orientacoes/{work['id_trabalho_tcc']}", headers=auth)
     accepted = client.post(
         f"/api/v1/orientacoes/{work['orientacoes'][0]['id_orientacao']}/resposta",
@@ -45,6 +48,19 @@ def test_defense_from_rubric_to_issued_documents(
         data={"arquivo": (BytesIO(pdf.getvalue()), "manuscrito.pdf")},
     )
     assert uploaded.status_code == 201, uploaded.json
+    eligible = client.get(f"{prefix}/bancas", headers=auth)
+    assert eligible.status_code == 200, eligible.json
+    assert eligible.json["data"]["trabalhos"] == [
+        {
+            "id": work["id_etapa"],
+            "titulo": work["titulo"],
+            "orientador": teacher["id_usuario"],
+            "nome_orientador": teacher["nome_usuario"],
+            "estudante": student["nome_usuario"],
+            "nivel": 1,
+            "manuscrito": True,
+        }
+    ]
     preview = f"{prefix}/etapas/{work['id_etapa']}/manuscrito"
     assert client.get(preview, headers=auth).data.startswith(b"%PDF-")
     assert client.get(preview, headers=student["headers"]).status_code == 403
