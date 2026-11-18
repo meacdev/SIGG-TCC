@@ -97,8 +97,8 @@ def schedules(class_id):
     turma = classes.get_class(class_id)
     stages = db.session.execute(
         select(Etapa, Usuario)
-        .join(Matricula)
-        .join(TrabalhoTcc)
+        .join_from(Etapa, Matricula, Matricula.id_matricula_turma == Etapa.id_matricula_turma)
+        .join(TrabalhoTcc, TrabalhoTcc.id_trabalho_tcc == Etapa.id_trabalho_tcc)
         .join(Orientacao, Orientacao.id_trabalho_tcc == TrabalhoTcc.id_trabalho_tcc)
         .join(Usuario, Usuario.id_usuario == Orientacao.id_professor)
         .where(
