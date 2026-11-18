@@ -24,12 +24,37 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "situacao": string(enum=["rascunho", "ativa", "inativa"]),
         "criterios": array(criterion),
     }
-    schemas["RubricaEntrada"] = obj(rubric, tuple(rubric))
-    schemas["RubricaGestao"] = obj(rubric | {"id": identifier, "bloqueada": {"type": "boolean"}})
+    boolean = {"type": "boolean"}
+    schemas["RubricaEntrada"] = obj(rubric | {"substituir": identifier}, tuple(rubric))
+    schemas["RubricaGestao"] = obj(
+        rubric | {"id": identifier, "versao": identifier, "bloqueada": boolean}
+    )
+    schemas["RubricaAnterior"] = obj(
+        {"id": identifier, "nome": string(), "versao": identifier, "periodo": string()}
+    )
+    schemas["ImportacaoRubrica"] = obj({"origem": identifier}, ("origem",))
     prefix = "/api/v1/turmas/{class_id}"
     scoped = [param("class_id")]
     item = [*scoped, param("identifier")]
     tag = "Organização de defesas"
+    operation(
+        prefix + "/rubricas/anteriores",
+        "get",
+        "Consultar rubricas anteriores do curso",
+        tag,
+        array(ref("RubricaAnterior")),
+        params=scoped,
+    )
+    operation(
+        prefix + "/rubricas/importacoes",
+        "post",
+        "Importar rubrica como rascunho",
+        tag,
+        "RubricaGestao",
+        "ImportacaoRubrica",
+        201,
+        params=scoped,
+    )
     operation(
         prefix + "/rubricas",
         "get",

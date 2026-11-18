@@ -12,9 +12,11 @@ type Rubric = {
   id: number;
   nome: string;
   situacao: string;
+  versao: number;
   bloqueada: boolean;
   criterios: Criterion[];
 };
+type PriorRubric = Pick<Rubric, 'id' | 'nome' | 'versao'> & { periodo: string };
 const blankCriterion = (): Criterion => ({ nome: '', descricao: '', peso: '' });
 export function DefenseManagement({
   onSessionEnded,
@@ -23,13 +25,14 @@ export function DefenseManagement({
 }) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classId, setClassId] = useState('');
-  const [sourceClass, setSourceClass] = useState('');
+  const [sourceId, setSourceId] = useState('');
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [source, setSource] = useState<Rubric[]>([]);
+  const [source, setSource] = useState<PriorRubric[]>([]);
   const [rubricId, setRubricId] = useState<number>();
   const [name, setName] = useState('');
   const [criteria, setCriteria] = useState([blankCriterion()]);
   const [status, setStatus] = useState('rascunho');
+  const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -38,6 +41,8 @@ export function DefenseManagement({
   const sum =
     criteria.reduce((total, item) => total + Math.round(Number(item.peso || 0) * 1000), 0) / 1000;
   const currentRubric = rubrics.find((rubric) => rubric.id === rubricId);
+  const activeRubric = rubrics.find((rubric) => rubric.situacao === 'ativa');
+  const replacing = status === 'ativa' && activeRubric && activeRubric.id !== rubricId;
 
   function handleError(cause: unknown) {
     if (cause instanceof ApiError && cause.status === 401) onSessionEnded(cause.message);
@@ -90,10 +95,10 @@ export function DefenseManagement({
   }, [classId]);
 
   useEffect(() => {
-    if (!sourceClass) return;
+    if (!classId) return;
     const controller = new AbortController();
     api
-      .request<Rubric[]>(`/turmas/${sourceClass}/rubricas`, { signal: controller.signal }, true)
+      .request<PriorRubric[]>(`${prefix}/rubricas/anteriores`, { signal: controller.signal }, true)
       .then(({ body }) => {
         if (!controller.signal.aborted) setSource(body.data);
       })
@@ -101,13 +106,34 @@ export function DefenseManagement({
         if (!controller.signal.aborted) handleError(cause);
       });
     return () => controller.abort();
-  }, [sourceClass]);
+  }, [classId]);
+
+  async function importRubric() {
+    setBusy(true);
+    setMessage('');
+    setError('');
+    try {
+      await api.request(
+        `${prefix}/rubricas/importacoes`,
+        { method: 'POST', body: JSON.stringify({ origem: Number(sourceId) }) },
+        true,
+      );
+      setSourceId('');
+      setMessage('Rubrica importada como rascunho. Você pode editá-la na lista da turma.');
+      await load();
+    } catch (cause) {
+      handleError(cause);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function resetRubric() {
     setRubricId(undefined);
     setName('');
     setCriteria([blankCriterion()]);
     setStatus('rascunho');
+    setReplace(false);
   }
 
   function editRubric(item: Rubric, copy = false) {
@@ -117,7 +143,8 @@ export function DefenseManagement({
       item.criterios.map((criterion) => ({ ...criterion, peso: String(Number(criterion.peso)) })),
     );
     setStatus(copy ? 'rascunho' : item.situacao);
-    setMessage(copy ? 'Critérios copiados para um novo rascunho.' : '');
+    setReplace(false);
+    setMessage(copy ? 'Critérios copiados para o formulário. Salve para criar o rascunho.' : '');
     setError('');
   }
 
@@ -135,7 +162,12 @@ export function DefenseManagement({
         `${prefix}/rubricas${rubricId ? `/${rubricId}` : ''}`,
         {
           method: rubricId ? 'PATCH' : 'POST',
-          body: JSON.stringify({ nome: name, situacao: status, criterios: criteria }),
+          body: JSON.stringify({
+            nome: name,
+            situacao: status,
+            criterios: criteria,
+            substituir: replacing && replace ? activeRubric.id : undefined,
+          }),
         },
         true,
       );
@@ -163,6 +195,8 @@ export function DefenseManagement({
             onChange={(e) => {
               setClassId(e.target.value);
               setRubrics([]);
+              setSource([]);
+              setSourceId('');
               resetRubric();
               setMessage('');
               setError('');
@@ -186,7 +220,7 @@ export function DefenseManagement({
             <ul className="defense-records">
               {rubrics.map((rubric) => (
                 <li key={rubric.id}>
-                  <strong>{rubric.nome}</strong> · {rubric.situacao}
+                  <strong>{rubric.nome}</strong> · v{rubric.versao} · {rubric.situacao}
                   {rubric.bloqueada && ' · bloqueada após avaliação'}
                   <button type="button" disabled={busy} onClick={() => editRubric(rubric)}>
                     {rubric.bloqueada ? 'Consultar' : 'Editar'}
@@ -198,36 +232,26 @@ export function DefenseManagement({
               ))}
             </ul>
             <label className="field" htmlFor="rubric-source">
-              Importar critérios de outra turma
+              Rubrica de um período anterior deste curso
               <select
                 id="rubric-source"
-                value={sourceClass}
-                disabled={busy}
-                onChange={(e) => {
-                  setSource([]);
-                  setSourceClass(e.target.value);
-                }}
+                value={sourceId}
+                disabled={busy || !source.length}
+                onChange={(e) => setSourceId(e.target.value)}
               >
-                <option value="">Selecione a turma de origem</option>
-                {classes
-                  .filter((c) => String(c.id_turma) !== classId)
-                  .map((c) => (
-                    <option key={c.id_turma} value={c.id_turma}>
-                      {c.codigo_turma} · {c.periodo_letivo}
-                    </option>
-                  ))}
+                <option value="">
+                  {source.length ? 'Selecione a rubrica de origem' : 'Nenhuma rubrica anterior'}
+                </option>
+                {source.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.periodo} · {item.nome} · v{item.versao}
+                  </option>
+                ))}
               </select>
             </label>
-            {source.map((rubric) => (
-              <button
-                key={rubric.id}
-                type="button"
-                disabled={busy}
-                onClick={() => editRubric(rubric, true)}
-              >
-                Copiar {rubric.nome}
-              </button>
-            ))}
+            <button type="button" disabled={busy || !sourceId} onClick={() => void importRubric()}>
+              Importar como rascunho
+            </button>
             <form onSubmit={(e) => void saveRubric(e)}>
               <h3>{rubricId ? 'Rubrica selecionada' : 'Nova rubrica'}</h3>
               <fieldset disabled={busy || currentRubric?.bloqueada}>
@@ -299,12 +323,29 @@ export function DefenseManagement({
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                   >
-                    <option value="rascunho">Rascunho</option>
+                    <option value="rascunho" disabled={currentRubric?.situacao === 'ativa'}>
+                      Rascunho
+                    </option>
                     <option value="ativa">Ativa</option>
-                    <option value="inativa">Inativa</option>
+                    <option value="inativa" disabled={currentRubric?.situacao === 'ativa'}>
+                      Inativa
+                    </option>
                   </select>
                 </label>
-                <button className="primary" type="submit">
+                {currentRubric?.situacao === 'ativa' && (
+                  <p>Para inativar esta rubrica, ative uma substituta.</p>
+                )}
+                {replacing && (
+                  <label className="field">
+                    <input
+                      type="checkbox"
+                      checked={replace}
+                      onChange={(e) => setReplace(e.target.checked)}
+                    />
+                    Substituir a rubrica ativa {activeRubric.nome}
+                  </label>
+                )}
+                <button className="primary" type="submit" disabled={Boolean(replacing && !replace)}>
                   Salvar rubrica
                 </button>
               </fieldset>
