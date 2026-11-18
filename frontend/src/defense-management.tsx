@@ -1,16 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Notice } from './components';
-import './defenses.css';
-
-const dateTime = (value: string) =>
-  new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'America/Manaus',
-  }).format(new Date(value));
-const failure = (error: unknown) =>
-  error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
+import { dateTime, failure } from './defenses';
 
 type ClassOption = { id_turma: number; codigo_turma: string; periodo_letivo: string };
 type Criterion = { nome: string; descricao: string; peso: string };
