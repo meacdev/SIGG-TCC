@@ -22,6 +22,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
             "id_avaliacao": identifier,
             "data_envio": string(format="date-time"),
             "nota_individual": string(),
+            "parecer": {"type": ["string", "null"], "maxLength": 4000},
             "notas": {"type": "array", "items": {"$ref": "#/components/schemas/NotaDefesa"}},
         }
     )
@@ -37,6 +38,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
             "situacao": string(),
             "resultado": {"type": ["string", "null"]},
             "pode_avaliar": {"type": "boolean"},
+            "avaliacao_iniciada": {"type": "boolean"},
             "avaliador": string(),
             "criterios": {
                 "type": "array",
@@ -62,11 +64,12 @@ def extend(paths, schemas, operation, obj, string, identifier):
     )
     schemas["EnviarAvaliacao"] = obj(
         {
+            "parecer": string(maxLength=4000),
             "notas": {
                 "type": "array",
                 "minItems": 1,
                 "items": {"$ref": "#/components/schemas/NotaDefesa"},
-            }
+            },
         },
         ("notas",),
         additionalProperties=False,
@@ -112,7 +115,17 @@ def extend(paths, schemas, operation, obj, string, identifier):
             "Média final sem arredondamento intermediário; exibição com duas casas e ROUND_HALF_UP."
         ),
     )
-    for path in ("/api/v1/bancas/{defense_id}", "/api/v1/bancas/{defense_id}/avaliacao"):
+    submit_path = "/api/v1/bancas/{defense_id}/avaliacao"
+    operation(
+        submit_path + "/inicio",
+        "post",
+        "Iniciar ficha de avaliação",
+        "Bancas",
+        "Defesa",
+        params=[identifier_param, version_param],
+        description="Cria o rascunho e bloqueia a edição dos critérios da rubrica.",
+    )
+    for path in ("/api/v1/bancas/{defense_id}", submit_path, submit_path + "/inicio"):
         for operation_ in paths[path].values():
             for status in ("200", "201"):
                 if status in operation_["responses"]:

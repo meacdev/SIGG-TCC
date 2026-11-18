@@ -25,12 +25,16 @@ def enqueue(banca, recipients, changed):
     location = banca.url_defesa_banca_defesa or banca.local_defesa_banca
     base = current_app.config["FRONTEND_URL"].rstrip("/")
     portal = (
-        f"{base}/#/bancas?manuscrito={banca.id_banca}" if base else "SIGG-TCC, em Minhas bancas"
+        f"{base}/#/manuscrito-banca?banca={banca.id_banca}"
+        if base
+        else "SIGG-TCC, no portal de defesas"
     )
     body = (
         f"Defesa em {local:%d/%m/%Y às %H:%M %Z}. Local ou link: {location}. "
         f"Consulte o manuscrito em {portal}."
     )
+    attachment = calendar(banca)
+    immediate = []
     for user in recipients:
         for kind, date in [
             (KINDS[int(changed)], now),
@@ -42,11 +46,17 @@ def enqueue(banca, recipients, changed):
                 user,
                 kind,
                 "Agendamento de defesa de TCC",
-                body,
+                body
+                if user.hash_senha_usuario
+                else (f"{body} No primeiro acesso, use a opção Recuperar senha com este e-mail."),
                 f"{kind}:{banca.id_banca}:{banca.versao_banca}:{user.id_usuario}",
                 id_banca=banca.id_banca,
+                anexo_ics_notificacao=attachment,
             )
             item.data_agendamento_notificacao = date
+            if kind != KINDS[2]:
+                immediate.append(item)
+    return immediate
 
 
 def calendar(banca):

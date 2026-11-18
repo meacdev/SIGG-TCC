@@ -11,6 +11,7 @@ class NotificacaoAcademica(db.Model):
     tipo_notificacao = db.Column(db.String(50), nullable=False)
     assunto_notificacao = db.Column(db.String(255), nullable=False)
     corpo_notificacao = db.Column(db.Text, nullable=False)
+    anexo_ics_notificacao = db.Column(db.Text)
     id_matricula_turma = db.Column(ID, db.ForeignKey("matricula_turma.id_matricula_turma"))
     # These nullable references have their foreign keys in the supplied PostgreSQL schema.
     id_orientacao = db.Column(ID)
