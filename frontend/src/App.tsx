@@ -53,7 +53,7 @@ const TITLES: Record<Page, string> = {
   trabalhos: 'Trabalhos',
   reunioes: 'Reuniões',
   monitoramento: 'Monitorar Prazos',
-  'organizar-defesas': 'Rubricas de avaliação',
+  'organizar-defesas': 'Organizar defesas',
 };
 
 type NavLink = { page: Page; label: string; icon: IconName };
@@ -64,7 +64,7 @@ const ACADEMIC_LINKS: NavLink[] = [
   { page: 'trabalhos', label: 'Trabalhos', icon: 'book' },
   { page: 'reunioes', label: 'Reuniões', icon: 'chat' },
   { page: 'monitoramento', label: 'Monitorar Prazos', icon: 'clock' },
-  { page: 'organizar-defesas', label: 'Rubricas de avaliação', icon: 'cal' },
+  { page: 'organizar-defesas', label: 'Organizar defesas', icon: 'cal' },
 ];
 const ACCESS_LINKS: NavLink[] = [
   { page: 'entrar', label: 'Entrar', icon: 'key' },
@@ -88,6 +88,7 @@ function errorDetails(error: unknown): { message: string; fields: FieldErrors } 
 
 export function App() {
   const [page, setPage] = useState<Page>(currentPage);
+  const returnAfterLogin = useRef('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
   const protectedPage = ACADEMIC_LINKS.some((link) => link.page === page);
@@ -106,6 +107,7 @@ export function App() {
     document.title = `${TITLES[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
     if (protectedPage && !api.hasSession()) {
+      returnAfterLogin.current = window.location.hash;
       navigate('entrar');
     }
   }, [page]);
@@ -264,8 +266,10 @@ export function App() {
               initialEmail={email}
               notice={notice}
               onLogin={() => {
-                window.history.replaceState(null, '', '#/perfil');
-                setPage('perfil');
+                const next = returnAfterLogin.current || '#/perfil';
+                returnAfterLogin.current = '';
+                window.history.replaceState(null, '', next);
+                setPage(currentPage());
                 setNotice('Login realizado com sucesso!');
               }}
               onForgot={setEmail}

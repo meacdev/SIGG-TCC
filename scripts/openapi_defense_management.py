@@ -26,6 +26,29 @@ def extend(paths, schemas, operation, obj, string, identifier):
     }
     schemas["RubricaEntrada"] = obj(rubric, tuple(rubric))
     schemas["RubricaGestao"] = obj(rubric | {"id": identifier, "bloqueada": {"type": "boolean"}})
+    booking = {
+        "etapa": identifier,
+        "rubrica": identifier,
+        "inicio": string(format="date-time"),
+        "fim": string(format="date-time"),
+        "local": string(),
+        "url": string(),
+        "modalidade": string(enum=["presencial", "remota", "hibrida"]),
+        "titulares": array(identifier),
+        "suplentes": array(identifier),
+    }
+    schemas["BancaEntrada"] = obj(
+        booking, tuple(key for key in booking if key not in {"local", "url"})
+    )
+    schemas["Agendamento"] = obj(
+        {
+            **{k: v for k, v in booking.items() if k not in {"titulares", "suplentes", "url"}},
+            "id": identifier,
+            "url": {"type": ["string", "null"]},
+            "situacao": string(),
+            "membros": array(obj({"id": identifier, "papel": string(), "nome": string()})),
+        }
+    )
     prefix = "/api/v1/turmas/{class_id}"
     scoped = [param("class_id")]
     item = [*scoped, param("identifier")]
@@ -57,3 +80,103 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "RubricaEntrada",
         params=item,
     )
+    operation(
+        prefix + "/bancas",
+        "get",
+        "Consultar agenda da turma",
+        tag,
+        obj(
+            {
+                "trabalhos": array(
+                    obj(
+                        {
+                            "id": identifier,
+                            "titulo": string(),
+                            "orientador": {"type": ["integer", "null"]},
+                            "manuscrito": {"type": "boolean"},
+                        }
+                    )
+                ),
+                "bancas": array(ref("Agendamento")),
+            }
+        ),
+        params=scoped,
+    )
+    operation(
+        prefix + "/bancas",
+        "post",
+        "Agendar banca",
+        tag,
+        "Agendamento",
+        "BancaEntrada",
+        201,
+        params=scoped,
+    )
+    operation(
+        prefix + "/bancas/{identifier}",
+        "patch",
+        "Reagendar banca",
+        tag,
+        "Agendamento",
+        "BancaEntrada",
+        params=item,
+    )
+    operation(
+        prefix + "/avaliadores",
+        "get",
+        "Buscar avaliadores",
+        tag,
+        array(
+            obj(
+                {
+                    "id": identifier,
+                    "nome": string(),
+                    "tipo": string(),
+                    "titulacao": string(),
+                    "instituicao": {"type": ["string", "null"]},
+                }
+            )
+        ),
+        params=[*scoped, {"name": "q", "in": "query", "schema": string()}],
+    )
+    operation(
+        prefix + "/bancas/disponibilidade",
+        "post",
+        "Consultar disponibilidade da banca",
+        tag,
+        obj({"disponivel": {"type": "boolean"}}),
+        obj(
+            {
+                "etapa": identifier,
+                "banca": identifier,
+                "inicio": string(format="date-time"),
+                "fim": string(format="date-time"),
+                "membros": array(identifier),
+            },
+            ("etapa", "inicio", "fim", "membros"),
+        ),
+        params=scoped,
+    )
+    upload = "/api/v1/etapas/{stage_id}/manuscritos"
+    operation(
+        upload,
+        "post",
+        "Enviar manuscrito de TCC",
+        tag,
+        obj({"versao": identifier}),
+        status=201,
+        params=[param("stage_id")],
+    )
+    paths[upload]["post"]["requestBody"] = {
+        "required": True,
+        "content": {
+            "multipart/form-data": {
+                "schema": obj({"arquivo": string(format="binary")}, ("arquivo",))
+            }
+        },
+    }
+    download = "/api/v1/bancas/{identifier}/manuscrito"
+    operation(download, "get", "Baixar manuscrito de TCC", tag, params=[param("identifier")])
+    paths[download]["get"]["responses"]["200"]["content"] = {
+        "application/pdf": {"schema": string(format="binary")}
+    }
