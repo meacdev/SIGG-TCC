@@ -197,6 +197,24 @@ def schedule_json(banca):
     }
 
 
+def has_overlap(start, end, ids, identifier=None):
+    return (
+        db.session.scalar(
+            select(Banca.id_banca)
+            .join(Membro)
+            .where(
+                Banca.id_banca != (identifier or 0),
+                Banca.situacao_banca != "cancelada",
+                Banca.data_inicio_banca < end,
+                Banca.data_fim_banca > start,
+                Membro.id_docente.in_(ids),
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def schedule(class_id, data, identifier=None):
     turma = classes.get_class(class_id, lock=True)
     stage = scoped_stage(class_id, v.integer(data["etapa"], "etapa"), lock=True)
@@ -292,18 +310,7 @@ def schedule(class_id, data, identifier=None):
         raise APIError(404, "BANCA_AUSENTE", "A banca não pertence a este trabalho.")
     if item and (item.snapshot_avaliacao_banca is not None or item.situacao_banca != "agendada"):
         raise APIError(409, "BANCA_BLOQUEADA", "A banca possui avaliações ou não está agendada.")
-    if db.session.scalar(
-        select(Banca.id_banca)
-        .join(Membro)
-        .where(
-            Banca.id_banca != (identifier or 0),
-            Banca.situacao_banca != "cancelada",
-            Banca.data_inicio_banca < end,
-            Banca.data_fim_banca > start,
-            Membro.id_docente.in_(ids),
-        )
-        .limit(1)
-    ):
+    if has_overlap(start, end, ids, identifier):
         raise APIError(
             409,
             "HORARIO_OCUPADO",

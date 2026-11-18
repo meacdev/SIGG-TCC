@@ -102,6 +102,31 @@ def examiners(class_id):
     )
 
 
+@bp.post("/turmas/<int:class_id>/bancas/disponibilidade")
+@authenticated()
+def availability(class_id):
+    classes.get_class(class_id)
+    fields = {"etapa", "inicio", "fim", "membros", "banca"}
+    payload = v.body(fields, fields - {"banca"})
+    stage = management.scoped_stage(class_id, v.integer(payload["etapa"], "etapa"))
+    start, end = management.timestamp(payload["inicio"]), management.timestamp(payload["fim"])
+    if start >= end:
+        raise APIError(422, "DATA_INVALIDA", "O horário de término deve ser posterior ao início.")
+    members = payload["membros"]
+    if not isinstance(members, list) or len(members) > 19:
+        raise APIError(422, "BANCA_INVALIDA", "Selecione até 19 integrantes além do orientador.")
+    ids = [v.integer(person, "membro") for person in members]
+    orientador = management.advisor(stage)
+    if orientador:
+        ids.append(orientador)
+    identifier = payload.get("banca")
+    if identifier is not None:
+        banca = db.session.get(Banca, v.integer(identifier, "banca"))
+        if not banca or banca.id_etapa_trabalho != stage.id_etapa_trabalho:
+            raise APIError(404, "BANCA_AUSENTE", "A banca não pertence a este trabalho.")
+    return jsonify(data={"disponivel": not management.has_overlap(start, end, ids, identifier)})
+
+
 @bp.post("/turmas/<int:class_id>/bancas")
 @bp.patch("/turmas/<int:class_id>/bancas/<int:identifier>")
 @authenticated()

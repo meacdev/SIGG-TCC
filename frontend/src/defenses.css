@@ -240,3 +240,55 @@
   font: inherit;
   font-size: 14px;
 }
+
+.defense-management fieldset {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+}
+.defense-management .defense-criteria {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.defense-criteria legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.defense-records {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.defense-records li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #f1f5ee;
+  border-radius: 6px;
+}
+.defense-management button:not(.primary) {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #83917f;
+  border-radius: 6px;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.defense-management button[aria-pressed='true'] {
+  border-color: #315d42;
+  background: #e7f1e5;
+  font-weight: 700;
+}
+.defense-management button:disabled {
+  opacity: 0.55;
+}
+.defense-management button:focus-visible {
+  outline: 2px solid #315d42;
+  outline-offset: 3px;
+}

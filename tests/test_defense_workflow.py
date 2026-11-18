@@ -78,9 +78,16 @@ def test_defense_from_rubric_to_issued_documents(
         client.post(f"{prefix}/bancas", headers=auth, json={**booking, "suplentes": []}).status_code
         == 422
     )
+    availability = f"{prefix}/bancas/disponibilidade"
+    slot = {key: booking[key] for key in ("etapa", "inicio", "fim")}
+    slot["membros"] = booking["titulares"] + booking["suplentes"]
+    assert client.post(availability, headers=auth, json=slot).json["data"]["disponivel"]
     booked = client.post(f"{prefix}/bancas", headers=auth, json=booking)
     assert booked.status_code == 201, booked.json
     identifier = booked.json["data"]["id"]
+    assert not client.post(availability, headers=auth, json=slot).json["data"]["disponivel"]
+    editing = client.post(availability, headers=auth, json={**slot, "banca": identifier})
+    assert editing.json["data"]["disponivel"]
     endpoint = f"/api/v1/bancas/{identifier}"
     assert client.get(f"{endpoint}/manuscrito", headers=accounts[2]).data.startswith(b"%PDF-")
     assert client.get(endpoint, headers=student["headers"]).status_code == 403

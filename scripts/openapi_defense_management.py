@@ -139,6 +139,24 @@ def extend(paths, schemas, operation, obj, string, identifier):
         ),
         params=[*scoped, {"name": "q", "in": "query", "schema": string()}],
     )
+    operation(
+        prefix + "/bancas/disponibilidade",
+        "post",
+        "Consultar disponibilidade da banca",
+        tag,
+        obj({"disponivel": {"type": "boolean"}}),
+        obj(
+            {
+                "etapa": identifier,
+                "banca": identifier,
+                "inicio": string(format="date-time"),
+                "fim": string(format="date-time"),
+                "membros": array(identifier),
+            },
+            ("etapa", "inicio", "fim", "membros"),
+        ),
+        params=scoped,
+    )
     upload = "/api/v1/etapas/{stage_id}/manuscritos"
     operation(
         upload,
