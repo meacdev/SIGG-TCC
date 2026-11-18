@@ -45,6 +45,7 @@ def class_json(item):
         "nivel_turma": item.nivel_turma,
         "id_curso": item.id_curso,
         "id_professor_responsavel": item.id_professor_responsavel,
+        "nome_professor_responsavel": (item.responsavel.nome_usuario if item.responsavel else None),
         "periodo_letivo": (
             f"{item.periodo.ano_periodo_letivo}/{item.periodo.semestre_periodo_letivo}"
         ),

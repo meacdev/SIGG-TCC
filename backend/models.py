@@ -131,6 +131,14 @@ class Turma(db.Model):
     ativa_turma = db.Column(db.Boolean, nullable=False, default=True)
     data_atualizacao_turma = db.Column(UTCDateTime, nullable=False, default=utcnow)
     periodo = db.relationship(PeriodoLetivo, lazy="joined")
+    # professor.id_professor is the usuario id, so the name comes in one join.
+    responsavel = db.relationship(
+        Usuario,
+        primaryjoin="Turma.id_professor_responsavel == Usuario.id_usuario",
+        foreign_keys=[id_professor_responsavel],
+        viewonly=True,
+        lazy="joined",
+    )
 
 
 class Auditoria(db.Model):

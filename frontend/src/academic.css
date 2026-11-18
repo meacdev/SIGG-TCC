@@ -57,6 +57,21 @@
 .academic-list article {
   margin: 0;
 }
+.academic-box.class-other {
+  border-left: 4px solid #b98a2e;
+  background: #fffaf0;
+}
+.class-tag {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f4e4bf;
+  color: #6b4c12;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
 .academic-meta {
   display: flex;
   flex-wrap: wrap;

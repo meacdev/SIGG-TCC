@@ -14,6 +14,9 @@ def test_create_code_unique_per_period_and_multiple_classes(
 ):
     data = created_class.json["data"]
     assert data["autoinscricao_ativa_turma"] is True
+    assert data["nome_professor_responsavel"] == teacher["nome_usuario"]
+    listed = client.get("/api/v1/turmas", headers=teacher["headers"]).json["data"]
+    assert listed[0]["nome_professor_responsavel"] == teacher["nome_usuario"]
     assert data["codigo_acesso"].isalnum()
     assert len(data["codigo_acesso"]) == 24
     with app.app_context():
