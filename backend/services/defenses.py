@@ -3,9 +3,10 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from flask import current_app, g
 from sqlalchemy import select
 
+from backend import validation as v
 from backend.audit import audit
 from backend.db import db, utcnow
-from backend.defense_models import Avaliacao, Banca, Nota
+from backend.defense_models import Avaliacao, Banca, Nota, Rubrica
 from backend.errors import APIError
 from backend.models import Curso, Turma
 from backend.serialization import check_version, iso
@@ -76,6 +77,7 @@ def criteria(banca):
         banca.rubrica.situacao_rubrica != "ativa"
         or not result
         or any(Decimal(c["peso"]) <= 0 or Decimal(c["pontuacao_maxima"]) <= 0 for c in result)
+        or sum(Decimal(c["peso"]) for c in result) not in {Decimal(10), Decimal(100)}
     ):
         raise APIError(409, "UC_09_M07", "Os critérios de avaliação ainda não foram configurados.")
     return result
@@ -83,7 +85,14 @@ def criteria(banca):
 
 def weighted(grades, rubric):
     values = {n.id_criterio_rubrica: n.valor_nota_criterio for n in grades}
-    if set(values) != {c["id_criterio"] for c in rubric}:
+    return weighted_values(values, rubric)
+
+
+def weighted_values(values, rubric):
+    maxima = {c["id_criterio"]: Decimal(c["pontuacao_maxima"]) for c in rubric}
+    if values.keys() != maxima.keys() or any(
+        not 0 <= grade <= maxima[key] for key, grade in values.items()
+    ):
         raise APIError(409, "AVALIACAO_INCOMPLETA", "Existem avaliações incompletas nesta banca.")
     total = sum(Decimal(c["peso"]) for c in rubric)
     return (
@@ -100,13 +109,16 @@ def decimal_text(value):
     return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), ".2f")
 
 
-def evaluation_json(evaluation, rubric):
+def evaluation_json(evaluation, rubric, calculated=None):
     if not evaluation or evaluation.situacao_avaliacao != "enviada":
         return None
     return {
         "id_avaliacao": evaluation.id_avaliacao,
         "data_envio": iso(evaluation.data_envio_avaliacao),
-        "nota_individual": decimal_text(weighted(evaluation.notas, rubric)),
+        "nota_individual": decimal_text(
+            weighted(evaluation.notas, rubric) if calculated is None else calculated
+        ),
+        "parecer": evaluation.parecer_avaliacao,
         "notas": [
             {"id_criterio": n.id_criterio_rubrica, "nota": str(n.valor_nota_criterio)}
             for n in evaluation.notas
@@ -144,7 +156,7 @@ def consolidation(banca, rubric):
     }
 
 
-def defense_json(banca, full=True):
+def defense_json(banca, full=True, calculated=None):
     work = banca.etapa.trabalho
     turma = db.session.get(Turma, banca.etapa.matricula.id_turma)
     course = db.session.get(Curso, turma.id_curso)
@@ -166,23 +178,23 @@ def defense_json(banca, full=True):
     }
     if full:
         rubric = criteria(banca)
+        evaluation = member(banca).avaliacao
         result.update(
             criterios=rubric,
-            avaliacao=evaluation_json(member(banca).avaliacao, rubric),
+            avaliacao=evaluation_json(evaluation, rubric, calculated),
+            avaliacao_iniciada=evaluation is not None,
             **consolidation(banca, rubric),
         )
     return result
 
 
-def submit(banca, data):
+def evaluation_context(banca):
     check_version(banca)
     current = member(banca)
     if not defense_json(banca, False)["pode_avaliar"]:
         raise APIError(
             403, "UC_09_M06", "O formulário de avaliação não está disponível neste momento."
         )
-    from backend.defense_models import Rubrica
-
     db.session.scalar(
         select(Rubrica)
         .where(Rubrica.id_rubrica == banca.id_rubrica)
@@ -194,6 +206,36 @@ def submit(banca, data):
         raise APIError(
             409, "AVALIACAO_ENVIADA", "Sua avaliação já foi enviada e não pode ser sobrescrita."
         )
+    return current, rubric
+
+
+def open_evaluation(banca, current, rubric):
+    evaluation = current.avaliacao
+    if not evaluation:
+        evaluation = Avaliacao(
+            id_membro_banca=current.id_membro_banca, situacao_avaliacao="rascunho"
+        )
+        db.session.add(evaluation)
+        audit(g.user.id_usuario, "avaliacao_iniciada", "banca", banca.id_banca)
+    banca.rubrica.data_bloqueio_rubrica_avaliacao = (
+        banca.rubrica.data_bloqueio_rubrica_avaliacao or utcnow()
+    )
+    banca.snapshot_avaliacao_banca = rubric
+    banca.situacao_banca = "em_andamento"
+    return evaluation
+
+
+def start(banca):
+    current, rubric = evaluation_context(banca)
+    if not current.avaliacao or banca.snapshot_avaliacao_banca is None:
+        open_evaluation(banca, current, rubric)
+        banca.versao_banca += 1
+        db.session.commit()
+        db.session.expire_all()
+
+
+def submit(banca, data):
+    current, rubric = evaluation_context(banca)
     notes = data.get("notas")
     if not isinstance(notes, list) or len(notes) != len(rubric):
         raise APIError(422, "UC_09_M02", "Preencha as notas de todos os critérios obrigatórios.")
@@ -210,15 +252,27 @@ def submit(banca, data):
                 422, "UC_09_M02", "Preencha as notas de todos os critérios obrigatórios."
             )
         grade = number(item["nota"], f"notas.{key}")
+        field = f"notas.{key}"
         if grade < 0:
-            raise APIError(422, "UC_09_M04", "A nota informada não pode ser negativa.")
+            raise APIError(
+                422,
+                "UC_09_M04",
+                "A nota informada não pode ser negativa.",
+                {field: "Informe uma nota igual ou maior que zero."},
+            )
         if grade > Decimal(expected[key]["pontuacao_maxima"]):
             raise APIError(
-                422, "UC_09_M03", "A nota informada excede a pontuação máxima permitida."
+                422,
+                "UC_09_M03",
+                "A nota informada excede a pontuação máxima permitida.",
+                {field: f"Pontuação máxima: {expected[key]['pontuacao_maxima']}."},
             )
         mapped[key] = grade
-    evaluation = current.avaliacao or Avaliacao(id_membro_banca=current.id_membro_banca)
-    db.session.add(evaluation)
+    opinion = data.get("parecer")
+    if opinion is not None:
+        opinion = v.text(opinion, "parecer", 4000, minimum=0) or None
+    individual = weighted_values(mapped, rubric)
+    evaluation = open_evaluation(banca, current, rubric)
     db.session.flush()
     # Replace a pre-existing draft atomically; a submitted evaluation is immutable.
     for note in list(evaluation.notas):
@@ -234,12 +288,9 @@ def submit(banca, data):
         )
     evaluation.situacao_avaliacao = "enviada"
     evaluation.data_envio_avaliacao = utcnow()
-    banca.rubrica.data_bloqueio_rubrica_avaliacao = (
-        banca.rubrica.data_bloqueio_rubrica_avaliacao or utcnow()
-    )
-    banca.snapshot_avaliacao_banca = rubric
+    evaluation.parecer_avaliacao = opinion
     banca.versao_banca += 1
     audit(g.user.id_usuario, "avaliacao_enviada", "banca", banca.id_banca)
     db.session.commit()
     db.session.expire_all()
-    return banca
+    return individual

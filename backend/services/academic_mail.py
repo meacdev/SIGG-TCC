@@ -42,7 +42,8 @@ def send(item):
         item.assunto_notificacao,
     )
     message.set_content(item.corpo_notificacao)
-    if getattr(item, "tipo_notificacao", None) in {
+    attachment = getattr(item, "anexo_ics_notificacao", None)
+    if not attachment and getattr(item, "tipo_notificacao", None) in {
         "convite_banca",
         "reagendamento_banca",
         "lembrete_banca",
@@ -52,7 +53,9 @@ def send(item):
 
         banca = db.session.get(Banca, item.id_banca)
         if banca is not None:
-            message.add_attachment(calendar(banca), subtype="calendar", filename="defesa.ics")
+            attachment = calendar(banca)
+    if attachment:
+        message.add_attachment(attachment, subtype="calendar", filename="defesa.ics")
     transport = smtplib.SMTP_SSL if config["SMTP_SSL"] else smtplib.SMTP
     options = {"timeout": 5}
     if config["SMTP_SSL"]:

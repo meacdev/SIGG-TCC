@@ -6934,6 +6934,194 @@
         "description": "Restrito ao examinador com participação aceita e acesso vigente, no dia da defesa em America/Manaus. Nota individual: 10 × soma(nota / máximo × peso) / soma(pesos). Média final sem arredondamento intermediário; exibição com duas casas e ROUND_HALF_UP."
       }
     },
+    "/api/v1/bancas/{defense_id}/avaliacao/inicio": {
+      "post": {
+        "summary": "Iniciar ficha de avaliação",
+        "operationId": "Iniciar_ficha_de_avaliação",
+        "tags": [
+          "Bancas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Defesa"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "defense_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Cria o rascunho e bloqueia a edição dos critérios da rubrica."
+      }
+    },
     "/api/v1/bancas/{defense_id}/documentos": {
       "get": {
         "summary": "Consultar documentos da banca",
@@ -8371,6 +8559,363 @@
         ]
       }
     },
+    "/api/v1/turmas/{class_id}/rubricas/anteriores": {
+      "get": {
+        "summary": "Consultar rubricas anteriores do curso",
+        "operationId": "Consultar_rubricas_anteriores_do_curso",
+        "tags": [
+          "Organização de defesas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RubricaAnterior"
+                      }
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/turmas/{class_id}/rubricas/importacoes": {
+      "post": {
+        "summary": "Importar rubrica como rascunho",
+        "operationId": "Importar_rubrica_como_rascunho",
+        "tags": [
+          "Organização de defesas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricaGestao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportacaoRubrica"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/turmas/{class_id}/rubricas": {
       "get": {
         "summary": "Consultar rubricas da turma",
@@ -8955,10 +9500,20 @@
                                 "type": "string"
                               },
                               "orientador": {
-                                "type": [
-                                  "integer",
-                                  "null"
-                                ]
+                                "type": "integer",
+                                "format": "int64",
+                                "minimum": 1
+                              },
+                              "nome_orientador": {
+                                "type": "string"
+                              },
+                              "estudante": {
+                                "type": "string"
+                              },
+                              "nivel": {
+                                "type": "integer",
+                                "format": "int64",
+                                "minimum": 1
                               },
                               "manuscrito": {
                                 "type": "boolean"
@@ -9304,6 +9859,186 @@
       }
     },
     "/api/v1/turmas/{class_id}/bancas/{identifier}": {
+      "get": {
+        "summary": "Consultar banca para reagendamento",
+        "operationId": "Consultar_banca_para_reagendamento",
+        "tags": [
+          "Organização de defesas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Agendamento"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      },
       "patch": {
         "summary": "Reagendar banca",
         "operationId": "Reagendar_banca",
@@ -9495,6 +10230,188 @@
         ]
       }
     },
+    "/api/v1/turmas/{class_id}/avaliadores/externos": {
+      "post": {
+        "summary": "Cadastrar avaliador externo para a banca",
+        "operationId": "Cadastrar_avaliador_externo_para_a_banca",
+        "tags": [
+          "Organização de defesas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AvaliadorGestao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvaliadorExternoEntrada"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/turmas/{class_id}/avaliadores": {
       "get": {
         "summary": "Buscar avaliadores",
@@ -9518,29 +10435,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "format": "int64",
-                            "minimum": 1
-                          },
-                          "nome": {
-                            "type": "string"
-                          },
-                          "tipo": {
-                            "type": "string"
-                          },
-                          "titulacao": {
-                            "type": "string"
-                          },
-                          "instituicao": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          }
-                        }
+                        "$ref": "#/components/schemas/AvaliadorGestao"
                       }
                     },
                     "code": {
@@ -9724,6 +10619,14 @@
                       "properties": {
                         "disponivel": {
                           "type": "boolean"
+                        },
+                        "conflitos": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 1
+                          }
                         }
                       }
                     },
@@ -10266,6 +11169,175 @@
         "parameters": [
           {
             "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/turmas/{class_id}/etapas/{stage_id}/manuscrito": {
+      "get": {
+        "summary": "Consultar manuscrito antes de agendar",
+        "operationId": "Consultar_manuscrito_antes_de_agendar",
+        "tags": [
+          "Organização de defesas"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "stage_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12826,6 +13898,13 @@
           "nota_individual": {
             "type": "string"
           },
+          "parecer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
           "notas": {
             "type": "array",
             "items": {
@@ -12872,6 +13951,9 @@
             ]
           },
           "pode_avaliar": {
+            "type": "boolean"
+          },
+          "avaliacao_iniciada": {
             "type": "boolean"
           },
           "avaliador": {
@@ -12930,6 +14012,10 @@
       "EnviarAvaliacao": {
         "type": "object",
         "properties": {
+          "parecer": {
+            "type": "string",
+            "maxLength": 4000
+          },
           "notas": {
             "type": "array",
             "minItems": 1,
@@ -13156,6 +14242,11 @@
                 "peso"
               ]
             }
+          },
+          "substituir": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
           }
         },
         "required": [
@@ -13211,10 +14302,49 @@
             "format": "int64",
             "minimum": 1
           },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
           "bloqueada": {
             "type": "boolean"
           }
         }
+      },
+      "RubricaAnterior": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "nome": {
+            "type": "string"
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "periodo": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportacaoRubrica": {
+        "type": "object",
+        "properties": {
+          "origem": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "origem"
+        ]
       },
       "BancaEntrada": {
         "type": "object",
@@ -13315,6 +14445,9 @@
             "format": "int64",
             "minimum": 1
           },
+          "titulo": {
+            "type": "string"
+          },
           "url": {
             "type": [
               "string",
@@ -13344,6 +14477,63 @@
             }
           }
         }
+      },
+      "AvaliadorGestao": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "titulacao": {
+            "type": "string"
+          },
+          "instituicao": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AvaliadorExternoEntrada": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "titulacao": {
+            "type": "string",
+            "enum": [
+              "Especialista",
+              "Mestre",
+              "Doutor"
+            ]
+          },
+          "instituicao": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "nome",
+          "email",
+          "titulacao",
+          "instituicao"
+        ]
       },
       "EtapaReuniao": {
         "type": "object",

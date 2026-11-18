@@ -9,7 +9,7 @@ import { Enrollments } from './enrollments';
 import { Works } from './works';
 import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
-import { DefenseManagement } from './defense-management';
+import { DefenseManagement, ManuscriptAccess } from './defense-management';
 import { Defenses } from './defenses';
 import { StudentDocuments, VerifyDocument } from './documents';
 import './academic.css';
@@ -25,6 +25,7 @@ type Page =
   | 'reunioes'
   | 'monitoramento'
   | 'organizar-defesas'
+  | 'manuscrito-banca'
   | 'bancas'
   | 'documentos'
   | 'verificar-documento';
@@ -40,6 +41,7 @@ const currentPage = (): Page => {
     'reunioes',
     'monitoramento',
     'organizar-defesas',
+    'manuscrito-banca',
     'bancas',
     'documentos',
     'verificar-documento',
@@ -62,6 +64,7 @@ const TITLES: Record<Page, string> = {
   reunioes: 'Reuniões',
   monitoramento: 'Monitorar Prazos',
   'organizar-defesas': 'Organizar defesas',
+  'manuscrito-banca': 'Manuscrito da defesa',
   bancas: 'Minhas bancas',
   documentos: 'Minhas atas',
   'verificar-documento': 'Verificar documento',
@@ -112,7 +115,8 @@ export function App() {
   const returnAfterLogin = useRef('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage = ACADEMIC_LINKS.some((link) => link.page === page);
+  const protectedPage =
+    page === 'manuscrito-banca' || ACADEMIC_LINKS.some((link) => link.page === page);
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState<User | null>(null);
   useEffect(() => {
@@ -318,6 +322,9 @@ export function App() {
           {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
           {page === 'organizar-defesas' && api.hasSession() && (
             <DefenseManagement onSessionEnded={sessionEnded} />
+          )}
+          {page === 'manuscrito-banca' && api.hasSession() && (
+            <ManuscriptAccess onSessionEnded={sessionEnded} />
           )}
           {page === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
           {page === 'documentos' && api.hasSession() && (

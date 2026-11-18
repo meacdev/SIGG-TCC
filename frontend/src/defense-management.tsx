@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Notice } from './components';
 import { dateTime, failure } from './defenses';
@@ -9,10 +9,20 @@ type Rubric = {
   id: number;
   nome: string;
   situacao: string;
+  versao: number;
   bloqueada: boolean;
   criterios: Criterion[];
 };
-type Work = { id: number; titulo: string; orientador: number | null; manuscrito: boolean };
+type PriorRubric = Pick<Rubric, 'id' | 'nome' | 'versao'> & { periodo: string };
+type Work = {
+  id: number;
+  titulo: string;
+  orientador: number;
+  nome_orientador: string;
+  estudante: string;
+  nivel: number;
+  manuscrito: boolean;
+};
 type Person = {
   id: number;
   nome: string;
@@ -22,6 +32,7 @@ type Person = {
 };
 type Booking = {
   id: number;
+  titulo: string;
   etapa: number;
   rubrica: number;
   inicio: string;
@@ -55,9 +66,9 @@ export function DefenseManagement({
 }) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classId, setClassId] = useState('');
-  const [sourceClass, setSourceClass] = useState('');
+  const [sourceId, setSourceId] = useState('');
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [source, setSource] = useState<Rubric[]>([]);
+  const [source, setSource] = useState<PriorRubric[]>([]);
   const [schedule, setSchedule] = useState<Scheduling>({ trabalhos: [], bancas: [] });
   const [people, setPeople] = useState<Person[]>([]);
   const [known, setKnown] = useState<Record<number, string>>({});
@@ -67,6 +78,7 @@ export function DefenseManagement({
   const [name, setName] = useState('');
   const [criteria, setCriteria] = useState([blankCriterion()]);
   const [status, setStatus] = useState('rascunho');
+  const [replace, setReplace] = useState(false);
   const [bookingId, setBookingId] = useState<number>();
   const [booking, setBooking] = useState(blankBooking);
   const [mode, setMode] = useState<'rubricas' | 'bancas'>('rubricas');
@@ -75,11 +87,15 @@ export function DefenseManagement({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [availability, setAvailability] = useState('');
+  const externalDialog = useRef<HTMLDialogElement>(null);
+  const [externalError, setExternalError] = useState('');
   const prefix = `/turmas/${classId}`;
   const currentWork = schedule.trabalhos.find((work) => String(work.id) === booking.etapa);
   const sum =
     criteria.reduce((total, item) => total + Math.round(Number(item.peso || 0) * 1000), 0) / 1000;
   const currentRubric = rubrics.find((rubric) => rubric.id === rubricId);
+  const activeRubric = rubrics.find((rubric) => rubric.situacao === 'ativa');
+  const replacing = status === 'ativa' && activeRubric && activeRubric.id !== rubricId;
 
   function handleError(cause: unknown) {
     if (cause instanceof ApiError && cause.status === 401) onSessionEnded(cause.message);
@@ -166,10 +182,10 @@ export function DefenseManagement({
   }, [classId, mode, search]);
 
   useEffect(() => {
-    if (!sourceClass) return;
+    if (!classId) return;
     const controller = new AbortController();
     api
-      .request<Rubric[]>(`/turmas/${sourceClass}/rubricas`, { signal: controller.signal }, true)
+      .request<PriorRubric[]>(`${prefix}/rubricas/anteriores`, { signal: controller.signal }, true)
       .then(({ body }) => {
         if (!controller.signal.aborted) setSource(body.data);
       })
@@ -177,7 +193,27 @@ export function DefenseManagement({
         if (!controller.signal.aborted) handleError(cause);
       });
     return () => controller.abort();
-  }, [sourceClass]);
+  }, [classId]);
+
+  async function importRubric() {
+    setBusy(true);
+    setMessage('');
+    setError('');
+    try {
+      await api.request(
+        `${prefix}/rubricas/importacoes`,
+        { method: 'POST', body: JSON.stringify({ origem: Number(sourceId) }) },
+        true,
+      );
+      setSourceId('');
+      setMessage('Rubrica importada como rascunho. Você pode editá-la na lista da turma.');
+      await load();
+    } catch (cause) {
+      handleError(cause);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     setAvailability('');
@@ -195,7 +231,7 @@ export function DefenseManagement({
     const timer = window.setTimeout(async () => {
       setAvailability('Verificando conflitos de horário…');
       try {
-        const { body } = await api.request<{ disponivel: boolean }>(
+        const { body } = await api.request<{ disponivel: boolean; conflitos: number[] }>(
           `${prefix}/bancas/disponibilidade`,
           {
             method: 'POST',
@@ -211,10 +247,13 @@ export function DefenseManagement({
           true,
         );
         if (!controller.signal.aborted) {
+          const names = body.data.conflitos
+            .map((id) => (currentWork?.orientador === id ? currentWork.nome_orientador : known[id]))
+            .filter(Boolean);
           setAvailability(
             body.data.disponivel
               ? 'Horário disponível para a composição selecionada.'
-              : 'Um integrante tem outra defesa nesse horário. Ajuste o horário ou a composição.',
+              : `Conflito de horário para ${names.join(', ') || 'a composição selecionada'}.`,
           );
         }
       } catch {
@@ -226,13 +265,14 @@ export function DefenseManagement({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [classId, mode, booking, bookingId]);
+  }, [classId, mode, booking, bookingId, currentWork, known]);
 
   function resetRubric() {
     setRubricId(undefined);
     setName('');
     setCriteria([blankCriterion()]);
     setStatus('rascunho');
+    setReplace(false);
   }
 
   function editRubric(item: Rubric, copy = false) {
@@ -242,8 +282,23 @@ export function DefenseManagement({
       item.criterios.map((criterion) => ({ ...criterion, peso: String(Number(criterion.peso)) })),
     );
     setStatus(copy ? 'rascunho' : item.situacao);
-    setMessage(copy ? 'Critérios copiados para um novo rascunho.' : '');
+    setReplace(false);
+    setMessage(copy ? 'Critérios copiados para o formulário. Salve para criar o rascunho.' : '');
     setError('');
+  }
+
+  async function openBooking(id: number) {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const { body } = await api.request<Booking>(prefix + '/bancas/' + id, {}, true);
+      editBooking(body.data);
+    } catch (cause) {
+      handleError(cause);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function editBooking(item: Booking) {
@@ -281,7 +336,12 @@ export function DefenseManagement({
     const id = kind === 'rubricas' ? rubricId : bookingId;
     const data =
       kind === 'rubricas'
-        ? { nome: name, situacao: status, criterios: criteria }
+        ? {
+            nome: name,
+            situacao: status,
+            criterios: criteria,
+            substituir: replacing && replace ? activeRubric.id : undefined,
+          }
         : {
             ...booking,
             etapa: Number(booking.etapa),
@@ -291,7 +351,7 @@ export function DefenseManagement({
           };
     setBusy(true);
     try {
-      await api.request(
+      const { body } = await api.request(
         `${prefix}/${kind}${id ? `/${id}` : ''}`,
         {
           method: id ? 'PATCH' : 'POST',
@@ -304,11 +364,7 @@ export function DefenseManagement({
         setBookingId(undefined);
         setBooking(blankBooking());
       }
-      setMessage(
-        kind === 'rubricas'
-          ? 'Rubrica salva.'
-          : 'Banca salva. Os avisos foram incluídos na fila de envio.',
-      );
+      setMessage(kind === 'rubricas' ? 'Rubrica salva.' : body.message || 'Banca salva.');
       await load();
     } catch (cause) {
       handleError(cause);
@@ -330,6 +386,35 @@ export function DefenseManagement({
     setPick('');
   }
 
+  async function addExternal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const { papel, ...fields } = Object.fromEntries(new FormData(form));
+    const role = papel === 'suplentes' ? 'suplentes' : 'titulares';
+    setExternalError('');
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      const { body } = await api.request<Person>(
+        `${prefix}/avaliadores/externos`,
+        { method: 'POST', body: JSON.stringify(fields) },
+        true,
+      );
+      const { id, nome } = body.data;
+      setKnown((previous) => ({ ...previous, [id]: nome }));
+      setBooking((previous) => ({ ...previous, [role]: [...previous[role], id] }));
+      setMessage(`${nome} foi incluído na composição. Salve a banca para enviar o convite.`);
+      form.reset();
+      externalDialog.current?.close();
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onSessionEnded(cause.message);
+      else setExternalError(failure(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="defense-portal defense-management">
       <div className="academic-box">
@@ -345,6 +430,8 @@ export function DefenseManagement({
               setClassId(e.target.value);
               setRubrics([]);
               setSchedule({ trabalhos: [], bancas: [] });
+              setSource([]);
+              setSourceId('');
               resetRubric();
               setBookingId(undefined);
               setBooking(blankBooking());
@@ -388,7 +475,7 @@ export function DefenseManagement({
             <ul className="defense-records">
               {rubrics.map((rubric) => (
                 <li key={rubric.id}>
-                  <strong>{rubric.nome}</strong> · {rubric.situacao}
+                  <strong>{rubric.nome}</strong> · v{rubric.versao} · {rubric.situacao}
                   {rubric.bloqueada && ' · bloqueada após avaliação'}
                   <button type="button" disabled={busy} onClick={() => editRubric(rubric)}>
                     {rubric.bloqueada ? 'Consultar' : 'Editar'}
@@ -400,36 +487,26 @@ export function DefenseManagement({
               ))}
             </ul>
             <label className="field" htmlFor="rubric-source">
-              Importar critérios de outra turma
+              Rubrica de um período anterior deste curso
               <select
                 id="rubric-source"
-                value={sourceClass}
-                disabled={busy}
-                onChange={(e) => {
-                  setSource([]);
-                  setSourceClass(e.target.value);
-                }}
+                value={sourceId}
+                disabled={busy || !source.length}
+                onChange={(e) => setSourceId(e.target.value)}
               >
-                <option value="">Selecione a turma de origem</option>
-                {classes
-                  .filter((c) => String(c.id_turma) !== classId)
-                  .map((c) => (
-                    <option key={c.id_turma} value={c.id_turma}>
-                      {c.codigo_turma} · {c.periodo_letivo}
-                    </option>
-                  ))}
+                <option value="">
+                  {source.length ? 'Selecione a rubrica de origem' : 'Nenhuma rubrica anterior'}
+                </option>
+                {source.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.periodo} · {item.nome} · v{item.versao}
+                  </option>
+                ))}
               </select>
             </label>
-            {source.map((rubric) => (
-              <button
-                key={rubric.id}
-                type="button"
-                disabled={busy}
-                onClick={() => editRubric(rubric, true)}
-              >
-                Copiar {rubric.nome}
-              </button>
-            ))}
+            <button type="button" disabled={busy || !sourceId} onClick={() => void importRubric()}>
+              Importar como rascunho
+            </button>
             <form onSubmit={(e) => void save(e, 'rubricas')}>
               <h3>{rubricId ? 'Rubrica selecionada' : 'Nova rubrica'}</h3>
               <fieldset disabled={busy || currentRubric?.bloqueada}>
@@ -501,12 +578,29 @@ export function DefenseManagement({
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                   >
-                    <option value="rascunho">Rascunho</option>
+                    <option value="rascunho" disabled={currentRubric?.situacao === 'ativa'}>
+                      Rascunho
+                    </option>
                     <option value="ativa">Ativa</option>
-                    <option value="inativa">Inativa</option>
+                    <option value="inativa" disabled={currentRubric?.situacao === 'ativa'}>
+                      Inativa
+                    </option>
                   </select>
                 </label>
-                <button className="primary" type="submit">
+                {currentRubric?.situacao === 'ativa' && (
+                  <p>Para inativar esta rubrica, ative uma substituta.</p>
+                )}
+                {replacing && (
+                  <label className="field">
+                    <input
+                      type="checkbox"
+                      checked={replace}
+                      onChange={(e) => setReplace(e.target.checked)}
+                    />
+                    Substituir a rubrica ativa {activeRubric.nome}
+                  </label>
+                )}
+                <button className="primary" type="submit" disabled={Boolean(replacing && !replace)}>
                   Salvar rubrica
                 </button>
               </fieldset>
@@ -520,16 +614,17 @@ export function DefenseManagement({
         )}
         {classId && !loading && mode === 'bancas' && (
           <>
-            <h3>Bancas da turma</h3>
+            <h3>Bancas agendadas da turma</h3>
             {!schedule.bancas.length && <p>Nenhuma banca agendada nesta turma.</p>}
             <ul className="defense-records">
               {schedule.bancas.map((item) => (
                 <li key={item.id}>
-                  <strong>{dateTime(item.inicio)}</strong> · {item.local} · {item.situacao}
+                  <strong>{item.titulo}</strong> · {dateTime(item.inicio)} · {item.local} ·{' '}
+                  {item.situacao}
                   <button
                     type="button"
                     disabled={busy || item.situacao !== 'agendada'}
-                    onClick={() => editBooking(item)}
+                    onClick={() => void openBooking(item.id)}
                   >
                     Editar banca
                   </button>
@@ -557,21 +652,30 @@ export function DefenseManagement({
                   >
                     <option value="">Selecione um trabalho</option>
                     {schedule.trabalhos.map((work) => (
-                      <option
-                        key={work.id}
-                        value={work.id}
-                        disabled={!work.orientador || !work.manuscrito}
-                      >
+                      <option key={work.id} value={work.id}>
                         {work.titulo}
-                        {!work.orientador
-                          ? ' · sem orientação aceita'
-                          : !work.manuscrito
-                            ? ' · aguardando manuscrito'
-                            : ''}
+                        {!work.manuscrito && ' · aguardando manuscrito'}
                       </option>
                     ))}
                   </select>
                 </label>
+                {currentWork && (
+                  <div>
+                    <p>
+                      {currentWork.estudante} · TCC {currentWork.nivel}
+                    </p>
+                    <p>Presidente da banca: {currentWork.nome_orientador}</p>
+                    {currentWork.manuscrito ? (
+                      <ManuscriptDownload
+                        key={currentWork.id}
+                        path={`${prefix}/etapas/${currentWork.id}/manuscrito`}
+                        onSessionEnded={onSessionEnded}
+                      />
+                    ) : (
+                      <p role="status">O estudante precisa enviar o manuscrito antes de agendar.</p>
+                    )}
+                  </div>
+                )}
                 <label className="field" htmlFor="booking-rubric">
                   Rubrica ativa
                   <select
@@ -676,15 +780,20 @@ export function DefenseManagement({
                       ))}
                   </select>
                 </label>
-                <p>
-                  Para incluir um avaliador externo, use o cadastro docente externo do portal antes
-                  de selecionar seu nome.
-                </p>
                 <button type="button" disabled={!pick} onClick={() => addMember('titulares')}>
                   Adicionar titular
                 </button>
                 <button type="button" disabled={!pick} onClick={() => addMember('suplentes')}>
                   Adicionar suplente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExternalError('');
+                    externalDialog.current?.showModal();
+                  }}
+                >
+                  Adicionar membro externo
                 </button>
                 {(['titulares', 'suplentes'] as const).map((role) => (
                   <div key={role}>
@@ -713,8 +822,8 @@ export function DefenseManagement({
                 <p className="academic-hint" aria-live="polite">
                   {availability}
                 </p>
-                <button className="primary" type="submit">
-                  Salvar agendamento
+                <button className="primary" type="submit" disabled={!currentWork?.manuscrito}>
+                  {bookingId ? 'Salvar alterações e enviar convites' : 'Salvar e enviar convites'}
                 </button>
                 {bookingId && (
                   <button
@@ -729,9 +838,111 @@ export function DefenseManagement({
                 )}
               </fieldset>
             </form>
+            <dialog
+              ref={externalDialog}
+              aria-labelledby="external-title"
+              onCancel={(event) => {
+                if (busy) event.preventDefault();
+              }}
+            >
+              <form onSubmit={(event) => void addExternal(event)}>
+                <h3 id="external-title">Adicionar membro externo</h3>
+                {externalError && <Notice message={externalError} />}
+                <fieldset disabled={busy}>
+                  <label className="field">
+                    Nome completo <input name="nome" required maxLength={100} />
+                  </label>
+                  <label className="field">
+                    E-mail institucional{' '}
+                    <input name="email" type="email" required maxLength={254} />
+                  </label>
+                  <label className="field">
+                    Titulação
+                    <select name="titulacao" required defaultValue="">
+                      <option value="">Selecione</option>
+                      <option>Especialista</option>
+                      <option>Mestre</option>
+                      <option>Doutor</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    Instituição de origem <input name="instituicao" required maxLength={200} />
+                  </label>
+                  <label className="field">
+                    Participação na banca
+                    <select name="papel">
+                      <option value="titulares">Titular</option>
+                      <option value="suplentes">Suplente</option>
+                    </select>
+                  </label>
+                  <button type="submit" className="primary">
+                    Incluir na banca
+                  </button>
+                  <button type="button" onClick={() => externalDialog.current?.close()}>
+                    Cancelar
+                  </button>
+                </fieldset>
+                {busy && <p role="status">Cadastrando avaliador…</p>}
+              </form>
+            </dialog>
           </>
         )}
       </div>
+    </section>
+  );
+}
+
+function ManuscriptDownload({
+  path,
+  onSessionEnded,
+}: {
+  path: string;
+  onSessionEnded: (message: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  async function download() {
+    setBusy(true);
+    setError('');
+    try {
+      const { body } = await api.download(path);
+      const url = URL.createObjectURL(body.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'manuscrito.pdf';
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onSessionEnded(cause.message);
+      else setError(failure(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button type="button" disabled={busy} onClick={() => void download()}>
+        {busy ? 'Baixando…' : 'Baixar manuscrito (PDF)'}
+      </button>
+      {error && <Notice message={error} />}
+    </>
+  );
+}
+
+export function ManuscriptAccess({
+  onSessionEnded,
+}: {
+  onSessionEnded: (message: string) => void;
+}) {
+  const id = new URLSearchParams(window.location.hash.split('?')[1]).get('banca');
+  return (
+    <section className="academic-box">
+      <h2>Manuscrito da defesa</h2>
+      {id && /^[1-9][0-9]*$/.test(id) ? (
+        <ManuscriptDownload path={`/bancas/${id}/manuscrito`} onSessionEnded={onSessionEnded} />
+      ) : (
+        <Notice message="Abra o link do manuscrito no convite da banca." />
+      )}
     </section>
   );
 }

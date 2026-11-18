@@ -24,8 +24,15 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "situacao": string(enum=["rascunho", "ativa", "inativa"]),
         "criterios": array(criterion),
     }
-    schemas["RubricaEntrada"] = obj(rubric, tuple(rubric))
-    schemas["RubricaGestao"] = obj(rubric | {"id": identifier, "bloqueada": {"type": "boolean"}})
+    boolean = {"type": "boolean"}
+    schemas["RubricaEntrada"] = obj(rubric | {"substituir": identifier}, tuple(rubric))
+    schemas["RubricaGestao"] = obj(
+        rubric | {"id": identifier, "versao": identifier, "bloqueada": boolean}
+    )
+    schemas["RubricaAnterior"] = obj(
+        {"id": identifier, "nome": string(), "versao": identifier, "periodo": string()}
+    )
+    schemas["ImportacaoRubrica"] = obj({"origem": identifier}, ("origem",))
     booking = {
         "etapa": identifier,
         "rubrica": identifier,
@@ -44,6 +51,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         {
             **{k: v for k, v in booking.items() if k not in {"titulares", "suplentes", "url"}},
             "id": identifier,
+            "titulo": string(),
             "url": {"type": ["string", "null"]},
             "situacao": string(),
             "membros": array(obj({"id": identifier, "papel": string(), "nome": string()})),
@@ -53,6 +61,24 @@ def extend(paths, schemas, operation, obj, string, identifier):
     scoped = [param("class_id")]
     item = [*scoped, param("identifier")]
     tag = "Organização de defesas"
+    operation(
+        prefix + "/rubricas/anteriores",
+        "get",
+        "Consultar rubricas anteriores do curso",
+        tag,
+        array(ref("RubricaAnterior")),
+        params=scoped,
+    )
+    operation(
+        prefix + "/rubricas/importacoes",
+        "post",
+        "Importar rubrica como rascunho",
+        tag,
+        "RubricaGestao",
+        "ImportacaoRubrica",
+        201,
+        params=scoped,
+    )
     operation(
         prefix + "/rubricas",
         "get",
@@ -92,7 +118,10 @@ def extend(paths, schemas, operation, obj, string, identifier):
                         {
                             "id": identifier,
                             "titulo": string(),
-                            "orientador": {"type": ["integer", "null"]},
+                            "orientador": identifier,
+                            "nome_orientador": string(),
+                            "estudante": string(),
+                            "nivel": identifier,
                             "manuscrito": {"type": "boolean"},
                         }
                     )
@@ -114,6 +143,14 @@ def extend(paths, schemas, operation, obj, string, identifier):
     )
     operation(
         prefix + "/bancas/{identifier}",
+        "get",
+        "Consultar banca para reagendamento",
+        tag,
+        "Agendamento",
+        params=item,
+    )
+    operation(
+        prefix + "/bancas/{identifier}",
         "patch",
         "Reagendar banca",
         tag,
@@ -121,22 +158,38 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "BancaEntrada",
         params=item,
     )
+    schemas["AvaliadorGestao"] = obj(
+        {
+            "id": identifier,
+            "nome": string(),
+            "tipo": string(),
+            "titulacao": string(),
+            "instituicao": {"type": ["string", "null"]},
+        }
+    )
+    external = {
+        "nome": string(maxLength=100),
+        "email": string(format="email", maxLength=254),
+        "titulacao": string(enum=["Especialista", "Mestre", "Doutor"]),
+        "instituicao": string(maxLength=200),
+    }
+    schemas["AvaliadorExternoEntrada"] = obj(external, tuple(external))
+    operation(
+        prefix + "/avaliadores/externos",
+        "post",
+        "Cadastrar avaliador externo para a banca",
+        tag,
+        "AvaliadorGestao",
+        "AvaliadorExternoEntrada",
+        201,
+        params=scoped,
+    )
     operation(
         prefix + "/avaliadores",
         "get",
         "Buscar avaliadores",
         tag,
-        array(
-            obj(
-                {
-                    "id": identifier,
-                    "nome": string(),
-                    "tipo": string(),
-                    "titulacao": string(),
-                    "instituicao": {"type": ["string", "null"]},
-                }
-            )
-        ),
+        array(ref("AvaliadorGestao")),
         params=[*scoped, {"name": "q", "in": "query", "schema": string()}],
     )
     operation(
@@ -144,7 +197,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "post",
         "Consultar disponibilidade da banca",
         tag,
-        obj({"disponivel": {"type": "boolean"}}),
+        obj({"disponivel": boolean, "conflitos": array(identifier)}),
         obj(
             {
                 "etapa": identifier,
@@ -180,3 +233,14 @@ def extend(paths, schemas, operation, obj, string, identifier):
     paths[download]["get"]["responses"]["200"]["content"] = {
         "application/pdf": {"schema": string(format="binary")}
     }
+    preview = prefix + "/etapas/{stage_id}/manuscrito"
+    operation(
+        preview,
+        "get",
+        "Consultar manuscrito antes de agendar",
+        tag,
+        params=[*scoped, param("stage_id")],
+    )
+    paths[preview]["get"]["responses"]["200"]["content"] = paths[download]["get"]["responses"][
+        "200"
+    ]["content"]

@@ -1,9 +1,11 @@
-from flask import Blueprint, g
+from flask import Blueprint, current_app, g
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend import validation as v
 from backend.db import utcnow
 from backend.defense_models import Banca, Membro
+from backend.errors import APIError
 from backend.routes.catalogs import page_response
 from backend.security import authenticated
 from backend.serialization import resource_response
@@ -41,8 +43,24 @@ def detail(defense_id):
 @bp.post("/<int:defense_id>/avaliacao")
 @authenticated()
 def evaluate(defense_id):
-    banca = defenses.get_defense(defense_id, lock=True)
-    data = v.body({"notas"}, ("notas",), "UC_09_M02")
-    defenses.submit(banca, data)
-    detail = defenses.defense_json(banca)
+    data = v.body({"notas", "parecer"}, ("notas",), "UC_09_M02")
+    try:
+        banca = defenses.get_defense(defense_id, lock=True)
+        individual = defenses.submit(banca, data)
+        detail = defenses.defense_json(banca, calculated=individual)
+    except SQLAlchemyError as error:
+        current_app.logger.error("Falha ao confirmar avaliação: %s", type(error).__name__)
+        raise APIError(
+            503,
+            "UC_09_M08",
+            "Não foi possível confirmar a gravação. Atualize a ficha antes de tentar novamente.",
+        ) from error
     return resource_response(banca, detail, 201, "UC_09_M01", "Avaliação registrada com sucesso!")
+
+
+@bp.post("/<int:defense_id>/avaliacao/inicio")
+@authenticated()
+def start(defense_id):
+    banca = defenses.get_defense(defense_id, lock=True)
+    defenses.start(banca)
+    return resource_response(banca, defenses.defense_json(banca))

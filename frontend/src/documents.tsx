@@ -46,6 +46,7 @@ export function DocumentsPanel({
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState('');
+  const [deliveryMessage, setDeliveryMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -81,6 +82,7 @@ export function DocumentsPanel({
     setBusy(true);
     setMessage('');
     setSuccess('');
+    setDeliveryMessage('');
     try {
       await work();
     } catch (error) {
@@ -120,7 +122,11 @@ export function DocumentsPanel({
         true,
       );
       accept(response.body.data, response.etag);
-      setSuccess('Ata de Defesa gerada com sucesso!');
+      if (response.body.code === 'UC_10_M07') {
+        setDeliveryMessage(response.body.message || 'Há declarações pendentes de envio.');
+      } else {
+        setSuccess(response.body.message || 'Ata de Defesa gerada com sucesso!');
+      }
       setReason('');
     });
   }
@@ -170,6 +176,7 @@ export function DocumentsPanel({
         </Notice>
       )}
       {success && <Notice success message={success} />}
+      {deliveryMessage && <Notice message={deliveryMessage} />}
       {!state && !message && <p aria-live="polite">Carregando documentos…</p>}
       {defense.media_final === null && (
         <p className="academic-hint">
@@ -363,7 +370,13 @@ export function DocumentsPanel({
                         true,
                       );
                       accept(response.body.data, response.etag);
-                      setSuccess(response.body.message || 'Tentativa de envio registrada.');
+                      if (response.body.code === 'UC_10_M07') {
+                        setDeliveryMessage(
+                          response.body.message || 'Há declarações pendentes de envio.',
+                        );
+                      } else {
+                        setSuccess(response.body.message || 'Declarações enviadas.');
+                      }
                     })
                   }
                 >
