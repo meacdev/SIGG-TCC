@@ -9,3 +9,5 @@ email-validator==2.3.0
 python-dotenv==1.2.4
 waitress==3.0.2
 tzdata==2026.5
+reportlab==5.1.0
+pypdf==6.21.2

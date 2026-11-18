@@ -58,7 +58,9 @@ def class_json(item):
 
 
 def etag(item):
-    if hasattr(item, "versao_trabalho_tcc"):
+    if hasattr(item, "versao_banca"):
+        value = f"banca:{item.id_banca}:{item.versao_banca}"
+    elif hasattr(item, "versao_trabalho_tcc"):
         value = f"trabalho:{item.id_trabalho_tcc}:{item.versao_trabalho_tcc}"
     elif hasattr(item, "id_matricula_turma"):
         value = f"matricula:{item.id_matricula_turma}:{item.versao_matricula}"

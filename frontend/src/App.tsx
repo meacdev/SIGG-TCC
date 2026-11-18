@@ -9,6 +9,7 @@ import { Enrollments } from './enrollments';
 import { Works } from './works';
 import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
+import { DefenseManagement } from './defense-management';
 import './academic.css';
 
 type Page =
@@ -20,9 +21,10 @@ type Page =
   | 'matriculas'
   | 'trabalhos'
   | 'reunioes'
-  | 'monitoramento';
+  | 'monitoramento'
+  | 'organizar-defesas';
 const currentPage = (): Page => {
-  const page = window.location.hash.replace('#/', '');
+  const page = window.location.hash.replace('#/', '').split('?')[0];
   return [
     'entrar',
     'recuperar-senha',
@@ -32,6 +34,7 @@ const currentPage = (): Page => {
     'trabalhos',
     'reunioes',
     'monitoramento',
+    'organizar-defesas',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -50,6 +53,7 @@ const TITLES: Record<Page, string> = {
   trabalhos: 'Trabalhos',
   reunioes: 'Reuniões',
   monitoramento: 'Monitorar Prazos',
+  'organizar-defesas': 'Rubricas de avaliação',
 };
 
 type NavLink = { page: Page; label: string; icon: IconName };
@@ -60,6 +64,7 @@ const ACADEMIC_LINKS: NavLink[] = [
   { page: 'trabalhos', label: 'Trabalhos', icon: 'book' },
   { page: 'reunioes', label: 'Reuniões', icon: 'chat' },
   { page: 'monitoramento', label: 'Monitorar Prazos', icon: 'clock' },
+  { page: 'organizar-defesas', label: 'Rubricas de avaliação', icon: 'cal' },
 ];
 const ACCESS_LINKS: NavLink[] = [
   { page: 'entrar', label: 'Entrar', icon: 'key' },
@@ -85,14 +90,7 @@ export function App() {
   const [page, setPage] = useState<Page>(currentPage);
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage = [
-    'perfil',
-    'turmas',
-    'matriculas',
-    'trabalhos',
-    'reunioes',
-    'monitoramento',
-  ].includes(page);
+  const protectedPage = ACADEMIC_LINKS.some((link) => link.page === page);
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState<User | null>(null);
   useEffect(() => {
@@ -291,6 +289,9 @@ export function App() {
           )}
           {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
           {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
+          {page === 'organizar-defesas' && api.hasSession() && (
+            <DefenseManagement onSessionEnded={sessionEnded} />
+          )}
           {page === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}

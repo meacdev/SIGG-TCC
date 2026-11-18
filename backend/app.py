@@ -67,6 +67,7 @@ def create_app(test_config=None):
         auth,
         catalogs,
         classes,
+        defense_management,
         enrollments,
         meetings,
         monitoring,
@@ -83,6 +84,7 @@ def create_app(test_config=None):
         works.bp,
         meetings.bp,
         monitoring.bp,
+        defense_management.bp,
     ):
         app.register_blueprint(blueprint)
     register_cli(app)

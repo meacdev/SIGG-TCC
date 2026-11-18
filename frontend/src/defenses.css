@@ -1,0 +1,275 @@
+.defense-portal {
+  max-width: 850px;
+  margin: auto;
+}
+.defense-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.defense-card,
+.defense-summary {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  padding: 22px;
+}
+.defense-card h3 {
+  font:
+    400 23px/1.35 Georgia,
+    serif;
+  margin: 12px 0;
+}
+.defense-card p {
+  font-size: 14px;
+}
+.defense-card small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 16px;
+}
+.defense-card button {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.defense-summary {
+  margin: 24px 0;
+}
+.defense-summary h3 {
+  font:
+    400 23px/1.4 Georgia,
+    serif;
+}
+.defense-summary dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 0;
+}
+.defense-summary dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.defense-summary dd {
+  font-size: 13px;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.criteria-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+.criterion-card {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 18px;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 18px;
+}
+.criterion-card label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.criterion-card p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 6px 0;
+}
+.criterion-card small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.criterion-card input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #83917f;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 16px;
+}
+.criterion-card input:disabled {
+  background: #f0f2ee;
+}
+.grade-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  background: #edf3e6;
+  border-radius: 9px;
+  margin: 20px 0;
+  font-size: 13px;
+}
+.grade-result strong {
+  font-size: 21px;
+  text-align: right;
+}
+.grade-result strong small {
+  font-size: 13px;
+  font-weight: 400;
+}
+.confirmation-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 20px 0;
+}
+.confirmation-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+.examiner-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+.examiner-list li {
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  font-size: 12px;
+}
+.defense-portal .empty-state {
+  padding: 35px 20px;
+  border: 1px dashed #83917f;
+  border-radius: 10px;
+  text-align: center;
+  background: #f3f6ee;
+  margin: 25px 0;
+}
+.defense-portal .empty-state h3 {
+  font:
+    400 24px Georgia,
+    serif;
+  margin: 15px 0;
+}
+.defense-portal .empty-state p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.defense-portal .pager {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  font-size: 12px;
+}
+@media (max-width: 460px) {
+  .criterion-card {
+    grid-template-columns: 1fr;
+  }
+  .criterion-card input {
+    max-width: 140px;
+  }
+  .defense-summary dl {
+    grid-template-columns: 1fr;
+  }
+  .grade-result {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .grade-result strong {
+    font-size: 20px;
+    text-align: left;
+  }
+}
+.documents-panel {
+  margin-top: 32px;
+}
+.document-box {
+  background: white;
+  border: 1px solid var(--line);
+  padding: 22px;
+  border-radius: 9px;
+  margin-top: 22px;
+}
+.document-box h3 {
+  font-size: 15px;
+}
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 15px 0;
+}
+.document-box code {
+  overflow-wrap: anywhere;
+}
+.defense-portal .field textarea {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid #83917f;
+  border-radius: 6px;
+  padding: 12px;
+  resize: vertical;
+  font: inherit;
+  font-size: 14px;
+}
+
+.defense-management fieldset {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+}
+.defense-management .defense-criteria {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.defense-criteria legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.defense-records {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.defense-records li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #f1f5ee;
+  border-radius: 6px;
+}
+.defense-management button:not(.primary) {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #83917f;
+  border-radius: 6px;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.defense-management button[aria-pressed='true'] {
+  border-color: #315d42;
+  background: #e7f1e5;
+  font-weight: 700;
+}
+.defense-management button:disabled {
+  opacity: 0.55;
+}
+.defense-management button:focus-visible {
+  outline: 2px solid #315d42;
+  outline-offset: 3px;
+}

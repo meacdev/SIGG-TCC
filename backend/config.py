@@ -12,6 +12,9 @@ def configuration():
     database = os.getenv("DATABASE_URL", "")
     if database.startswith("postgresql://"):
         database = database.replace("postgresql://", "postgresql+psycopg://", 1)
+    storage = Path(os.getenv("PRIVATE_STORAGE_DIR") or ROOT / "instance" / "private")
+    if not storage.is_absolute():
+        storage = ROOT / storage
     return {
         "APP_ENV": os.getenv("APP_ENV", "development"),
         "FRONTEND_URL": os.getenv("FRONTEND_URL", "http://127.0.0.1:5173"),
@@ -29,6 +32,7 @@ def configuration():
         "CORS_ORIGINS": [x.strip() for x in os.getenv("CORS_ORIGINS", "").split(",") if x.strip()],
         "RATELIMIT_STORAGE_URI": os.getenv("RATELIMIT_STORAGE_URI", "memory://"),
         "RATELIMIT_HEADERS_ENABLED": True,
+        "PRIVATE_STORAGE_DIR": str(storage),
         "MAX_CONTENT_LENGTH": 64 * 1024,
         "SMTP_HOST": os.getenv("SMTP_HOST", ""),
         "SMTP_PORT": int(os.getenv("SMTP_PORT", "587")),
