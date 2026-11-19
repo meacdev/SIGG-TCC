@@ -10,6 +10,7 @@ import { Works } from './works';
 import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
 import { DefenseManagement, ManuscriptAccess } from './defense-management';
+import { Defenses } from './defenses';
 import './academic.css';
 
 type Page =
@@ -23,7 +24,8 @@ type Page =
   | 'reunioes'
   | 'monitoramento'
   | 'organizar-defesas'
-  | 'manuscrito-banca';
+  | 'manuscrito-banca'
+  | 'bancas';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '').split('?')[0];
   return [
@@ -37,6 +39,7 @@ const currentPage = (): Page => {
     'monitoramento',
     'organizar-defesas',
     'manuscrito-banca',
+    'bancas',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -57,6 +60,7 @@ const TITLES: Record<Page, string> = {
   monitoramento: 'Monitorar Prazos',
   'organizar-defesas': 'Organizar defesas',
   'manuscrito-banca': 'Manuscrito da defesa',
+  bancas: 'Minhas bancas',
 };
 
 type NavLink = { page: Page; label: string; icon: IconName };
@@ -68,6 +72,7 @@ const ACADEMIC_LINKS: NavLink[] = [
   { page: 'reunioes', label: 'Reuniões', icon: 'chat' },
   { page: 'monitoramento', label: 'Monitorar Prazos', icon: 'clock' },
   { page: 'organizar-defesas', label: 'Organizar defesas', icon: 'cal' },
+  { page: 'bancas', label: 'Minhas bancas', icon: 'users' },
 ];
 const ACCESS_LINKS: NavLink[] = [
   { page: 'entrar', label: 'Entrar', icon: 'key' },
@@ -303,6 +308,7 @@ export function App() {
           {page === 'manuscrito-banca' && api.hasSession() && (
             <ManuscriptAccess onSessionEnded={sessionEnded} />
           )}
+          {page === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
           {page === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}
