@@ -173,6 +173,10 @@ schemas = {
     "Turma": obj(
         class_fields
         | {
+            "nome_professor_responsavel": {
+                "type": ["string", "null"],
+                "description": "Nome do professor responsável pela turma.",
+            },
             "id_turma": identifier,
             "id_periodo_letivo": identifier,
             "ativa_turma": {"type": "boolean"},

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
-import type { Course } from './types';
+import type { Course, User } from './types';
 import { Notice } from './components';
 import {
   AcademicField,
@@ -20,6 +20,7 @@ export interface ClassItem {
   nivel_turma: number;
   id_curso: number;
   id_professor_responsavel: number;
+  nome_professor_responsavel: string | null;
   ativa_turma: boolean;
   autoinscricao_ativa_turma: boolean;
   data_expiracao_acesso_turma: string | null;
@@ -36,7 +37,8 @@ const empty = {
   id_curso: '',
   id_professor_responsavel: '',
 };
-export function Classes({ onSessionEnded }: SessionProps) {
+export function Classes({ onSessionEnded, user }: SessionProps & { user: User | null }) {
+  const coordinator = !!user?.perfis.includes('coordenador');
   const [items, setItems] = useState<ClassItem[]>([]),
     [courses, setCourses] = useState<Course[]>([]),
     [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -234,7 +236,11 @@ export function Classes({ onSessionEnded }: SessionProps) {
       <div className="page-intro">
         <span className="eyebrow">ORGANIZAÇÃO DO SEMESTRE</span>
         <h1>Turmas</h1>
-        <p>Cadastre as ofertas de TCC e acompanhe as turmas sob sua responsabilidade.</p>
+        <p>
+          {coordinator
+            ? 'Cadastre as ofertas de TCC e acompanhe todas as turmas dos cursos que você coordena.'
+            : 'Cadastre as ofertas de TCC e acompanhe as turmas sob sua responsabilidade.'}
+        </p>
       </div>
       {message && (
         <Notice message={message}>
@@ -423,21 +429,30 @@ export function Classes({ onSessionEnded }: SessionProps) {
         <p className="academic-empty">Nenhuma turma disponível para seu vínculo e filtro.</p>
       ) : (
         <div className="academic-list">
-          {items.map((item) => (
-            <article className="academic-box" key={item.id_turma}>
-              <h2>
-                {item.codigo_turma} · {item.periodo_letivo}
-              </h2>
-              <p className="academic-meta">
-                TCC {item.nivel_turma} · {item.ativa_turma ? 'Ativa' : 'Inativa'} ·{' '}
-                {courses.find((c) => c.id_curso === item.id_curso)?.nome_curso ||
-                  'Curso cadastrado'}
-              </p>
-              <button className="secondary" onClick={() => open(item.id_turma)} disabled={busy}>
-                Gerenciar {item.codigo_turma}
-              </button>
-            </article>
-          ))}
+          {items.map((item) => {
+            // Until the user loads, avoid flagging every class as someone else's.
+            const own = !user || item.id_professor_responsavel === user.id_usuario;
+            return (
+              <article className={`academic-box${own ? '' : ' class-other'}`} key={item.id_turma}>
+                <h2>
+                  {item.codigo_turma} · {item.periodo_letivo}
+                  {!own && <span className="class-tag">Turma de outro docente</span>}
+                </h2>
+                <p className="academic-meta">
+                  TCC {item.nivel_turma} · {item.ativa_turma ? 'Ativa' : 'Inativa'} ·{' '}
+                  {courses.find((c) => c.id_curso === item.id_curso)?.nome_curso ||
+                    'Curso cadastrado'}
+                </p>
+                <p className="academic-meta">
+                  Responsável: {item.nome_professor_responsavel || 'não informado'}
+                  {own && user && ' (você)'}
+                </p>
+                <button className="secondary" onClick={() => open(item.id_turma)} disabled={busy}>
+                  Gerenciar {item.codigo_turma}
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
       <Pager page={page} pages={pages} onChange={setPage} />

@@ -70,6 +70,13 @@ const TITLES: Record<Page, string> = {
   'verificar-documento': 'Verificar documento',
 };
 
+const roleLabel = (user: User) =>
+  user.perfis.includes('coordenador')
+    ? 'Coordenador(a) de curso'
+    : user.professor
+      ? 'Professor / avaliador'
+      : 'Estudante';
+
 type NavLink = { page: Page; label: string; icon: IconName };
 const ACADEMIC_LINKS: NavLink[] = [
   { page: 'perfil', label: 'Meu cadastro', icon: 'user' },
@@ -252,7 +259,7 @@ export function App() {
                   </span>
                   <div>
                     <strong>{me.nome_usuario}</strong>
-                    <small>{me.professor ? 'Professor / avaliador' : 'Estudante'}</small>
+                    <small>{roleLabel(me)}</small>
                   </div>
                 </div>
               )}
@@ -305,7 +312,9 @@ export function App() {
           {page === 'perfil' && api.hasSession() && (
             <Profile onSessionEnded={sessionEnded} initialNotice={notice} onUserChanged={setMe} />
           )}
-          {page === 'turmas' && api.hasSession() && <Classes onSessionEnded={sessionEnded} />}
+          {page === 'turmas' && api.hasSession() && (
+            <Classes onSessionEnded={sessionEnded} user={me} />
+          )}
           {page === 'matriculas' && api.hasSession() && (
             <Enrollments onSessionEnded={sessionEnded} />
           )}
@@ -981,8 +990,7 @@ function Profile({
             <div>
               <strong>{user.nome_usuario}</strong>
               <small>
-                Cadastro #{user.id_usuario} ·{' '}
-                {user.professor ? 'Professor / avaliador' : 'Estudante'}
+                Cadastro #{user.id_usuario} · {roleLabel(user)}
               </small>
             </div>
             <span className="active-badge">Conta ativa</span>
