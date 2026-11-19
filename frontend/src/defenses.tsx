@@ -2,16 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Icon, Notice } from './components';
 import './defenses.css';
-
-async function download(path: string, name: string) {
-  const result = await api.download(path);
-  const url = URL.createObjectURL(result.body.data);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+import { download, DocumentsPanel } from './documents';
 
 export interface Criterion {
   id_criterio: number;
@@ -202,6 +193,7 @@ export function Defenses({ onSessionEnded }: { onSessionEnded: (message: string)
             onReload={() => load(selected.id_banca)}
             onError={handle}
           />
+          <DocumentsPanel defense={selected} onVersion={setEtag} onError={handle} />
         </>
       )}
     </section>

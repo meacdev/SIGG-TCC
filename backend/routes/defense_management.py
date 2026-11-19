@@ -1,6 +1,4 @@
-from io import BytesIO
-
-from flask import Blueprint, current_app, g, jsonify, request, send_file
+from flask import Blueprint, current_app, g, jsonify, request
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -19,6 +17,7 @@ from backend.defense_models import (
 from backend.document_models import ArquivoPDF
 from backend.errors import APIError
 from backend.models import Professor, Usuario
+from backend.routes.documents import pdf_response
 from backend.security import authenticated
 from backend.services import classes, pdf_storage
 from backend.services import defense_management as management
@@ -243,7 +242,7 @@ def preview_manuscript(class_id, stage_id):
     manuscript = management.latest_pdf(stage)
     if not manuscript:
         raise APIError(404, "UC_07_M04", "Este trabalho ainda não tem manuscrito.")
-    return pdf_attachment(manuscript.id_arquivo_pdf)
+    return pdf_response(db.session.get(ArquivoPDF, manuscript.id_arquivo_pdf))
 
 
 @bp.post("/etapas/<int:stage_id>/manuscritos")
@@ -303,14 +302,4 @@ def manuscript(identifier):
     )
     if item.etapa.trabalho.id_estudante != user and not eligible:
         classes.get_class(item.etapa.matricula.id_turma)
-    return pdf_attachment(item.id_arquivo_pdf_manuscrito)
-
-
-def pdf_attachment(file_id):
-    file = db.session.get(ArquivoPDF, file_id)
-    return send_file(
-        BytesIO(pdf_storage.read(file)),
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=file.nome_original_arquivo_pdf,
-    )
+    return pdf_response(db.session.get(ArquivoPDF, item.id_arquivo_pdf_manuscrito))
