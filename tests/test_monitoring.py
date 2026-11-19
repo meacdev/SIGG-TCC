@@ -319,30 +319,19 @@ def test_correction_submission_also_counts_as_activity(app, client, teacher, stu
     now = utcnow().replace(tzinfo=None).isoformat(sep=" ")
     later = (utcnow() + timedelta(hours=1)).replace(tzinfo=None).isoformat(sep=" ")
     with app.app_context():
-        if db.engine.dialect.name == "postgresql":
-            # The full schema requires the defended manuscript (manuscrito_trabalho).
-            defense = [
-                (
-                    "INSERT INTO manuscrito_trabalho (id_etapa_trabalho,id_arquivo_pdf,"
-                    "versao_manuscrito_trabalho) VALUES (:stage,902,1)"
-                ),
-                (
-                    "INSERT INTO banca_defesa (id_banca_defesa,id_etapa_trabalho,"
-                    "id_rubrica_avaliacao,data_inicio_banca_defesa,data_fim_banca_defesa,"
-                    "local_defesa_banca_defesa,modalidade_banca_defesa,id_arquivo_pdf_manuscrito,"
-                    "id_usuario_agendamento) "
-                    "VALUES (902,:stage,902,:now,:later,'Sala de teste','presencial',902,:teacher)"
-                ),
-            ]
-        else:
-            defense = [
-                (
-                    "INSERT INTO banca_defesa (id_banca_defesa,id_etapa_trabalho,"
-                    "id_rubrica_avaliacao,data_inicio_banca_defesa,data_fim_banca_defesa,"
-                    "local_defesa_banca_defesa,id_usuario_agendamento) "
-                    "VALUES (902,:stage,902,:now,:later,'Sala de teste',:teacher)"
-                ),
-            ]
+        defense = [
+            (
+                "INSERT INTO manuscrito_trabalho (id_etapa_trabalho,id_arquivo_pdf,"
+                "versao_manuscrito_trabalho) VALUES (:stage,902,1)"
+            ),
+            (
+                "INSERT INTO banca_defesa (id_banca_defesa,id_etapa_trabalho,"
+                "id_rubrica_avaliacao,data_inicio_banca_defesa,data_fim_banca_defesa,"
+                "local_defesa_banca_defesa,modalidade_banca_defesa,id_arquivo_pdf_manuscrito,"
+                "id_usuario_agendamento) "
+                "VALUES (902,:stage,902,:now,:later,'Sala de teste','presencial',902,:teacher)"
+            ),
+        ]
         records = [
             (
                 "INSERT INTO arquivo_pdf (id_arquivo_pdf,nome_original_arquivo_pdf,"

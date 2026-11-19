@@ -15,6 +15,9 @@ class NotificacaoAcademica(db.Model):
     # These nullable references have their foreign keys in the supplied PostgreSQL schema.
     id_orientacao = db.Column(ID)
     id_ata_orientacao = db.Column(ID)
+    id_banca = db.Column("id_banca_defesa", ID, db.ForeignKey("banca_defesa.id_banca_defesa"))
+    id_documento_oficial = db.Column(ID, db.ForeignKey("documento_oficial.id_documento_oficial"))
+    documento = db.relationship("Documento")
     chave_idempotencia_notificacao = db.Column(db.String(200), nullable=False, unique=True)
     data_agendamento_notificacao = db.Column(UTCDateTime, nullable=False, default=utcnow)
     data_envio_notificacao = db.Column(UTCDateTime)
