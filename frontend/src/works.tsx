@@ -3,6 +3,7 @@ import { api, ApiError } from './api';
 import type { Course } from './types';
 import type { Enrollment } from './enrollments';
 import { Notice } from './components';
+import { ManuscriptUpload } from './defense-management';
 import {
   AcademicField,
   catalog,
@@ -396,6 +397,7 @@ export function Works({ onSessionEnded }: SessionProps) {
           </div>
         </form>
       )}
+      {own && work?.id_etapa && <ManuscriptUpload key={work.id_etapa} stage={work.id_etapa} />}
       {own === false && !work && (
         <>
           <div className="academic-list">
