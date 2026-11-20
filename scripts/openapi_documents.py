@@ -42,16 +42,17 @@ def extend(paths, schemas, operation, obj, string, identifier):
     )
     schemas["EmitirAta"] = obj(
         {
-            "resultado": string(enum=["aprovado", "reprovado", "aprovado_com_correcoes"]),
             "prazo": nullable,
             "correcoes": string(maxLength=10000),
             "justificativa": string(maxLength=2000),
         },
-        ("resultado",),
         additionalProperties=False,
         description=(
-            "Correções exigem prazo e descrição. Reemissão exige justificativa "
-            "e é bloqueada após arquivo assinado ou submissão de correções."
+            "RN05: o resultado é calculado pela média final. Média ≥ 6,0 aprova; com "
+            "observação de alterações (correcoes), aprova com correções e exige prazo; "
+            "abaixo de 6,0, reprova. TCC 2 e artigo aprovados recebem a Folha de Aprovação "
+            "no mesmo PDF. Reemissão exige justificativa e é bloqueada após arquivo "
+            "assinado ou submissão de correções."
         ),
     )
     schemas["AtaAluno"] = obj(

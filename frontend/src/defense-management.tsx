@@ -2,18 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Notice } from './components';
 import { dateTime, failure } from './defenses';
+import { OfficialRubric } from './official-rubric';
 
 type ClassOption = { id_turma: number; codigo_turma: string; periodo_letivo: string };
-type Criterion = { nome: string; descricao: string; peso: string };
-type Rubric = {
-  id: number;
-  nome: string;
-  situacao: string;
-  versao: number;
-  bloqueada: boolean;
-  criterios: Criterion[];
-};
-type PriorRubric = Pick<Rubric, 'id' | 'nome' | 'versao'> & { periodo: string };
 type Work = {
   id: number;
   titulo: string;
@@ -21,6 +12,7 @@ type Work = {
   nome_orientador: string;
   estudante: string;
   nivel: number;
+  tempo_apresentacao: number | null;
   manuscrito: boolean;
 };
 type Person = {
@@ -34,7 +26,6 @@ type Booking = {
   id: number;
   titulo: string;
   etapa: number;
-  rubrica: number;
   inicio: string;
   fim: string;
   modalidade: string;
@@ -44,10 +35,8 @@ type Booking = {
   membros: { id: number; papel: string; nome: string }[];
 };
 type Scheduling = { trabalhos: Work[]; bancas: Booking[] };
-const blankCriterion = (): Criterion => ({ nome: '', descricao: '', peso: '' });
 const blankBooking = () => ({
   etapa: '',
-  rubrica: '',
   inicio: '',
   fim: '',
   modalidade: 'presencial',
@@ -66,19 +55,11 @@ export function DefenseManagement({
 }) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classId, setClassId] = useState('');
-  const [sourceId, setSourceId] = useState('');
-  const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [source, setSource] = useState<PriorRubric[]>([]);
   const [schedule, setSchedule] = useState<Scheduling>({ trabalhos: [], bancas: [] });
   const [people, setPeople] = useState<Person[]>([]);
   const [known, setKnown] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
   const [pick, setPick] = useState('');
-  const [rubricId, setRubricId] = useState<number>();
-  const [name, setName] = useState('');
-  const [criteria, setCriteria] = useState([blankCriterion()]);
-  const [status, setStatus] = useState('rascunho');
-  const [replace, setReplace] = useState(false);
   const [bookingId, setBookingId] = useState<number>();
   const [booking, setBooking] = useState(blankBooking);
   const [mode, setMode] = useState<'rubricas' | 'bancas'>('rubricas');
@@ -91,11 +72,6 @@ export function DefenseManagement({
   const [externalError, setExternalError] = useState('');
   const prefix = `/turmas/${classId}`;
   const currentWork = schedule.trabalhos.find((work) => String(work.id) === booking.etapa);
-  const sum =
-    criteria.reduce((total, item) => total + Math.round(Number(item.peso || 0) * 1000), 0) / 1000;
-  const currentRubric = rubrics.find((rubric) => rubric.id === rubricId);
-  const activeRubric = rubrics.find((rubric) => rubric.situacao === 'ativa');
-  const replacing = status === 'ativa' && activeRubric && activeRubric.id !== rubricId;
 
   function handleError(cause: unknown) {
     if (cause instanceof ApiError && cause.status === 401) onSessionEnded(cause.message);
@@ -129,14 +105,8 @@ export function DefenseManagement({
 
   async function load(signal?: AbortSignal) {
     if (!classId) return;
-    const [rubricResult, bookingResult] = await Promise.all([
-      api.request<Rubric[]>(`${prefix}/rubricas`, { signal }, true),
-      api.request<Scheduling>(`${prefix}/bancas`, { signal }, true),
-    ]);
-    if (!signal?.aborted) {
-      setRubrics(rubricResult.body.data);
-      setSchedule(bookingResult.body.data);
-    }
+    const bookingResult = await api.request<Scheduling>(`${prefix}/bancas`, { signal }, true);
+    if (!signal?.aborted) setSchedule(bookingResult.body.data);
   }
 
   useEffect(() => {
@@ -180,40 +150,6 @@ export function DefenseManagement({
       controller.abort();
     };
   }, [classId, mode, search]);
-
-  useEffect(() => {
-    if (!classId) return;
-    const controller = new AbortController();
-    api
-      .request<PriorRubric[]>(`${prefix}/rubricas/anteriores`, { signal: controller.signal }, true)
-      .then(({ body }) => {
-        if (!controller.signal.aborted) setSource(body.data);
-      })
-      .catch((cause) => {
-        if (!controller.signal.aborted) handleError(cause);
-      });
-    return () => controller.abort();
-  }, [classId]);
-
-  async function importRubric() {
-    setBusy(true);
-    setMessage('');
-    setError('');
-    try {
-      await api.request(
-        `${prefix}/rubricas/importacoes`,
-        { method: 'POST', body: JSON.stringify({ origem: Number(sourceId) }) },
-        true,
-      );
-      setSourceId('');
-      setMessage('Rubrica importada como rascunho. Você pode editá-la na lista da turma.');
-      await load();
-    } catch (cause) {
-      handleError(cause);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   useEffect(() => {
     setAvailability('');
@@ -267,26 +203,6 @@ export function DefenseManagement({
     };
   }, [classId, mode, booking, bookingId, currentWork, known]);
 
-  function resetRubric() {
-    setRubricId(undefined);
-    setName('');
-    setCriteria([blankCriterion()]);
-    setStatus('rascunho');
-    setReplace(false);
-  }
-
-  function editRubric(item: Rubric, copy = false) {
-    setRubricId(copy ? undefined : item.id);
-    setName(item.nome);
-    setCriteria(
-      item.criterios.map((criterion) => ({ ...criterion, peso: String(Number(criterion.peso)) })),
-    );
-    setStatus(copy ? 'rascunho' : item.situacao);
-    setReplace(false);
-    setMessage(copy ? 'Critérios copiados para o formulário. Salve para criar o rascunho.' : '');
-    setError('');
-  }
-
   async function openBooking(id: number) {
     setBusy(true);
     setError('');
@@ -309,7 +225,6 @@ export function DefenseManagement({
     }));
     setBooking({
       etapa: String(item.etapa),
-      rubrica: String(item.rubrica),
       inicio: dateInput(item.inicio),
       fim: dateInput(item.fim),
       modalidade: item.modalidade,
@@ -321,50 +236,34 @@ export function DefenseManagement({
     setError('');
   }
 
-  async function save(event: FormEvent, kind: 'rubricas' | 'bancas') {
+  async function save(event: FormEvent) {
     event.preventDefault();
     setError('');
     setMessage('');
-    if (kind === 'rubricas' && status === 'ativa' && sum !== 100 && sum !== 10) {
-      setError('Para ativar a rubrica, ajuste a soma dos pesos para 100 ou 10.');
-      return;
-    }
-    if (kind === 'bancas' && (booking.titulares.length < 2 || booking.suplentes.length < 1)) {
+    if (booking.titulares.length < 2 || booking.suplentes.length < 1) {
       setError('Adicione pelo menos dois titulares e um suplente. O orientador será o presidente.');
       return;
     }
-    const id = kind === 'rubricas' ? rubricId : bookingId;
-    const data =
-      kind === 'rubricas'
-        ? {
-            nome: name,
-            situacao: status,
-            criterios: criteria,
-            substituir: replacing && replace ? activeRubric.id : undefined,
-          }
-        : {
-            ...booking,
-            etapa: Number(booking.etapa),
-            rubrica: Number(booking.rubrica),
-            inicio: booking.inicio + ':00-04:00',
-            fim: booking.fim + ':00-04:00',
-          };
+    const id = bookingId;
+    const data = {
+      ...booking,
+      etapa: Number(booking.etapa),
+      inicio: booking.inicio + ':00-04:00',
+      fim: booking.fim + ':00-04:00',
+    };
     setBusy(true);
     try {
       const { body } = await api.request(
-        `${prefix}/${kind}${id ? `/${id}` : ''}`,
+        `${prefix}/bancas${id ? `/${id}` : ''}`,
         {
           method: id ? 'PATCH' : 'POST',
           body: JSON.stringify(data),
         },
         true,
       );
-      if (kind === 'rubricas') resetRubric();
-      else {
-        setBookingId(undefined);
-        setBooking(blankBooking());
-      }
-      setMessage(kind === 'rubricas' ? 'Rubrica salva.' : body.message || 'Banca salva.');
+      setBookingId(undefined);
+      setBooking(blankBooking());
+      setMessage(body.message || 'Banca salva.');
       await load();
     } catch (cause) {
       handleError(cause);
@@ -419,7 +318,10 @@ export function DefenseManagement({
     <section className="defense-portal defense-management">
       <div className="academic-box">
         <h2>Organizar defesas</h2>
-        <p>Prepare os critérios da turma e agende a banca com o manuscrito mais recente.</p>
+        <p>
+          Consulte a rubrica oficial e agende a banca com o manuscrito mais recente. A rubrica é
+          fixa e aplicada automaticamente.
+        </p>
         <label className="field" htmlFor="def-class">
           Turma
           <select
@@ -428,11 +330,7 @@ export function DefenseManagement({
             disabled={busy}
             onChange={(e) => {
               setClassId(e.target.value);
-              setRubrics([]);
               setSchedule({ trabalhos: [], bancas: [] });
-              setSource([]);
-              setSourceId('');
-              resetRubric();
               setBookingId(undefined);
               setBooking(blankBooking());
               setMessage('');
@@ -454,7 +352,7 @@ export function DefenseManagement({
             disabled={busy}
             onClick={() => setMode('rubricas')}
           >
-            Rubricas
+            Rubrica oficial
           </button>
           <button
             type="button"
@@ -468,150 +366,7 @@ export function DefenseManagement({
         {(loading || busy) && <p role="status">{busy ? 'Salvando…' : 'Carregando a turma…'}</p>}
         {error && <Notice message={error} />}
         {message && <Notice success message={message} />}
-        {classId && !loading && mode === 'rubricas' && (
-          <>
-            <h3>Rubricas da turma</h3>
-            {!rubrics.length && <p>Nenhuma rubrica cadastrada.</p>}
-            <ul className="defense-records">
-              {rubrics.map((rubric) => (
-                <li key={rubric.id}>
-                  <strong>{rubric.nome}</strong> · v{rubric.versao} · {rubric.situacao}
-                  {rubric.bloqueada && ' · bloqueada após avaliação'}
-                  <button type="button" disabled={busy} onClick={() => editRubric(rubric)}>
-                    {rubric.bloqueada ? 'Consultar' : 'Editar'}
-                  </button>
-                  <button type="button" disabled={busy} onClick={() => editRubric(rubric, true)}>
-                    Duplicar
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <label className="field" htmlFor="rubric-source">
-              Rubrica de um período anterior deste curso
-              <select
-                id="rubric-source"
-                value={sourceId}
-                disabled={busy || !source.length}
-                onChange={(e) => setSourceId(e.target.value)}
-              >
-                <option value="">
-                  {source.length ? 'Selecione a rubrica de origem' : 'Nenhuma rubrica anterior'}
-                </option>
-                {source.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.periodo} · {item.nome} · v{item.versao}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" disabled={busy || !sourceId} onClick={() => void importRubric()}>
-              Importar como rascunho
-            </button>
-            <form onSubmit={(e) => void save(e, 'rubricas')}>
-              <h3>{rubricId ? 'Rubrica selecionada' : 'Nova rubrica'}</h3>
-              <fieldset disabled={busy || currentRubric?.bloqueada}>
-                <label className="field" htmlFor="rubric-name">
-                  Nome
-                  <input
-                    id="rubric-name"
-                    required
-                    maxLength={150}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </label>
-                {criteria.map((criterion, index) => (
-                  <fieldset key={index} className="defense-criteria">
-                    <legend>Critério {index + 1}</legend>
-                    {(['nome', 'descricao', 'peso'] as const).map((field) => (
-                      <label className="field" key={field} htmlFor={`criterion-${index}-${field}`}>
-                        {
-                          {
-                            nome: 'Nome',
-                            descricao: 'O que o avaliador deve observar',
-                            peso: 'Peso',
-                          }[field]
-                        }
-                        <input
-                          id={`criterion-${index}-${field}`}
-                          required
-                          type={field === 'peso' ? 'number' : 'text'}
-                          min={field === 'peso' ? 0.001 : undefined}
-                          max={field === 'peso' ? 100 : undefined}
-                          step={field === 'peso' ? '.001' : undefined}
-                          maxLength={field === 'nome' ? 150 : 4000}
-                          value={criterion[field]}
-                          onChange={(e) =>
-                            setCriteria(
-                              criteria.map((item, i) =>
-                                i === index ? { ...item, [field]: e.target.value } : item,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={criteria.length === 1}
-                      onClick={() => setCriteria(criteria.filter((_, i) => i !== index))}
-                    >
-                      Remover critério {index + 1}
-                    </button>
-                  </fieldset>
-                ))}
-                <p aria-live="polite">
-                  Soma dos pesos: {sum.toLocaleString('pt-BR')}. Para ativar, a soma deve ser 100 ou
-                  10. Cada critério vale até 10.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setCriteria([...criteria, blankCriterion()])}
-                  disabled={criteria.length >= 50}
-                >
-                  Adicionar critério
-                </button>
-                <label className="field" htmlFor="rubric-status">
-                  Situação
-                  <select
-                    id="rubric-status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <option value="rascunho" disabled={currentRubric?.situacao === 'ativa'}>
-                      Rascunho
-                    </option>
-                    <option value="ativa">Ativa</option>
-                    <option value="inativa" disabled={currentRubric?.situacao === 'ativa'}>
-                      Inativa
-                    </option>
-                  </select>
-                </label>
-                {currentRubric?.situacao === 'ativa' && (
-                  <p>Para inativar esta rubrica, ative uma substituta.</p>
-                )}
-                {replacing && (
-                  <label className="field">
-                    <input
-                      type="checkbox"
-                      checked={replace}
-                      onChange={(e) => setReplace(e.target.checked)}
-                    />
-                    Substituir a rubrica ativa {activeRubric.nome}
-                  </label>
-                )}
-                <button className="primary" type="submit" disabled={Boolean(replacing && !replace)}>
-                  Salvar rubrica
-                </button>
-              </fieldset>
-              {rubricId && (
-                <button type="button" onClick={resetRubric}>
-                  Voltar para nova rubrica
-                </button>
-              )}
-            </form>
-          </>
-        )}
+        {mode === 'rubricas' && <OfficialRubric onSessionEnded={onSessionEnded} />}
         {classId && !loading && mode === 'bancas' && (
           <>
             <h3>Bancas agendadas da turma</h3>
@@ -631,7 +386,7 @@ export function DefenseManagement({
                 </li>
               ))}
             </ul>
-            <form onSubmit={(e) => void save(e, 'bancas')}>
+            <form onSubmit={(e) => void save(e)}>
               <h3>{bookingId ? 'Editar agendamento' : 'Novo agendamento'}</h3>
               <fieldset disabled={busy}>
                 <label className="field" htmlFor="booking-work">
@@ -664,6 +419,13 @@ export function DefenseManagement({
                     <p>
                       {currentWork.estudante} · TCC {currentWork.nivel}
                     </p>
+                    {currentWork.tempo_apresentacao && (
+                      <p>
+                        Tempo regimental de apresentação: {currentWork.tempo_apresentacao} min (TCC{' '}
+                        {currentWork.nivel}). Reserve também o tempo da arguição ao definir o
+                        término.
+                      </p>
+                    )}
                     <p>Presidente da banca: {currentWork.nome_orientador}</p>
                     {currentWork.manuscrito ? (
                       <ManuscriptDownload
@@ -676,24 +438,7 @@ export function DefenseManagement({
                     )}
                   </div>
                 )}
-                <label className="field" htmlFor="booking-rubric">
-                  Rubrica ativa
-                  <select
-                    id="booking-rubric"
-                    required
-                    value={booking.rubrica}
-                    onChange={(e) => setBooking({ ...booking, rubrica: e.target.value })}
-                  >
-                    <option value="">Selecione a rubrica</option>
-                    {rubrics
-                      .filter((r) => r.situacao === 'ativa')
-                      .map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nome}
-                        </option>
-                      ))}
-                  </select>
-                </label>
+                <p>A rubrica oficial da disciplina é vinculada automaticamente à banca.</p>
                 <p>
                   Horários de Manaus. O orientador aceito é incluído automaticamente como
                   presidente.

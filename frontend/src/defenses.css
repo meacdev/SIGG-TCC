@@ -273,3 +273,89 @@
   outline: 2px solid #315d42;
   outline-offset: 3px;
 }
+
+/* Official (fixed) rubric: concept options in the evaluation sheet and the read-only table. */
+.rubric-component {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 14px;
+  margin: 0 0 18px;
+}
+.rubric-component legend {
+  font-weight: 700;
+  padding: 0 6px;
+}
+.criterion-card.rubric-criterion {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+.concept-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.criterion-card .concept-option {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px;
+  font-weight: 400;
+  cursor: pointer;
+}
+.criterion-card .concept-option.chosen {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+.concept-option > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.criterion-card .concept-option input {
+  width: auto;
+  min-height: 0;
+  accent-color: var(--green);
+}
+.criterion-card .concept-option p {
+  white-space: pre-line;
+}
+.criterion-card .field input {
+  max-width: 160px;
+}
+.official-rubric p {
+  line-height: 1.6;
+}
+.concept-bands {
+  padding-left: 18px;
+}
+.rubric-table-wrap {
+  overflow-x: auto;
+}
+.rubric-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.rubric-table th,
+.rubric-table td {
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-line;
+}
+.rubric-table th small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+}
+@media (max-width: 720px) {
+  .concept-options {
+    grid-template-columns: 1fr;
+  }
+}
+.rubric-criterion > div:first-child small {
+  display: block;
+  margin-top: 4px;
+}

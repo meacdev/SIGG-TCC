@@ -2,11 +2,11 @@
 
 ## Fluxo de demonstração
 
-1. Use banco de desenvolvimento ou homologação com o esquema base e aplique as migrações com `yarn db:upgrade`. As migrações 009 e 010 alinham, respectivamente, o modelo acadêmico e o versionamento de bancas e documentos.
+1. Use banco de desenvolvimento ou homologação com o esquema base e aplique as migrações com `yarn db:upgrade`. As migrações 009 e 010 alinham, respectivamente, o modelo acadêmico e o versionamento de bancas e documentos. A 011 acrescenta à rubrica oficial os componentes, os descritores e o conceito marcado em cada nota.
 2. Como estudante, registre o trabalho vinculado a uma matrícula ativa. O orientador precisa aceitar o vínculo. Em **Trabalhos**, envie o PDF do manuscrito.
-3. Como professor da disciplina ou coordenador autorizado, abra **Organizar defesas**. Ative uma rubrica com pesos que somem 100 ou 10. Agende a defesa com dois titulares adicionais e pelo menos um suplente. O orientador aceito preside a banca.
-4. No dia da defesa, cada titular abre **Minhas bancas**, inicia a ficha e envia as notas por critério e, se quiser, um parecer. A primeira ficha congela a rubrica. A ata exige todas as avaliações definitivas.
-5. Na seção de documentos da banca, registre o resultado, emita a ata e baixe as declarações. O código de verificação confere a emissão e a vigência. A validação institucional das assinaturas é realizada antes de registrar o PDF assinado. O estudante consulta a liberação em **Minhas atas**.
+3. Como professor da disciplina ou coordenador autorizado, abra **Organizar defesas**. A aba **Rubrica oficial** só exibe a rubrica fixa da disciplina, que não é parametrizável. Agende a defesa com dois titulares adicionais e pelo menos um suplente. O sistema vincula a rubrica oficial automaticamente, e o orientador aceito preside a banca. A tela mostra o tempo regimental de apresentação: 15 min no TCC 1 e 20 min no TCC 2.
+4. No dia da defesa, cada membro (orientador e dois avaliadores) abre **Minhas bancas** e inicia a ficha. Em cada critério, marca o conceito (Exemplar 8,0 a 10,0; Competente 6,0 a 7,9; Necessita de Trabalho 0,0 a 5,9) e dá a nota dentro dessa faixa. Uma nota fora da faixa retorna UC_09_M09. O parecer é opcional. A nota ponderada é nota × peso ÷ 10, e a nota do membro é a soma das ponderadas. A primeira ficha congela a rubrica. A ata exige todas as avaliações definitivas.
+5. Na seção de documentos da banca, informe se quiser a observação de alterações e emita a ata. O resultado não é escolhido (RN05): média final ≥ 6,0 aprova; com observação de alterações, o resultado é Aprovado com Correções e exige prazo; abaixo de 6,0, reprova. A ata segue o modelo ATA FINAL da planilha da disciplina e traz anexas as fichas por avaliador. No TCC 2 e no artigo aprovados, a Folha de Aprovação vai no mesmo PDF. Depois, baixe as declarações. O código de verificação confere a emissão e a vigência. A validação institucional das assinaturas é realizada antes de registrar o PDF assinado. O estudante consulta a liberação em **Minhas atas**.
 
 ## Operação e limites
 
@@ -22,11 +22,9 @@
 | --- | --- |
 | SD07.1 | O gestor consulta etapas em andamento com orientação aceita e pré-visualiza o manuscrito, podendo cadastrar um avaliador externo no formulário. O sistema valida manuscrito, quórum, horários e conflitos antes de gravar a banca e enfileirar seus avisos. |
 | SD07.2 | O gestor escolhe uma banca agendada e carrega sua composição atual. O reagendamento mantém os vínculos existentes, inclui novos membros, remove quem saiu e grava o ICS com o mesmo identificador de calendário e sequência atualizada. |
-| SD08.1 | O gestor consulta rubricas e versões da turma. A validação de campos precede a de pesos, e a ativação exige soma igual a 100 ou 10. O rascunho aceita soma incompleta. |
-| SD08.2 | O sistema protege a rubrica quando existe ficha de avaliação. Antes disso, uma rubrica ativa que não está vinculada a banca vigente pode ser substituída na mesma transação por uma rubrica válida. |
-| SD08.3 | A busca considera períodos anteriores do mesmo curso. A importação grava os critérios, pesos, máximos e ordem em um novo rascunho com a versão seguinte disponível na turma de destino. |
+| SD08 | Revisado após a reunião com a professora responsável. A rubrica é fixa e segue a planilha oficial da disciplina: Parte Escrita (7,0) e Parte Oral (3,0), com nove critérios, pesos e descritores por conceito. `GET /rubrica-oficial` só a exibe. Criação, edição e importação foram removidas. Ao agendar, o sistema provisiona a cópia da turma e inativa qualquer rubrica livre anterior. |
 | SD09 | O sistema identifica o membro pela sessão e pelo vínculo com a banca. No dia da defesa, a ficha usa os critérios congelados. O sistema valida e calcula a nota ponderada antes de confirmar a gravação das notas por critério e do parecer. |
-| SD10 | Com todas as fichas enviadas, um examinador informa o resultado e o prazo quando há correções. A ata e as declarações são gravadas antes do envio. Se o e-mail falhar, a ata permanece disponível e o envio pode ser repetido. |
+| SD10 | Com todas as fichas enviadas, o sistema calcula o resultado pela média (RN05). O examinador informa só a observação de alterações e, quando houver, o prazo. A ata e as declarações são gravadas antes do envio. Se o e-mail falhar, a ata permanece disponível e o envio pode ser repetido. |
 
 O diagrama de casos de uso agrupa rubrica, agendamento, avaliação e ata. As fichas dos UC07 e UC08 também autorizam o coordenador do curso. A relação entre UC09 e UC10 se manifesta na habilitação da emissão após todas as avaliações. O resultado da banca é informado na emissão, como no SD10.
 

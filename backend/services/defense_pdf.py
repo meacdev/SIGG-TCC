@@ -1,5 +1,6 @@
 """Flowing PDF layouts, escaped academic text and actual empty signature fields."""
 
+from decimal import Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape
 
@@ -10,7 +11,15 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    Flowable,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 
 def render(snapshot, code, examiner=None):
@@ -52,19 +61,21 @@ def render(snapshot, code, examiner=None):
         title="Ata de Defesa" if examiner is None else "Declaração de Participação",
         author="SIGG-TCC - NUCOMP/UEA",
     )
-    story = [
-        para("Universidade do Estado do Amazonas", heading),
-        para("NUCOMP - Sistema de Gestão e Governança de TCC", small),
-        Spacer(1, 5 * mm),
-    ]
+    institution = (
+        "Universidade do Estado do Amazonas - UEA\n"
+        "Escola Superior de Tecnologia - EST\n"
+        f"Curso de {snapshot['curso']}"
+    )
+    centered = ParagraphStyle("AcademicCentered", parent=normal, alignment=TA_CENTER)
+    story = [para(institution, centered), Spacer(1, 4 * mm)]
     boxes = []
 
     class SignatureBox(Flowable):
-        def __init__(self, name, member_id):
+        def __init__(self, name, field):
             Flowable.__init__(self)
             self.width, self.height = document.width, 21 * mm
-            self.name, self.member_id = name, member_id
-            self.label = Paragraph(escape(self.name), small)
+            self.name, self.field = name, field
+            self.label = Paragraph(escape(self.name).replace("\n", "<br/>"), small)
 
         def wrap(self, width, height):
             self.width = width
@@ -80,99 +91,78 @@ def render(snapshot, code, examiner=None):
             self.label.drawOn(canvas, 0, 1 * mm)
             x, y = canvas.absolutePosition(0, bottom)
             boxes.append(
-                (canvas.getPageNumber() - 1, self.member_id, [x, y, x + self.width, y + 10 * mm])
+                (canvas.getPageNumber() - 1, self.field, [x, y, x + self.width, y + 10 * mm])
             )
 
+    def grid(rows, widths, total_row=False):
+        table = Table(
+            rows, colWidths=[document.width * w for w in widths], repeatRows=1, hAlign="LEFT"
+        )
+        style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf1e9")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#c9d1c8")),
+        ]
+        if total_row:
+            style.append(("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f4f6f2")))
+        table.setStyle(TableStyle(style))
+        return table
+
+    def comma(value):
+        return str(value).replace(".", ",")
+
     if examiner is None:
-        story.append(para("Ata de Defesa de Trabalho de Conclusão de Curso", title))
+        level = "II" if snapshot.get("nivel") == 2 else "I"
+        story.append(
+            para(f"ATA FINAL DE AVALIAÇÃO DE TRABALHO DE CONCLUSÃO DE CURSO {level}", title)
+        )
+        story.append(para("1. Dados de Identificação", heading))
         for label, value in [
-            ("Estudante", snapshot["aluno"]),
-            ("Título", snapshot["titulo"]),
-            ("Curso", snapshot["curso"]),
+            ("Nome do Aluno", snapshot["aluno"]),
+            ("Título do Trabalho", snapshot["titulo"]),
+            ("Professor Orientador", snapshot.get("orientador", "")),
             ("Defesa", snapshot["data_local"]),
             ("Local", snapshot["local"]),
-            ("Versão", snapshot["versao"]),
         ]:
             story.append(para(f"{label}: {value}"))
-        story.append(para("Notas da banca examinadora", heading))
-        rows = [
-            [para("Examinador", small), para("Titulação", small), para("Nota individual", small)]
-        ]
+        story.append(para("2. Notas dos Avaliadores", heading))
+        rows = [[para("Avaliadores", small), para("Nome", small), para("Nota", small)]]
         for member in snapshot["membros"]:
             rows.append(
                 [
+                    para(member.get("rotulo", "Avaliador"), small),
                     para(member["nome"], small),
-                    para(member["titulacao"].capitalize(), small),
-                    para(member["nota"].replace(".", ","), small),
+                    para(comma(member["nota"]), small),
                 ]
             )
-        table = Table(
-            rows,
-            colWidths=[document.width * 0.55, document.width * 0.23, document.width * 0.22],
-            repeatRows=1,
-            hAlign="LEFT",
-        )
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf1e9")),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 8),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#c9d1c8")),
-                ]
-            )
-        )
-        story.extend(
+        rows.append(
             [
-                table,
-                Spacer(1, 4 * mm),
-                para(f"Média final: {snapshot['media_final'].replace('.', ',')} / 10", heading),
-                para(f"Resultado: {snapshot['resultado_label']}"),
+                para("MÉDIA FINAL", small),
+                para("", small),
+                para(comma(snapshot["media_final"]), small),
             ]
         )
-        if snapshot.get("prazo"):
-            story.extend(
-                [
-                    para(f"Prazo para correções: {snapshot['prazo']}"),
-                    para(f"Correções solicitadas: {snapshot['correcoes']}"),
-                ]
-            )
-        story.append(para("Critérios utilizados", heading))
-        for criterion in snapshot["criterios"]:
-            story.append(
-                para(
-                    f"{criterion['nome']}: peso {criterion['peso']}, "
-                    f"pontuação máxima {criterion['pontuacao_maxima']}. {criterion['descricao']}",
-                    small,
-                )
-            )
-        story.append(para("Notas por critério", heading))
-        for member in snapshot["membros"]:
-            story.append(para(member["nome"]))
-            rows = [[para("Critério", small), para("Nota", small)]]
-            for criterion in snapshot["criterios"]:
-                note = member["notas_por_criterio"][str(criterion["id_criterio"])]
-                rows.append([para(criterion["nome"], small), para(note.replace(".", ","), small)])
-            detail = Table(
-                rows,
-                colWidths=[document.width * 0.78, document.width * 0.22],
-                repeatRows=1,
-                hAlign="LEFT",
-            )
-            detail.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf1e9")),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#c9d1c8")),
-                    ]
-                )
-            )
-            story.extend([detail, Spacer(1, 4 * mm)])
         story.extend(
             [
-                para("Assinaturas dos membros da banca", heading),
+                grid(rows, [0.3, 0.52, 0.18], total_row=True),
+                Spacer(1, 4 * mm),
+                para(f"Resultado: {snapshot['resultado_label']}", heading),
+                para(
+                    "Critério (RN05): média final maior ou igual a 6,0 aprova; com observação "
+                    "de alterações, aprova com correções; abaixo de 6,0, reprova.",
+                    small,
+                ),
+            ]
+        )
+        if snapshot.get("correcoes"):
+            story.append(para(f"Observação de alterações: {snapshot['correcoes']}"))
+        if snapshot.get("prazo"):
+            story.append(para(f"Prazo para entrega das correções: {snapshot['prazo']}"))
+        story.extend(
+            [
+                para("3. Assinaturas", heading),
                 para(
                     "Campos reservados às assinaturas. A emissão deste arquivo "
                     "não constitui assinatura dos participantes.",
@@ -181,7 +171,121 @@ def render(snapshot, code, examiner=None):
             ]
         )
         for member in snapshot["membros"]:
-            story.append(SignatureBox(member["nome"], member["id_docente"]))
+            story.append(
+                SignatureBox(
+                    f"{member.get('rotulo', 'Avaliador')}: {member['nome']}",
+                    f"assinatura_membro_{member['id_docente']}",
+                )
+            )
+        story.append(para(f"Data: {snapshot.get('data_defesa', '')}"))
+        story.append(
+            SignatureBox(
+                f"{snapshot.get('responsavel_disciplina', '')}\nProf(a). Responsável da Disciplina",
+                "assinatura_responsavel_disciplina",
+            )
+        )
+        story.append(
+            SignatureBox(
+                f"{snapshot.get('coordenador_curso', '')}\nCoordenação do Curso",
+                "assinatura_coordenacao_curso",
+            )
+        )
+        story.append(PageBreak())
+        story.append(para("Anexo - Fichas de avaliação por avaliador", heading))
+        story.append(
+            para(
+                "Rubrica oficial: o avaliador marca o conceito (Exemplar 8,0 a 10,0; Competente "
+                "6,0 a 7,9; Necessita de Trabalho 0,0 a 5,9) e atribui a nota dentro da faixa. "
+                "Nota ponderada = nota x peso / 10.",
+                small,
+            )
+        )
+        concepts = snapshot.get("conceitos", {})
+        components = {c["chave"]: c for c in snapshot.get("componentes", [])}
+        for member in snapshot["membros"]:
+            story.append(para(f"{member.get('rotulo', 'Avaliador')}: {member['nome']}"))
+            rows = [
+                [
+                    para("Critério", small),
+                    para("Peso", small),
+                    para("Conceito", small),
+                    para("Nota", small),
+                    para("Ponderada", small),
+                ]
+            ]
+            total_weight = sum(float(c["peso"]) for c in snapshot["criterios"]) or 1
+            for criterion in snapshot["criterios"]:
+                key = str(criterion["id_criterio"])
+                note = member["notas_por_criterio"][key]
+                concept = member.get("conceitos_por_criterio", {}).get(key)
+                share = (
+                    float(note)
+                    / float(criterion["pontuacao_maxima"])
+                    * float(criterion["peso"])
+                    * 10
+                    / total_weight
+                )
+                component = components.get(criterion.get("componente"), {}).get("nome")
+                rows.append(
+                    [
+                        para(
+                            f"{component} - {criterion['nome']}"
+                            if component
+                            else criterion["nome"],
+                            small,
+                        ),
+                        para(
+                            comma(format(Decimal(str(criterion["peso"])).normalize(), "f")), small
+                        ),
+                        para(concepts.get(concept, "-"), small),
+                        para(comma(note), small),
+                        para(comma(f"{share:.2f}"), small),
+                    ]
+                )
+            subtotal = ", ".join(
+                f"{components.get(key, {}).get('nome', 'Critérios')}: {comma(value)}"
+                for key, value in member.get("subtotais", {}).items()
+            )
+            rows.append(
+                [
+                    para(f"Nota do avaliador ({subtotal})" if subtotal else "Nota", small),
+                    para("", small),
+                    para("", small),
+                    para("", small),
+                    para(comma(member["nota"]), small),
+                ]
+            )
+            story.extend(
+                [grid(rows, [0.5, 0.1, 0.18, 0.1, 0.12], total_row=True), Spacer(1, 4 * mm)]
+            )
+        if snapshot.get("folha_aprovacao"):
+            story.extend(
+                [
+                    PageBreak(),
+                    para(institution, centered),
+                    Spacer(1, 6 * mm),
+                    para("FOLHA DE APROVAÇÃO", title),
+                    para(snapshot["titulo"], centered),
+                    Spacer(1, 3 * mm),
+                    para(snapshot["aluno"], centered),
+                    Spacer(1, 6 * mm),
+                    para(
+                        "Trabalho de Conclusão de Curso defendido e aprovado pela banca "
+                        "avaliadora constituída pelos professores:"
+                    ),
+                ]
+            )
+            for member in sorted(snapshot["membros"], key=lambda m: m.get("papel") != "presidente"):
+                role = "Presidente" if member.get("papel") == "presidente" else "Avaliador"
+                titulacao = str(member.get("titulacao", "")).capitalize()
+                story.append(
+                    SignatureBox(
+                        f"{member['nome']} ({titulacao})\n{role}",
+                        f"folha_aprovacao_{member['id_docente']}",
+                    )
+                )
+            story.append(Spacer(1, 4 * mm))
+            story.append(para(f"Manaus, {snapshot.get('data_extenso', '')}"))
     else:
         story.append(para("Declaração de Participação em Banca", title))
         story.append(
@@ -229,14 +333,14 @@ def render(snapshot, code, examiner=None):
     writer = PdfWriter()
     writer.clone_document_from_reader(PdfReader(BytesIO(buffer.getvalue())))
     fields = ArrayObject()
-    for page_index, member_id, rectangle in boxes:
+    for page_index, field_name, rectangle in boxes:
         page = writer.pages[page_index]
         widget = DictionaryObject(
             {
                 NameObject("/Type"): NameObject("/Annot"),
                 NameObject("/Subtype"): NameObject("/Widget"),
                 NameObject("/FT"): NameObject("/Sig"),
-                NameObject("/T"): TextStringObject(f"assinatura_membro_{member_id}"),
+                NameObject("/T"): TextStringObject(field_name),
                 NameObject("/Rect"): ArrayObject([FloatObject(value) for value in rectangle]),
                 NameObject("/P"): page.indirect_reference,
             }

@@ -11,31 +11,49 @@ def extend(paths, schemas, operation, obj, string, identifier):
     def param(name):
         return {"name": name, "in": "path", "required": True, "schema": identifier}
 
-    criterion = obj(
-        {
-            "nome": string(maxLength=150),
-            "descricao": string(maxLength=4000),
-            "peso": {"type": ["string", "number"]},
-        },
-        ("nome", "descricao", "peso"),
-    )
-    rubric = {
-        "nome": string(maxLength=150),
-        "situacao": string(enum=["rascunho", "ativa", "inativa"]),
-        "criterios": array(criterion),
-    }
     boolean = {"type": "boolean"}
-    schemas["RubricaEntrada"] = obj(rubric | {"substituir": identifier}, tuple(rubric))
-    schemas["RubricaGestao"] = obj(
-        rubric | {"id": identifier, "versao": identifier, "bloqueada": boolean}
+    descriptors = obj(
+        {"exemplar": string(), "competente": string(), "necessita_trabalho": string()}
     )
-    schemas["RubricaAnterior"] = obj(
-        {"id": identifier, "nome": string(), "versao": identifier, "periodo": string()}
+    schemas["RubricaOficial"] = obj(
+        {
+            "nome": string(),
+            "nota_maxima": string(),
+            "aprovacao_minima": string(),
+            "tempo_apresentacao": obj({"tcc1": {"type": "integer"}, "tcc2": {"type": "integer"}}),
+            "conceitos": array(
+                obj(
+                    {
+                        "chave": string(enum=["exemplar", "competente", "necessita_trabalho"]),
+                        "nome": string(),
+                        "minimo": string(),
+                        "maximo": string(),
+                    }
+                )
+            ),
+            "componentes": array(
+                obj(
+                    {
+                        "chave": string(enum=["parte_escrita", "parte_oral"]),
+                        "nome": string(),
+                        "pontos": string(),
+                        "criterios": array(
+                            obj(
+                                {
+                                    "nome": string(),
+                                    "descricao": string(),
+                                    "peso": string(),
+                                    "descritores": descriptors,
+                                }
+                            )
+                        ),
+                    }
+                )
+            ),
+        }
     )
-    schemas["ImportacaoRubrica"] = obj({"origem": identifier}, ("origem",))
     booking = {
         "etapa": identifier,
-        "rubrica": identifier,
         "inicio": string(format="date-time"),
         "fim": string(format="date-time"),
         "local": string(),
@@ -52,6 +70,8 @@ def extend(paths, schemas, operation, obj, string, identifier):
             **{k: v for k, v in booking.items() if k not in {"titulares", "suplentes", "url"}},
             "id": identifier,
             "titulo": string(),
+            "rubrica": identifier,
+            "tempo_apresentacao": {"type": ["integer", "null"]},
             "url": {"type": ["string", "null"]},
             "situacao": string(),
             "membros": array(obj({"id": identifier, "papel": string(), "nome": string()})),
@@ -62,49 +82,15 @@ def extend(paths, schemas, operation, obj, string, identifier):
     item = [*scoped, param("identifier")]
     tag = "Organização de defesas"
     operation(
-        prefix + "/rubricas/anteriores",
+        "/api/v1/rubrica-oficial",
         "get",
-        "Consultar rubricas anteriores do curso",
+        "Consultar a rubrica oficial (fixa) de avaliação",
         tag,
-        array(ref("RubricaAnterior")),
-        params=scoped,
-    )
-    operation(
-        prefix + "/rubricas/importacoes",
-        "post",
-        "Importar rubrica como rascunho",
-        tag,
-        "RubricaGestao",
-        "ImportacaoRubrica",
-        201,
-        params=scoped,
-    )
-    operation(
-        prefix + "/rubricas",
-        "get",
-        "Consultar rubricas da turma",
-        tag,
-        array(ref("RubricaGestao")),
-        params=scoped,
-    )
-    operation(
-        prefix + "/rubricas",
-        "post",
-        "Criar rubrica",
-        tag,
-        "RubricaGestao",
-        "RubricaEntrada",
-        201,
-        params=scoped,
-    )
-    operation(
-        prefix + "/rubricas/{identifier}",
-        "patch",
-        "Atualizar rubrica",
-        tag,
-        "RubricaGestao",
-        "RubricaEntrada",
-        params=item,
+        "RubricaOficial",
+        description=(
+            "UC08 somente leitura: componentes, critérios, pesos, descritores e faixas de "
+            "conceito reproduzem a planilha oficial da disciplina e não são parametrizáveis."
+        ),
     )
     operation(
         prefix + "/bancas",
@@ -122,6 +108,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
                             "nome_orientador": string(),
                             "estudante": string(),
                             "nivel": identifier,
+                            "tempo_apresentacao": {"type": ["integer", "null"]},
                             "manuscrito": {"type": "boolean"},
                         }
                     )

@@ -40,7 +40,7 @@ Esta entrega considera o levantamento completo de requisitos, a planilha de RNFs
 | RF05 | Substituição de orientação; orientacao, auditoria | Infraestrutura de auditoria pronta; fluxo com justificativa é futuro |
 | RF06 | Perfil docente; docente, area_conhecimento, professor_area | Titulação, áreas e Lattes implementados no cadastro e na edição própria |
 | RF07 | Reuniões; ata_orientacao, etapa_trabalho | UC05 implementa atas, histórico e assiduidade; UC13 acrescenta matriz filtrável por turma, seleção individual/em lote, cobrança confirmada, revalidação e auditoria |
-| RF08 | Rubricas; rubrica, criterio_rubrica | Futuro; versão, pesos e limites precisam de validação transacional |
+| RF08 | Rubrica oficial fixa (somente consulta); rubrica, criterio_rubrica | Implementado: componentes, critérios, pesos e descritores da planilha da disciplina; não parametrizável |
 | RF09 | Agendamento; banca | Futuro; validar aluno/etapa, horários, local e conflitos |
 | RF10 | Examinadores; docente, membro_banca | Cadastro docente externo básico disponível; constituição da banca é futura |
 | RF11 | E-mail e calendário; notificacao, banca | Transporte SMTP reutilizável; convites, lembretes e ICS são futuros |

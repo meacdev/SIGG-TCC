@@ -3,6 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from flask import current_app, g
 from sqlalchemy import select
 
+from backend import official_rubric as official
 from backend import validation as v
 from backend.audit import audit
 from backend.db import db, utcnow
@@ -67,15 +68,17 @@ def criteria(banca):
             {
                 "id_criterio": c.id_criterio_rubrica,
                 "nome": c.nome_criterio_rubrica,
+                "componente": c.componente_criterio_rubrica,
                 "descricao": c.descricao_criterio_rubrica or "",
+                "descritores": c.descritores_criterio_rubrica,
                 "peso": str(c.peso_criterio_rubrica),
                 "pontuacao_maxima": str(c.pontuacao_maxima_criterio_rubrica),
             }
             for c in banca.rubrica.criterios
         ]
+    # The frozen snapshot (or the rubric linked at scheduling) governs, even if since retired.
     if (
-        banca.rubrica.situacao_rubrica != "ativa"
-        or not result
+        not result
         or any(Decimal(c["peso"]) <= 0 or Decimal(c["pontuacao_maxima"]) <= 0 for c in result)
         or sum(Decimal(c["peso"]) for c in result) not in {Decimal(10), Decimal(100)}
     ):
@@ -88,21 +91,39 @@ def weighted(grades, rubric):
     return weighted_values(values, rubric)
 
 
-def weighted_values(values, rubric):
+def contributions(values, rubric):
+    """Weighted grade per criterion: nota x peso / 10 on the official rubric (weights sum 10).
+
+    The general form (nota / máximo x peso x 10 / soma dos pesos) also covers frozen legacy
+    rubrics whose weights summed to 100.
+    """
     maxima = {c["id_criterio"]: Decimal(c["pontuacao_maxima"]) for c in rubric}
     if values.keys() != maxima.keys() or any(
         not 0 <= grade <= maxima[key] for key, grade in values.items()
     ):
         raise APIError(409, "AVALIACAO_INCOMPLETA", "Existem avaliações incompletas nesta banca.")
     total = sum(Decimal(c["peso"]) for c in rubric)
-    return (
-        sum(
-            values[c["id_criterio"]] / Decimal(c["pontuacao_maxima"]) * Decimal(c["peso"])
-            for c in rubric
-        )
+    return {
+        c["id_criterio"]: values[c["id_criterio"]]
+        / Decimal(c["pontuacao_maxima"])
+        * Decimal(c["peso"])
         * Decimal(10)
         / total
-    )
+        for c in rubric
+    }
+
+
+def weighted_values(values, rubric):
+    return sum(contributions(values, rubric).values())
+
+
+def subtotals(values, rubric):
+    parts = contributions(values, rubric)
+    result = {}
+    for c in rubric:
+        key = c.get("componente") or "criterios"
+        result[key] = result.get(key, Decimal(0)) + parts[c["id_criterio"]]
+    return {key: decimal_text(value) for key, value in result.items()}
 
 
 def decimal_text(value):
@@ -112,15 +133,21 @@ def decimal_text(value):
 def evaluation_json(evaluation, rubric, calculated=None):
     if not evaluation or evaluation.situacao_avaliacao != "enviada":
         return None
+    values = {n.id_criterio_rubrica: n.valor_nota_criterio for n in evaluation.notas}
+    parts = contributions(values, rubric)
     return {
         "id_avaliacao": evaluation.id_avaliacao,
         "data_envio": iso(evaluation.data_envio_avaliacao),
-        "nota_individual": decimal_text(
-            weighted(evaluation.notas, rubric) if calculated is None else calculated
-        ),
+        "nota_individual": decimal_text(sum(parts.values()) if calculated is None else calculated),
+        "subtotais": subtotals(values, rubric),
         "parecer": evaluation.parecer_avaliacao,
         "notas": [
-            {"id_criterio": n.id_criterio_rubrica, "nota": str(n.valor_nota_criterio)}
+            {
+                "id_criterio": n.id_criterio_rubrica,
+                "conceito": n.conceito_nota_criterio,
+                "nota": str(n.valor_nota_criterio),
+                "nota_ponderada": decimal_text(parts[n.id_criterio_rubrica]),
+            }
             for n in evaluation.notas
         ],
     }
@@ -128,7 +155,11 @@ def evaluation_json(evaluation, rubric, calculated=None):
 
 def accepted_members(banca):
     # Expiry of temporary access must not remove a submitted examiner from the final average.
-    return [m for m in banca.membros if m.papel_membro_banca != "suplente"]
+    # Ata order (planilha): primeiro avaliador, segundo avaliador e, por fim, o orientador.
+    return sorted(
+        (m for m in banca.membros if m.papel_membro_banca != "suplente"),
+        key=lambda m: (m.papel_membro_banca == "presidente", m.id_membro_banca),
+    )
 
 
 def consolidation(banca, rubric):
@@ -146,6 +177,7 @@ def consolidation(banca, rubric):
         "avaliadores": [
             {
                 "nome": m.avaliador.usuario.nome_usuario,
+                "papel": m.papel_membro_banca,
                 "enviada": m in completed,
                 "nota_individual": decimal_text(weighted(m.avaliacao.notas, rubric))
                 if m in completed
@@ -175,6 +207,11 @@ def defense_json(banca, full=True, calculated=None):
         "pode_avaliar": today == local_date
         and banca.situacao_banca in {"agendada", "em_andamento"},
         "avaliador": g.user.nome_usuario,
+        "nivel": turma.nivel_turma,
+        "tempo_apresentacao": official.presentation_minutes(turma.nivel_turma),
+        "aprovacao_minima": str(official.APPROVAL_MINIMUM),
+        "conceitos": [{"chave": key, **value} for key, value in official.CONCEPTS.items()],
+        "componentes": [{"chave": key, **value} for key, value in official.COMPONENTS.items()],
     }
     if full:
         rubric = criteria(banca)
@@ -241,18 +278,29 @@ def submit(banca, data):
         raise APIError(422, "UC_09_M02", "Preencha as notas de todos os critérios obrigatórios.")
     mapped = {}
     expected = {c["id_criterio"]: c for c in rubric}
+    concepts = {}
     for item in notes:
-        if not isinstance(item, dict) or set(item) != {"id_criterio", "nota"}:
+        if not isinstance(item, dict) or set(item) != {"id_criterio", "conceito", "nota"}:
             raise APIError(
-                422, "UC_09_M02", "Preencha as notas de todos os critérios obrigatórios."
+                422,
+                "UC_09_M02",
+                "Marque o conceito e preencha a nota de todos os critérios obrigatórios.",
             )
         key = item["id_criterio"]
         if type(key) is not int or key not in expected or key in mapped:
             raise APIError(
                 422, "UC_09_M02", "Preencha as notas de todos os critérios obrigatórios."
             )
-        grade = number(item["nota"], f"notas.{key}")
         field = f"notas.{key}"
+        concept = item["conceito"]
+        if not isinstance(concept, str) or concept not in official.CONCEPTS:
+            raise APIError(
+                422,
+                "UC_09_M02",
+                "Marque o conceito de todos os critérios obrigatórios.",
+                {field: "Marque Exemplar, Competente ou Necessita de Trabalho."},
+            )
+        grade = number(item["nota"], field)
         if grade < 0:
             raise APIError(
                 422,
@@ -267,7 +315,17 @@ def submit(banca, data):
                 "A nota informada excede a pontuação máxima permitida.",
                 {field: f"Pontuação máxima: {expected[key]['pontuacao_maxima']}."},
             )
+        if official.concept_for(grade) != concept:
+            band = official.CONCEPTS[concept]
+            low, high = band["minimo"].replace(".", ","), band["maximo"].replace(".", ",")
+            raise APIError(
+                422,
+                "UC_09_M09",
+                "A nota dada não pertence ao conceito marcado.",
+                {field: f"{band['nome']}: notas de {low} a {high}."},
+            )
         mapped[key] = grade
+        concepts[key] = concept
     opinion = data.get("parecer")
     if opinion is not None:
         opinion = v.text(opinion, "parecer", 4000, minimum=0) or None
@@ -283,6 +341,7 @@ def submit(banca, data):
             Nota(
                 id_avaliacao=evaluation.id_avaliacao,
                 id_criterio_rubrica=key,
+                conceito_nota_criterio=concepts[key],
                 valor_nota_criterio=grade,
             )
         )

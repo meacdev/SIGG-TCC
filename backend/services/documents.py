@@ -4,6 +4,7 @@ from datetime import date
 from flask import current_app, g
 from sqlalchemy import select
 
+from backend import official_rubric as official
 from backend import validation as v
 from backend.academic_models import NotificacaoAcademica as NotificacaoDocumento
 from backend.audit import audit
@@ -17,14 +18,59 @@ from backend.document_models import (
     Solicitacao,
 )
 from backend.errors import APIError
+from backend.models import Curso, ProfessorCurso, Turma, Usuario
 from backend.serialization import check_version, iso
-from backend.services import defense_pdf, defenses, document_mail, pdf_storage
+from backend.services import classes, defense_pdf, defenses, document_mail, pdf_storage
 
 RESULTS = {
     "aprovado": "Aprovado",
     "reprovado": "Reprovado",
     "aprovado_com_correcoes": "Aprovado com Correções",
 }
+EXAMINER_LABELS = ["Primeiro Avaliador", "Segundo Avaliador"]
+
+
+def member_label(member, index):
+    if member.papel_membro_banca == "presidente":
+        return "Orientador"
+    return EXAMINER_LABELS[index] if index < len(EXAMINER_LABELS) else f"Avaliador {index + 1}"
+
+
+def coordinator_name(course_id):
+    return db.session.scalar(
+        select(Usuario.nome_usuario)
+        .join(ProfessorCurso, ProfessorCurso.id_professor == Usuario.id_usuario)
+        .where(
+            ProfessorCurso.id_curso == course_id,
+            ProfessorCurso.coordenador_professor_curso.is_(True),
+            classes.current_link(),
+        )
+        .order_by(ProfessorCurso.data_inicio_professor_curso.desc())
+        .limit(1)
+    )
+
+
+def needs_approval_sheet(banca, result):
+    """A Folha de Aprovação é exclusiva de TCC 2 e de artigo, e só para trabalho aprovado."""
+    work = banca.etapa.trabalho
+    level = banca.etapa.matricula.turma.nivel_turma
+    return result != "reprovado" and (level == 2 or work.modalidade_trabalho_tcc == "artigo")
+
+
+MONTHS = [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+]
 
 
 def current_minutes(defense_id):
@@ -171,11 +217,14 @@ def emit(banca, data):
         raise APIError(
             409, "BANCA_CANCELADA", "Não é possível gerar documentos de uma banca cancelada."
         )
-    result = data.get("resultado")
-    if not isinstance(result, str) or result not in RESULTS:
-        raise APIError(422, "UC_10_M04", "Selecione o resultado final da defesa.")
+    # RN05: o resultado não é escolhido; decorre da média final e da observação de alterações.
+    reason = data.get("correcoes")
+    if reason is None or (isinstance(reason, str) and not reason.strip()):
+        reason = ""
+    else:
+        reason = v.text(reason, "correcoes", 10000)
+    result = official.result_for(consolidated["media_final"], reason)
     deadline = None
-    reason = ""
     if result == "aprovado_com_correcoes":
         try:
             deadline = date.fromisoformat(data.get("prazo", ""))
@@ -186,7 +235,6 @@ def emit(banca, data):
             raise APIError(
                 422, "UC_10_M05", "Informe o prazo para envio das correções solicitadas."
             ) from None
-        reason = v.text(data.get("correcoes"), "correcoes", 10000)
     previous = current_minutes(banca.id_banca)
     correction = request_for(banca)
     if previous:
@@ -208,6 +256,17 @@ def emit(banca, data):
     else:
         justification = "Primeira emissão da ata"
     version = previous.versao_ata_defesa + 1 if previous else 1
+    turma = db.session.get(Turma, banca.etapa.matricula.id_turma)
+    course = db.session.get(Curso, turma.id_curso)
+    members = defenses.accepted_members(banca)
+    examiners_seen = 0
+    labels = {}
+    for m in members:
+        labels[m.id_membro_banca] = member_label(m, examiners_seen)
+        if m.papel_membro_banca != "presidente":
+            examiners_seen += 1
+    advisor_member = next((m for m in members if m.papel_membro_banca == "presidente"), None)
+    defense_date = banca.data_inicio_banca.astimezone(current_app.config["ACADEMIC_TIMEZONE"])
     snapshot = {
         **defenses.defense_json(banca, False),
         "versao": version,
@@ -217,6 +276,16 @@ def emit(banca, data):
         "media_final": consolidated["media_final"],
         "prazo": deadline.strftime("%d/%m/%Y") if deadline else None,
         "correcoes": reason,
+        "nivel": turma.nivel_turma,
+        "orientador": advisor_member.avaliador.usuario.nome_usuario if advisor_member else "",
+        "responsavel_disciplina": turma.responsavel.nome_usuario if turma.responsavel else "",
+        "coordenador_curso": coordinator_name(course.id_curso) or "",
+        "data_defesa": defense_date.strftime("%d/%m/%Y"),
+        "data_extenso": f"{defense_date.day} de {MONTHS[defense_date.month - 1]} "
+        f"de {defense_date.year}",
+        "folha_aprovacao": needs_approval_sheet(banca, result),
+        "componentes": [{"chave": key, **value} for key, value in official.COMPONENTS.items()],
+        "conceitos": {key: value["nome"] for key, value in official.CONCEPTS.items()},
         "data_local": banca.data_inicio_banca.astimezone(
             current_app.config["ACADEMIC_TIMEZONE"]
         ).strftime("%d/%m/%Y às %H:%M (Manaus)"),
@@ -225,15 +294,24 @@ def emit(banca, data):
                 "id_docente": m.id_docente,
                 "id_membro": m.id_membro_banca,
                 "nome": m.avaliador.usuario.nome_usuario,
+                "papel": m.papel_membro_banca,
+                "rotulo": labels[m.id_membro_banca],
                 "titulacao": m.avaliador.titulacao_avaliador,
                 "email": m.avaliador.usuario.email_usuario,
                 "nota": defenses.decimal_text(defenses.weighted(m.avaliacao.notas, rubric)),
+                "subtotais": defenses.subtotals(
+                    {n.id_criterio_rubrica: n.valor_nota_criterio for n in m.avaliacao.notas},
+                    rubric,
+                ),
                 "notas_por_criterio": {
                     str(n.id_criterio_rubrica): defenses.decimal_text(n.valor_nota_criterio)
                     for n in m.avaliacao.notas
                 },
+                "conceitos_por_criterio": {
+                    str(n.id_criterio_rubrica): n.conceito_nota_criterio for n in m.avaliacao.notas
+                },
             }
-            for m in defenses.accepted_members(banca)
+            for m in members
         ],
     }
     files = []

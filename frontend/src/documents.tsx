@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
 import { Notice } from './components';
 import { failure, gradeText, type Defense } from './defenses';
+import { decimal } from './official-rubric';
 
 interface DocumentState {
   ata: {
@@ -17,6 +18,19 @@ interface DocumentState {
   correcoes: string | null;
   declaracoes: { id_documento: number; codigo_verificacao: string }[];
   emails: { id_notificacao: number; situacao: string; tentativas: number }[];
+}
+
+export const RESULT_LABELS: Record<string, string> = {
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+  aprovado_com_correcoes: 'Aprovado com Correções',
+};
+
+/** RN05 (UC10): média >= 6,0 aprova; com observação de alterações, aprova com correções. */
+export function calculatedResult(average: string | null, minimum: string, corrections: string) {
+  if (average === null) return null;
+  if (Number(average) < Number(minimum)) return 'reprovado';
+  return corrections.trim() ? 'aprovado_com_correcoes' : 'aprovado';
 }
 
 export async function download(path: string, name: string) {
@@ -40,7 +54,6 @@ export function DocumentsPanel({
 }) {
   const [state, setState] = useState<DocumentState | null>(null);
   const [version, setVersion] = useState('');
-  const [result, setResult] = useState('');
   const [deadline, setDeadline] = useState('');
   const [corrections, setCorrections] = useState('');
   const [reason, setReason] = useState('');
@@ -63,7 +76,6 @@ export function DocumentsPanel({
       .then((response) => {
         if (!active) return;
         accept(response.body.data, response.etag);
-        setResult(response.body.data.resultado || '');
         setDeadline(response.body.data.prazo || '');
         setCorrections(response.body.data.correcoes || '');
       })
@@ -92,14 +104,15 @@ export function DocumentsPanel({
       setBusy(false);
     }
   }
+  const result = calculatedResult(
+    defense.media_final,
+    defense.aprovacao_minima || '6',
+    corrections,
+  );
   async function generate(event: FormEvent) {
     event.preventDefault();
-    if (!result) {
-      setMessage('Selecione o resultado final da defesa.');
-      return;
-    }
-    if (result === 'aprovado_com_correcoes' && (!deadline || !corrections.trim())) {
-      setMessage('Informe o prazo e as correções solicitadas.');
+    if (result === 'aprovado_com_correcoes' && !deadline) {
+      setMessage('Informe o prazo para envio das correções solicitadas.');
       return;
     }
     if (state?.ata && !reason.trim()) {
@@ -113,10 +126,9 @@ export function DocumentsPanel({
           method: 'POST',
           headers: { 'If-Match': version },
           body: JSON.stringify({
-            resultado: result,
-            prazo: deadline || null,
+            prazo: result === 'aprovado_com_correcoes' ? deadline || null : null,
             correcoes: corrections,
-            justificativa: reason,
+            justificativa: state?.ata ? reason : undefined,
           }),
         },
         true,
@@ -188,46 +200,30 @@ export function DocumentsPanel({
           {!state.ata?.assinada && (
             <form onSubmit={generate} aria-label="Gerar ata de defesa" noValidate aria-busy={busy}>
               <div className="fields-grid">
-                <div className="field">
-                  <label htmlFor="resultado-defesa">Resultado da defesa</label>
-                  <select
-                    id="resultado-defesa"
-                    value={result}
-                    onChange={(event) => setResult(event.target.value)}
+                <div className="field full">
+                  <label htmlFor="correcoes-solicitadas">
+                    Observação de alterações (correções solicitadas, opcional)
+                  </label>
+                  <textarea
+                    id="correcoes-solicitadas"
+                    value={corrections}
+                    onChange={(event) => setCorrections(event.target.value)}
                     disabled={busy}
-                    required
-                  >
-                    <option value="">Selecione o resultado</option>
-                    <option value="aprovado">Aprovado</option>
-                    <option value="reprovado">Reprovado</option>
-                    <option value="aprovado_com_correcoes">Aprovado com Correções</option>
-                  </select>
+                    maxLength={10000}
+                  />
                 </div>
                 {result === 'aprovado_com_correcoes' && (
-                  <>
-                    <div className="field">
-                      <label htmlFor="prazo-correcao">Prazo para correções</label>
-                      <input
-                        id="prazo-correcao"
-                        type="date"
-                        value={deadline}
-                        onChange={(event) => setDeadline(event.target.value)}
-                        disabled={busy}
-                        required
-                      />
-                    </div>
-                    <div className="field full">
-                      <label htmlFor="correcoes-solicitadas">Correções solicitadas</label>
-                      <textarea
-                        id="correcoes-solicitadas"
-                        value={corrections}
-                        onChange={(event) => setCorrections(event.target.value)}
-                        disabled={busy}
-                        maxLength={10000}
-                        required
-                      />
-                    </div>
-                  </>
+                  <div className="field">
+                    <label htmlFor="prazo-correcao">Prazo para correções</label>
+                    <input
+                      id="prazo-correcao"
+                      type="date"
+                      value={deadline}
+                      onChange={(event) => setDeadline(event.target.value)}
+                      disabled={busy}
+                      required
+                    />
+                  </div>
                 )}
                 {state.ata && (
                   <div className="field full">
@@ -243,11 +239,17 @@ export function DocumentsPanel({
                   </div>
                 )}
               </div>
-              <p className="academic-hint">
+              <p className="academic-hint" aria-live="polite">
                 {defense.media_final === null
                   ? 'Média ainda não consolidada.'
-                  : `Média consolidada: ${gradeText(defense.media_final)} / 10.`}{' '}
-                O resultado é registrado pela banca conforme as regras acadêmicas.
+                  : `Média final: ${gradeText(defense.media_final)} / 10. Resultado calculado: ${
+                      RESULT_LABELS[result!]
+                    }.`}{' '}
+                O resultado não é escolhido: média maior ou igual a{' '}
+                {decimal(defense.aprovacao_minima || '6')} aprova; com observação de alterações,
+                aprova com correções; abaixo disso, reprova.
+                {defense.nivel === 2 &&
+                  ' Para TCC 2 aprovado, a Folha de Aprovação é incluída no PDF da ata.'}
               </p>
               <button
                 className="primary"
