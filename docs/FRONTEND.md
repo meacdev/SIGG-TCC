@@ -1,6 +1,6 @@
 # Front-end dos UCs 01 a 03
 
-Aplicação React/TypeScript em `frontend/`, integrada à API Flask existente. A branch `codex/yarn-uc01-uc03` reúne cadastro, login existente e gestão de turmas para revisão em develop. Os casos posteriores continuam em branches próprias. A numeração atual dos DOCX é UC01 cadastro, UC02 login e UC03 turmas; os identificadores legados da API foram preservados.
+Aplicação React/TypeScript em `frontend/`, integrada à API Flask existente. A numeração atual dos DOCX é UC01 cadastro, UC02 login e UC03 turmas; os identificadores legados da API foram preservados.
 
 Para executar back-end e front-end juntos pela raiz, use `yarn dev` depois de preparar o banco e o `.env`. `yarn test` executa Vitest e pytest; `yarn test:watch` abre o Vitest interativo. O passo a passo está em [Configurar e iniciar](INICIAR.md). Os comandos separados abaixo continuam disponíveis.
 

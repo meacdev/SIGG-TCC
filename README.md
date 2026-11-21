@@ -1,89 +1,135 @@
 # SIGG-TCC
 
-API REST em Python/Flask para a primeira entrega do Sistema de Gestão de TCC. Implementa UC01 (cadastro e gestão do próprio cadastro), UC02 (login, sessão e recuperação de senha por e-mail) e o back end de cadastro e gestão de turmas (UC03). O front-end React/TypeScript do UC01 está em `frontend/`, com cadastro, login, recuperação de senha por e-mail, consulta, edição e inativação do próprio cadastro. Consulte [o guia do front-end](docs/FRONTEND.md) para executar e verificar a interface.
+Sistema de Gestão de TCC: API REST em Python/Flask (`backend/`) e interface React/TypeScript (`frontend/`).
 
-Utiliza SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id e python-dotenv. A aplicação não cria nem altera tabelas ao iniciar. As mudanças do banco são explícitas e versionadas.
+O sistema cobre cadastro e login com recuperação de senha por e-mail (UC01–UC02), turmas (UC03), matrículas (UC04), atas de orientação (UC05), trabalhos (UC06) e o monitoramento de prazos (UC13). Também cobre a organização de defesas, a avaliação pela rubrica oficial, a ata e os documentos da banca. A ordem de dependência dos módulos acadêmicos é **UC03 → UC04 → UC06 → UC05**. Detalhes em [UC03](docs/UC03.md), [UC04](docs/UC04.md), [UC05](docs/UC05.md), [UC06](docs/UC06.md), [UC13](docs/UC13.md) e [Defesas (TP03)](docs/TP03-DEFESAS.md).
 
-Esta branch segue a numeração dos DOCX atualizados: UC01 cadastro, UC02 login, [UC03 turmas](docs/UC03.md), [UC04 matrículas](docs/UC04.md), [UC06 trabalho](docs/UC06.md) e [UC05 atas de reunião](docs/UC05.md). A ordem das dependências é **UC03 → UC04 → UC06 → UC05**. Matrícula, trabalho e orientação aceita sustentam o histórico de reuniões e a visão de assiduidade do professor. Consulte [o plano de integração](docs/INTEGRACAO-UC03-UC06.md) para bases de PR e a branch separada do Yarn.
+Tecnologias: SQLAlchemy, PostgreSQL, Flask-JWT-Extended, Argon2id, python-dotenv, React, Vite e Vitest. A aplicação não cria tabelas ao iniciar: o esquema evolui por migrações SQL versionadas em `backend/sql/migrations/`. O banco segue o [modelo de dados atualizado](docs/MODELO-DADOS.md).
 
-O [UC13 Monitorar Prazos](docs/UC13.md) amplia essa base com matriz por turma, filtro de inatividade, histórico em modal e cobrança confirmada por e-mail. Professores e coordenadores autorizados monitoram reuniões e entregas; a fila mantém auditoria e permite repetir pendências sem duplicar envios já confirmados. Aplique a migração 008 com `yarn db:upgrade`. A configuração Yarn será retomada separadamente.
+## Pré-requisitos
 
-O banco segue o [modelo de dados atualizado](docs/MODELO-DADOS.md) (`TCC_atualizado.sql` e dicionário de 09/11/2026), aplicado pela migração 009: `docente`→`professor`, `aluno`→`estudante`, `trabalho`→`trabalho_tcc`, `reuniao_orientacao`→`ata_orientacao`, novas colunas, tabelas e CHECKs. Faça backup e execute `yarn db:upgrade`.
+| Ferramenta | Versão |
+| --- | --- |
+| Python | 3.14 |
+| PostgreSQL | 18, com o serviço iniciado |
+| Node.js | 22.12 ou superior (a CI usa 24) |
+| Yarn | 1.22.22, via Corepack (`corepack enable`) — veja [docs/YARN.md](docs/YARN.md) |
 
-## Iniciar pela raiz
+Todos os comandos abaixo são executados na **raiz do repositório**. Os scripts `yarn` também funcionam com `npm run`.
 
-O guia [Configurar e iniciar](docs/INICIAR.md) explica `.env`, `.venv`, preparação do banco, execução conjunta e produção. Com dependências e banco preparados, execute `yarn dev` na raiz para iniciar back-end e front-end juntos. `yarn test` executa Vitest e pytest; `yarn test:watch` acompanha os testes do front-end. Os scripts também funcionam com `npm run`.
+## Iniciar do zero
 
-## Preparar o ambiente
-
-Execute na raiz do repositório. Python 3.14 e PostgreSQL 18 são as versões de referência desta entrega.
+### 1. Instalar dependências
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
+yarn install --frozen-lockfile
+```
+
+Instale o front-end pela raiz: o projeto usa um workspace Yarn com um único `yarn.lock`. Os scripts `yarn` chamam o Python de `.venv` diretamente, sem ativação manual. `SIGG_PYTHON` permite indicar outro executável.
+
+### 2. Configurar o `.env`
+
+```powershell
 Copy-Item .env.example .env
-.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_hex(32))"
+yarn env:key
 ```
 
-Edite `.env`: configure `DATABASE_URL` para o banco existente, cole a chave gerada em `JWT_SECRET_KEY` e preencha os parâmetros SMTP para recuperação de senha. Nunca publique esse arquivo. Caracteres especiais da senha do PostgreSQL precisam de URL encoding. É possível usar um usuário PostgreSQL dedicado com `PGPASSFILE` em vez de incluir a senha na URL.
+Edite `.env`:
 
-Com o banco já criado, **não importe novamente o esquema base**. Aplique somente a migração complementar e inicialize os perfis:
+- `DATABASE_URL`: conexão com o PostgreSQL, por exemplo `postgresql+psycopg://postgres:SENHA@localhost:5432/sigg_tcc`. Caracteres especiais da senha precisam de URL encoding ([como codificar](docs/INICIAR.md#arquivo-de-configuração-e-ambiente-python)).
+- `JWT_SECRET_KEY`: cole somente a chave gerada por `yarn env:key`.
+- `SMTP_*`: pode ficar vazio para cadastro e login locais; recuperação de senha e convites exigem SMTP real ([UC02](docs/UC02-LOGIN.md)).
+
+As demais opções podem manter os valores do exemplo. O front-end não precisa de `.env` próprio no desenvolvimento ([frontend/.env.example](frontend/.env.example)). Nunca publique o `.env`. Confira o preenchimento sem exibir segredos:
 
 ```powershell
-.\.venv\Scripts\python.exe -m flask --app backend.app:create_app db-upgrade
-.\.venv\Scripts\python.exe -m flask --app backend.app:create_app seed-perfis
+yarn env:check
 ```
 
-O comando aplica migrações em uma transação, utiliza lock para evitar execução concorrente e verifica o checksum de migrações já executadas. Faça backup antes de atualizar um banco com dados. Se existirem e-mails que diferem somente por maiúsculas ou códigos equivalentes no mesmo período, resolva essas duplicatas antes da migração: ela aborta sem apagar registros.
+### 3. Preparar o banco
 
-Somente para um banco **novo e vazio**, importe primeiro `backend/sql/000_schema_fornecido.sql` pelo pgAdmin ou psql. Esse arquivo é uma cópia integral do SQL entregue; não é uma migração incremental. Em seguida, o `db-upgrade` aplica as migrações 001 a 009, que levam essa base ao modelo atualizado.
-
-## Executar
+1. Crie o banco `sigg_tcc` no pgAdmin ou com `createdb`.
+2. **Somente em um banco novo e vazio**, importe `backend/sql/000_schema_fornecido.sql` pelo Query Tool do pgAdmin ou pelo psql. Esse arquivo é a cópia integral do SQL entregue, não uma migração. Se as tabelas já existem, não repita a importação.
+3. Aplique as migrações, inicialize os perfis e crie ao menos um curso (o cadastro de estudante exige um curso ativo):
 
 ```powershell
-# Desenvolvimento local
-.\.venv\Scripts\python.exe -m flask --app backend.app:create_app run --host 127.0.0.1 --port 5000
-
-# Servidor WSGI, compatível com Windows
-.\.venv\Scripts\waitress-serve.exe --listen=127.0.0.1:5000 --call backend.app:create_app
+yarn db:upgrade
+yarn db:seed
+.\.venv\Scripts\python.exe -m flask --app backend.app:create_app criar-curso --codigo SI --nome "Sistemas de Informação"
+yarn db:check
 ```
 
-Base da API: `http://127.0.0.1:5000/api/v1`. Contrato: `GET /api/v1/openapi.json`. Saúde: `GET /api/v1/health/live` e `GET /api/v1/health/ready`.
+`db:upgrade` aplica, em uma transação e com lock, todas as migrações pendentes de `backend/sql/migrations/` (hoje 001 e 005 a 011). Migrações já aplicadas têm o checksum conferido. Faça backup antes de atualizar um banco com dados. A migração aborta, sem apagar registros, se houver e-mails que diferem só por maiúsculas ou códigos equivalentes no mesmo período: resolva essas duplicatas antes.
 
-## Primeiro docente e permissões
+Crie cada curso uma única vez. `db:check` confere a conexão e a estrutura sem criar dados.
 
-Crie uma conta docente pelo endpoint público de cadastro. Ela pode entrar e editar o próprio perfil, mas não recebe poderes administrativos por autodeclaração. Um administrador com acesso confiável ao terminal concede o papel e o vínculo com o curso:
+### 4. Iniciar a aplicação
 
 ```powershell
-# Se o curso ainda não existir
-.\.venv\Scripts\python.exe -m flask --app backend.app:create_app criar-curso --codigo COMP --nome "Ciência da Computação"
+yarn dev
+```
 
-# Substitua o e-mail e o ID pelos registros reais
+| Serviço | Endereço |
+| --- | --- |
+| Aplicação (Vite) | http://127.0.0.1:5173 |
+| API (Flask) | http://127.0.0.1:5000/api/v1 |
+| Contrato OpenAPI | http://127.0.0.1:5000/api/v1/openapi.json |
+| Saúde | `/api/v1/health/live` e `/api/v1/health/ready` |
+
+`yarn dev` confere o `.env` e o banco e sobe o Flask e o Vite juntos. `Ctrl+C` encerra os dois, e se um falhar o outro também é encerrado. As portas 5000 e 5173 precisam estar livres. Com `AUTO_MIGRATE=true` (padrão do exemplo) e banco em `localhost`, as migrações pendentes são aplicadas automaticamente antes da partida. Use `AUTO_MIGRATE=false` para controlá-las só com `yarn db:upgrade`. O SQL base nunca é importado automaticamente.
+
+Se o PowerShell bloquear `yarn.ps1`, use `yarn.cmd dev`.
+
+### 5. Primeiro professor e coordenador
+
+Crie a conta docente pela tela de cadastro. Ela entra e edita o próprio perfil, mas não recebe poderes administrativos por autodeclaração. Um administrador com acesso ao terminal concede o papel e o vínculo com o curso:
+
+```powershell
+# Substitua e-mails, ID do curso e departamento pelos valores reais
 .\.venv\Scripts\python.exe -m flask --app backend.app:create_app conceder-perfil --email docente@instituicao.edu.br --perfil professor_disciplina --id-curso 1 --justificativa "Designação para ministrar TCC"
-.\.venv\Scripts\python.exe -m flask --app backend.app:create_app conceder-perfil --email coordenador@instituicao.edu.br --perfil coordenador --id-curso 1 --justificativa "Portaria de coordenação"
+.\.venv\Scripts\python.exe -m flask --app backend.app:create_app conceder-perfil --email coordenador@instituicao.edu.br --perfil coordenador --id-curso 1 --departamento "Departamento de Computação" --justificativa "Portaria de coordenação"
 ```
 
-O professor gerencia suas próprias turmas nos cursos com vínculo vigente. O coordenador gerencia turmas dos cursos em que possui vínculo de coordenação vigente e pode indicar professores autorizados desses cursos. Docentes externos não recebem esses dois papéis. `orientador` e `avaliador` estão no catálogo para entregas futuras.
+- `professor_disciplina` e `coordenador` exigem professor **interno** com cadastro ativo. `--departamento` é obrigatório para o coordenador quando o vínculo ainda não o possui.
+- O professor gerencia as próprias turmas nos cursos com vínculo vigente. O coordenador gerencia as turmas dos cursos que coordena e pode autorizar professores desses cursos.
+- `--revogar` expira o papel **global do usuário**, não só o vínculo com o curso indicado. `--expira-em` aceita data ISO 8601 futura com fuso.
+- Toda concessão e revogação exige justificativa e gera auditoria com ator de sistema (`id_usuario=NULL`).
 
-`conceder-perfil --revogar` expira o papel **global do usuário**; não é uma revogação limitada ao curso indicado. `--expira-em` aceita uma data ISO 8601 futura com fuso. Todas as concessões e revogações exigem justificativa e geram auditoria com ator de sistema (`id_usuario=NULL`).
+## Comandos
 
-## Integração React/TypeScript
+| Comando | Finalidade |
+| --- | --- |
+| `yarn dev` | Flask e Vite juntos |
+| `yarn dev:backend` / `yarn dev:frontend` | Somente um dos servidores |
+| `yarn env:key` / `yarn env:check` | Gerar chave JWT / verificar o `.env` |
+| `yarn db:upgrade` / `yarn db:seed` / `yarn db:check` | Migrações / perfis / conferência do banco |
+| `yarn test` | Vitest e depois pytest |
+| `yarn test:frontend` / `yarn test:watch` / `yarn test:backend` | Testes separados |
+| `yarn test:e2e` | Playwright com API descartável em SQLite (porta 5001) |
+| `yarn build` | Compila o front-end em `frontend/dist` |
+| `yarn start:backend` | API com Waitress em `127.0.0.1:5000` |
 
-Consulte `docs/API.md` e o contrato OpenAPI. `docs/frontend-client.ts` fornece um cliente de referência com tokens em memória, renovação sob demanda e envio de `If-Match`.
+Comandos administrativos do Flask (`.\.venv\Scripts\python.exe -m flask --app backend.app:create_app <comando>`):
 
-As respostas usam `data`; erros usam `error.code`, `error.message` e, quando necessário, `error.fields`. Datas são ISO 8601 em UTC. Após o login, `data.usuario.perfis` permite selecionar o painel no React; a API valida as permissões em cada requisição.
+| Comando | Finalidade |
+| --- | --- |
+| `criar-curso --codigo X --nome "..."` | Cria um curso |
+| `criar-periodo 2026/2` | Cria um período letivo (`AAAA/1` ou `AAAA/2`) |
+| `conceder-perfil ...` | Concede ou revoga papéis (seção 5) |
+| `enviar-notificacoes-academicas` | Processa a fila de e-mails de bancas e documentos; agende a execução periódica |
 
-O frontend deve guardar o ETag retornado pela consulta e enviá-lo em `If-Match` nas alterações e exclusões. Erro `412` significa que outra alteração ocorreu e o registro precisa ser recarregado. O código de acesso da turma aparece somente na criação ou rotação; exiba um botão de cópia nesse momento.
-
-## Verificar
+## Testes e verificação
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check backend tests scripts/generate_openapi.py
-.\.venv\Scripts\python.exe -m ruff format --check backend tests scripts/generate_openapi.py
+yarn test
+.\.venv\Scripts\python.exe -m ruff check backend tests scripts
+.\.venv\Scripts\python.exe -m ruff format --check backend tests scripts
 .\.venv\Scripts\python.exe -m pytest --cov=backend --cov-report=term-missing
 ```
 
-Sem configuração adicional, os testes rápidos usam SQLite em memória. Para validar os mesmos fluxos contra PostgreSQL, configure uma URL de banco **descartável**; a suíte cria e remove um schema aleatório por teste, importa o SQL fornecido e executa a migração real:
+Sem configuração adicional, o pytest usa SQLite em memória. Para validar contra PostgreSQL, informe uma URL de banco **descartável**. A suíte cria e remove um schema aleatório por teste, importa o SQL base e executa as migrações reais:
 
 ```powershell
 $env:TEST_DATABASE_URL = 'postgresql+psycopg://sigg_test@127.0.0.1:55439/sigg_test'
@@ -91,12 +137,21 @@ $env:TEST_DATABASE_URL = 'postgresql+psycopg://sigg_test@127.0.0.1:55439/sigg_te
 Remove-Item Env:TEST_DATABASE_URL
 ```
 
-O usuário de teste precisa de `CREATE SCHEMA`. Nunca use credenciais de produção para testes. A CI executa as duas modalidades, com meta mínima de 80% de cobertura.
+O usuário de teste precisa de `CREATE SCHEMA`. Nunca use credenciais de produção. A CI executa as duas modalidades com meta mínima de 80% de cobertura.
 
-## Escopo e operação
+Para os testes de navegador, instale o Chromium uma vez com `yarn workspace sigg-tcc-frontend playwright install chromium` e encerre `yarn dev` antes de `yarn test:e2e`.
 
-A análise e a rastreabilidade de todos os RF/RNF estão em `docs/REQUISITOS.md`. As diferenças entre SQL, dicionário e casos de uso estão registradas ali. Os cenários de teste e as medições locais estão em `docs/VALIDACAO.md`. A implementação dos módulos de orientação, bancas, notas, documentos, matrículas, relatórios e murais pertence às próximas entregas.
+## Integração com o front-end
 
-Consulte `docs/OPERACAO.md` para usuário PostgreSQL restrito, HTTPS, Redis, backup diário, restauração e avaliação de desempenho. Recuperação de senha exige SMTP configurado; os testes simulam o transporte. Disponibilidade, acessibilidade do React e metas de carga dependem de validação no ambiente de implantação.
+Consulte [docs/API.md](docs/API.md), o contrato OpenAPI e [docs/FRONTEND.md](docs/FRONTEND.md). O cliente de referência [docs/frontend-client.ts](docs/frontend-client.ts) mantém tokens em memória, renova a sessão sob demanda e envia `If-Match`.
 
-A revisão do UC02 e as instruções SMTP estão em [docs/UC02-LOGIN.md](docs/UC02-LOGIN.md).
+- As respostas usam `data`. Os erros usam `error.code`, `error.message` e, quando necessário, `error.fields`. As datas são ISO 8601 em UTC.
+- Após o login, `data.usuario.perfis` define os menus exibidos. A API valida as permissões em cada requisição.
+- Guarde o ETag da consulta e envie-o em `If-Match` nas alterações e exclusões. Um `412` indica alteração concorrente e exige recarregar o registro.
+- O código de acesso da turma aparece só na criação ou na rotação.
+
+## Produção e operação
+
+O passo a passo de produção (Waitress, build estático, HTTPS, Redis, SMTP e conta restrita no PostgreSQL) está em [Configurar e iniciar](docs/INICIAR.md#colocar-em-produção). Usuário restrito, backup diário, restauração e desempenho estão em [docs/OPERACAO.md](docs/OPERACAO.md). Documentos gerados ficam em `PRIVATE_STORAGE_DIR` (padrão `instance/private`).
+
+A rastreabilidade dos requisitos está em [docs/REQUISITOS.md](docs/REQUISITOS.md). Os cenários de validação estão em [docs/VALIDACAO.md](docs/VALIDACAO.md).
