@@ -4,7 +4,7 @@ Branch `chore/yarn`, criada a partir de `feat/UC03-cadastrar-turmas`. Destino do
 
 ## Instalação
 
-Execute na raiz `C:\Users\mateu\repos\SIGG-TCC`, com Node 22.12+ (Node 24 na CI). O `packageManager` fixa Yarn 1.22.22. Se Corepack ainda não estiver disponível no computador:
+Execute na raiz do repositório, com Node 22.12+ (Node 24 na CI). O `packageManager` fixa Yarn 1.22.22. Se Corepack ainda não estiver disponível no computador:
 
 ```powershell
 npm install --global corepack@0.34.6

@@ -12,6 +12,7 @@ import { Monitoring } from './monitoring';
 import { DefenseManagement, ManuscriptAccess } from './defense-management';
 import { Defenses } from './defenses';
 import { StudentDocuments, VerifyDocument } from './documents';
+import { canAccess, type AcademicPage } from './navigation';
 import './academic.css';
 
 type Page =
@@ -77,8 +78,8 @@ const roleLabel = (user: User) =>
       ? 'Professor / avaliador'
       : 'Estudante';
 
-type NavLink = { page: Page; label: string; icon: IconName };
-const ACADEMIC_LINKS: NavLink[] = [
+type NavLink<P extends Page = Page> = { page: P; label: string; icon: IconName };
+const ACADEMIC_LINKS: NavLink<AcademicPage>[] = [
   { page: 'perfil', label: 'Meu cadastro', icon: 'user' },
   { page: 'turmas', label: 'Turmas', icon: 'users' },
   { page: 'matriculas', label: 'Matrículas', icon: 'cap' },
@@ -115,10 +116,12 @@ export function App() {
   const returnAfterLogin = useRef('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage =
-    page === 'manuscrito-banca' || ACADEMIC_LINKS.some((link) => link.page === page);
+  const academicPage = (
+    page === 'manuscrito-banca' || ACADEMIC_LINKS.some((link) => link.page === page) ? page : null
+  ) as AcademicPage | null;
+  const protectedPage = academicPage !== null;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [me, setMe] = useState<User | null>(null);
+  const [me, setMe] = useState<User | null>(() => api.sessionUser());
   useEffect(() => {
     const change = () => {
       setPage(currentPage());
@@ -136,6 +139,13 @@ export function App() {
       navigate('entrar');
     }
   }, [page]);
+  // Página fora do perfil aberta pelo endereço: volta para "Meu cadastro" (o backend também bloqueia).
+  const forbidden = !!(academicPage && me && api.hasSession() && !canAccess(academicPage, me));
+  useEffect(() => {
+    if (!forbidden) return;
+    window.history.replaceState(null, '', '#/perfil');
+    setPage('perfil');
+  }, [forbidden]);
   // Identificação do usuário na barra superior; falhas ficam a cargo de cada tela.
   const needsIdentity = protectedPage && api.hasSession() && !me;
   useEffect(() => {
@@ -173,7 +183,11 @@ export function App() {
   }
 
   const signedIn = protectedPage && api.hasSession();
-  const links = signedIn ? ACADEMIC_LINKS : ACCESS_LINKS;
+  const view = forbidden ? null : page;
+  // Sem os perfis ainda carregados, mostra só o que todo usuário logado pode usar.
+  const links: NavLink[] = signedIn
+    ? ACADEMIC_LINKS.filter((link) => (me ? canAccess(link.page, me) : link.page === 'perfil'))
+    : ACCESS_LINKS;
   const initials = (me?.nome_usuario || '')
     .trim()
     .split(/\s+/)
@@ -293,6 +307,7 @@ export function App() {
               onLogin={() => {
                 const next = returnAfterLogin.current || '#/perfil';
                 returnAfterLogin.current = '';
+                setMe(api.sessionUser());
                 window.history.replaceState(null, '', next);
                 setPage(currentPage());
                 setNotice('Login realizado com sucesso!');
@@ -309,29 +324,29 @@ export function App() {
               }}
             />
           )}
-          {page === 'perfil' && api.hasSession() && (
+          {view === 'perfil' && api.hasSession() && (
             <Profile onSessionEnded={sessionEnded} initialNotice={notice} onUserChanged={setMe} />
           )}
-          {page === 'turmas' && api.hasSession() && (
+          {view === 'turmas' && api.hasSession() && (
             <Classes onSessionEnded={sessionEnded} user={me} />
           )}
-          {page === 'matriculas' && api.hasSession() && (
+          {view === 'matriculas' && api.hasSession() && (
             <Enrollments onSessionEnded={sessionEnded} />
           )}
-          {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
-          {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
-          {page === 'organizar-defesas' && api.hasSession() && (
+          {view === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
+          {view === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
+          {view === 'organizar-defesas' && api.hasSession() && (
             <DefenseManagement onSessionEnded={sessionEnded} />
           )}
-          {page === 'manuscrito-banca' && api.hasSession() && (
+          {view === 'manuscrito-banca' && api.hasSession() && (
             <ManuscriptAccess onSessionEnded={sessionEnded} />
           )}
-          {page === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
-          {page === 'documentos' && api.hasSession() && (
+          {view === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
+          {view === 'documentos' && api.hasSession() && (
             <StudentDocuments onSessionEnded={sessionEnded} />
           )}
           {page === 'verificar-documento' && <VerifyDocument />}
-          {page === 'monitoramento' && api.hasSession() && (
+          {view === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}
         </main>

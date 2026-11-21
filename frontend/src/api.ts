@@ -108,6 +108,8 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
     request,
     download: (path: string) => request<Blob>(path, {}, true, true, true),
     hasSession: () => tokens !== null,
+    /** Usuário devolvido no login (perfis incluídos), usado para montar o menu sem nova consulta. */
+    sessionUser: () => tokens?.usuario ?? null,
     clearSession,
     signup: (data: object) =>
       request<User>('/usuarios', { method: 'POST', body: JSON.stringify(data) }),
