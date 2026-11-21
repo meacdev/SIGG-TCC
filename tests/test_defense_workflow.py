@@ -58,30 +58,22 @@ def test_defense_from_rubric_to_issued_documents(
             "nome_orientador": teacher["nome_usuario"],
             "estudante": student["nome_usuario"],
             "nivel": 1,
+            "tempo_apresentacao": 15,
             "manuscrito": True,
         }
     ]
     preview = f"{prefix}/etapas/{work['id_etapa']}/manuscrito"
     assert client.get(preview, headers=auth).data.startswith(b"%PDF-")
     assert client.get(preview, headers=student["headers"]).status_code == 403
-    criteria = [
-        {"nome": "Método", "descricao": "Consistência do método", "peso": "60"},
-        {"nome": "Texto", "descricao": "Clareza do texto", "peso": "40"},
+    # UC08 is read-only: the official rubric is fixed and there is no parametrization endpoint.
+    official = client.get("/api/v1/rubrica-oficial", headers=auth)
+    assert official.status_code == 200
+    assert [c["nome"] for c in official.json["data"]["componentes"]] == [
+        "Parte Escrita",
+        "Parte Oral",
     ]
-    draft = {"nome": "Rubrica TCC", "situacao": "rascunho", "criterios": criteria[:1]}
-    assert (
-        client.post(f"{prefix}/rubricas", headers=student["headers"], json=draft).status_code == 403
-    )
-    saved = client.post(f"{prefix}/rubricas", headers=auth, json=draft)
-    assert saved.status_code == 201, saved.json
-    rubric_id = saved.json["data"]["id"]
-    rubric_path = f"{prefix}/rubricas/{rubric_id}"
-    assert (
-        client.patch(rubric_path, headers=auth, json={**draft, "situacao": "ativa"}).status_code
-        == 422
-    )
-    payload = {**draft, "situacao": "ativa", "criterios": criteria}
-    assert client.patch(rubric_path, headers=auth, json=payload).status_code == 200
+    draft = {"nome": "Rubrica TCC", "situacao": "ativa", "criterios": []}
+    assert client.post(f"{prefix}/rubricas", headers=auth, json=draft).status_code in {404, 405}
     examiners = [
         signup(nome_usuario=name)
         for name in ["Avaliadora Um", "Avaliador Dois", "Docente Suplente"]
@@ -105,7 +97,6 @@ def test_defense_from_rubric_to_issued_documents(
     start = utcnow() + timedelta(minutes=2)
     booking = {
         "etapa": work["id_etapa"],
-        "rubrica": rubric_id,
         "inicio": start.isoformat(),
         "fim": (start + timedelta(hours=1)).isoformat(),
         "modalidade": "presencial",
@@ -125,6 +116,7 @@ def test_defense_from_rubric_to_issued_documents(
     booked = client.post(f"{prefix}/bancas", headers=auth, json=booking)
     assert booked.status_code == 201, booked.json
     assert booked.json["code"] == "UC_07_M01"
+    assert booked.json["data"]["tempo_apresentacao"] == 15
     identifier = booked.json["data"]["id"]
     assert not client.post(availability, headers=auth, json=slot).json["data"]["disponivel"]
     editing = client.post(availability, headers=auth, json={**slot, "banca": identifier})
@@ -177,62 +169,78 @@ def test_defense_from_rubric_to_issued_documents(
         db.session.commit()
     first = client.get(endpoint, headers=auth)
     token = {**auth, "If-Match": first.headers["ETag"]}
-    assert (
-        client.post(f"{endpoint}/ata", headers=token, json={"resultado": "aprovado"}).status_code
-        == 409
+    assert client.post(f"{endpoint}/ata", headers=token, json={}).status_code == 409
+    rubric = first.json["data"]["criterios"]
+    assert len(rubric) == 9 and first.json["data"]["tempo_apresentacao"] == 15
+    assert {c["componente"] for c in rubric} == {"parte_escrita", "parte_oral"}
+    assert all(
+        set(c["descritores"]) == {"exemplar", "competente", "necessita_trabalho"} for c in rubric
     )
-    ids = [c["id_criterio"] for c in first.json["data"]["criterios"]]
+    ids = [c["id_criterio"] for c in rubric]
+
+    def sheet(concept, grade, **overrides):
+        return [
+            {"id_criterio": i, "conceito": concept, "nota": overrides.get(i, grade)} for i in ids
+        ]
+
     invalid = client.post(
-        f"{endpoint}/avaliacao",
-        headers=token,
-        json={"notas": [{"id_criterio": i, "nota": "11"} for i in ids]},
+        f"{endpoint}/avaliacao", headers=token, json={"notas": sheet("exemplar", "11")}
     )
     assert invalid.status_code == 422
+    no_concept = client.post(
+        f"{endpoint}/avaliacao",
+        headers=token,
+        json={"notas": [{"id_criterio": i, "nota": "9"} for i in ids]},
+    )
+    assert no_concept.status_code == 422 and no_concept.json["error"]["code"] == "UC_09_M02"
+    outside = client.post(
+        f"{endpoint}/avaliacao", headers=token, json={"notas": sheet("competente", "8.5")}
+    )
+    assert outside.status_code == 422 and outside.json["error"]["code"] == "UC_09_M09"
     opened = client.post(f"{endpoint}/avaliacao/inicio", headers=token)
     assert opened.status_code == 200, opened.json
     assert opened.json["data"]["avaliacao_iniciada"]
     assert not opened.json["data"]["avaliacao"]
     assert opened.json["data"]["situacao"] == "em_andamento"
     assert client.get(f"{prefix}/bancas/{identifier}", headers=auth).status_code == 409
-    locked = client.patch(rubric_path, headers=auth, json=payload)
-    assert locked.status_code == 409 and locked.json["error"]["code"] == "UC_08_M04"
     pending = client.post(
-        f"{endpoint}/ata",
-        headers={**auth, "If-Match": opened.headers["ETag"]},
-        json={"resultado": "aprovado"},
+        f"{endpoint}/ata", headers={**auth, "If-Match": opened.headers["ETag"]}, json={}
     )
     assert pending.status_code == 409 and pending.json["error"]["code"] == "UC_10_M02"
+    # Metodologia (peso 2) and Resultados (peso 2) as Competente 6; the rest Exemplar 10:
+    # 10 x 6 / 10 + 6 x 4 / 10 = 6 + 2.4 = 8.4 per examiner.
+    mixed = sheet("exemplar", "10")
+    for item in mixed:
+        if item["id_criterio"] in (ids[1], ids[3]):
+            item.update(conceito="competente", nota="6")
     for actor in [auth, *accounts[:2]]:
         detail = client.get(endpoint, headers=actor)
         scored = client.post(
             f"{endpoint}/avaliacao",
             headers={**actor, "If-Match": detail.headers["ETag"]},
-            json={
-                "parecer": "Método consistente.",
-                "notas": [
-                    {"id_criterio": ids[0], "nota": "10"},
-                    {"id_criterio": ids[1], "nota": "5"},
-                ],
-            },
+            json={"parecer": "Método consistente.", "notas": mixed},
         )
         assert scored.status_code == 201, scored.json
-        assert scored.json["data"]["avaliacao"]["parecer"] == "Método consistente."
-    assert scored.json["data"]["media_final"] == "8.00"
-    assert client.patch(rubric_path, headers=auth, json=payload).status_code == 409
+        evaluation = scored.json["data"]["avaliacao"]
+        assert evaluation["parecer"] == "Método consistente."
+        assert evaluation["nota_individual"] == "8.40"
+        assert evaluation["subtotais"] == {"parte_escrita": "5.40", "parte_oral": "3.00"}
+        concepts = {n["id_criterio"]: n["conceito"] for n in evaluation["notas"]}
+        assert concepts[ids[1]] == "competente" and concepts[ids[0]] == "exemplar"
+    assert scored.json["data"]["media_final"] == "8.40"
     detail = client.get(endpoint, headers=auth)
     issuance_headers = {**auth, "If-Match": detail.headers["ETag"]}
-    no_result = client.post(f"{endpoint}/ata", headers=issuance_headers, json={})
-    assert no_result.status_code == 422 and no_result.json["error"]["code"] == "UC_10_M04"
+    chosen = client.post(
+        f"{endpoint}/ata", headers=issuance_headers, json={"resultado": "aprovado"}
+    )
+    assert chosen.status_code == 422  # RN05: the result is calculated, never chosen.
     no_deadline = client.post(
-        f"{endpoint}/ata", headers=issuance_headers, json={"resultado": "aprovado_com_correcoes"}
+        f"{endpoint}/ata", headers=issuance_headers, json={"correcoes": "Revisar a conclusão."}
     )
     assert no_deadline.status_code == 422 and no_deadline.json["error"]["code"] == "UC_10_M05"
-    issued = client.post(
-        f"{endpoint}/ata",
-        headers=issuance_headers,
-        json={"resultado": "aprovado"},
-    )
+    issued = client.post(f"{endpoint}/ata", headers=issuance_headers, json={})
     assert issued.status_code == 201, issued.json
+    assert issued.json["data"]["resultado"] == "aprovado"
     assert issued.json["code"] == "UC_10_M07"
     assert len(issued.json["data"]["declaracoes"]) == 3
     assert all(n["situacao"] == "falha" for n in issued.json["data"]["emails"])
@@ -243,7 +251,10 @@ def test_defense_from_rubric_to_issued_documents(
     official = client.get(f"{endpoint}/ata", headers=auth)
     reader = PdfReader(BytesIO(official.data))
     text = " ".join(page.extract_text() for page in reader.pages)
-    assert "Notas por critério" in text
-    assert "5,00" in text and "10,00" in text
-    assert len(reader.get_fields()) == 3
+    assert "ATA FINAL DE AVALIAÇÃO" in text and "Dados de Identificação" in text
+    assert "Primeiro Avaliador" in text and "Segundo Avaliador" in text
+    assert "8,40" in text and "Competente" in text and "Aprovado" in text
+    assert "FOLHA DE APROVAÇÃO" not in text  # TCC 1 monografia: no approval sheet.
+    # Three members, the course instructor and the course coordination.
+    assert len(reader.get_fields()) == 5
     assert client.get(f"{endpoint}/ata", headers=student["headers"]).status_code == 403

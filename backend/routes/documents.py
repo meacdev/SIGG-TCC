@@ -35,7 +35,7 @@ def detail(defense_id):
 @authenticated()
 def emit(defense_id):
     banca = defenses.get_defense(defense_id, lock=True)
-    data = v.body({"resultado", "prazo", "correcoes", "justificativa"})
+    data = v.body({"prazo", "correcoes", "justificativa"})
     result = documents.emit(banca, data)
     if not declarations_sent(result):
         return resource_response(

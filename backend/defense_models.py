@@ -152,6 +152,9 @@ class Criterio(db.Model):
     peso_criterio_rubrica = db.Column(db.Numeric(6, 3), nullable=False)
     pontuacao_maxima_criterio_rubrica = db.Column(db.Numeric(5, 2), nullable=False)
     ordem_criterio_rubrica = db.Column(db.SmallInteger, nullable=False)
+    # Official rubric (migration 011): parte_escrita | parte_oral and the concept descriptors.
+    componente_criterio_rubrica = db.Column(db.String(20))
+    descritores_criterio_rubrica = db.Column(db.JSON)
 
 
 class Banca(db.Model):
@@ -246,6 +249,8 @@ class Nota(db.Model):
         ID, db.ForeignKey("criterio_rubrica.id_criterio_rubrica"), primary_key=True
     )
     valor_nota_criterio = db.Column(db.Numeric(5, 2), nullable=False)
+    # exemplar | competente | necessita_trabalho; the grade must lie in the concept band.
+    conceito_nota_criterio = db.Column(db.String(20))
     observacao_nota_criterio = db.Column(db.Text)
     data_registro_nota_criterio = db.Column(UTCDateTime, nullable=False, default=utcnow)
 

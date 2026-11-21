@@ -3,14 +3,18 @@ import { api, ApiError } from './api';
 import { Icon, Notice } from './components';
 import './defenses.css';
 import { download, DocumentsPanel } from './documents';
+import { conceptBand, decimal, type Concept, type Descriptors } from './official-rubric';
 
 export interface Criterion {
   id_criterio: number;
   nome: string;
+  componente: string | null;
   descricao: string;
+  descritores: Descriptors | null;
   peso: string;
   pontuacao_maxima: string;
 }
+type ConceptKey = Concept['chave'];
 export interface Defense {
   id_banca: number;
   aluno: string;
@@ -24,18 +28,34 @@ export interface Defense {
   pode_avaliar: boolean;
   avaliacao_iniciada: boolean;
   avaliador: string;
+  nivel?: number;
+  tempo_apresentacao?: number | null;
+  aprovacao_minima?: string;
+  conceitos?: Concept[];
+  componentes?: { chave: string; nome: string; pontos: string }[];
   criterios: Criterion[];
   avaliacao: {
     id_avaliacao: number;
     data_envio: string;
     nota_individual: string;
+    subtotais?: Record<string, string>;
     parecer: string | null;
-    notas: { id_criterio: number; nota: string }[];
+    notas: {
+      id_criterio: number;
+      conceito: ConceptKey | null;
+      nota: string;
+      nota_ponderada: string;
+    }[];
   } | null;
   avaliacoes_enviadas: number;
   total_avaliadores: number;
   media_final: string | null;
-  avaliadores: { nome: string; enviada: boolean; nota_individual: string | null }[];
+  avaliadores: {
+    nome: string;
+    papel?: string;
+    enviada: boolean;
+    nota_individual: string | null;
+  }[];
 }
 export const dateTime = (value: string) =>
   new Intl.DateTimeFormat('pt-BR', {
@@ -112,7 +132,7 @@ export function Defenses({ onSessionEnded }: { onSessionEnded: (message: string)
         <h2>{selected ? 'Avaliar defesa' : 'Minhas bancas'}</h2>
         <p>
           {selected
-            ? 'Registre suas notas nos critérios definidos pela disciplina.'
+            ? 'Marque o conceito e registre a nota de cada critério da rubrica oficial.'
             : 'Bancas em que você participa como examinador, com acesso vigente.'}
         </p>
       </div>
@@ -221,6 +241,14 @@ export function DefenseSummary({ defense }: { defense: Defense }) {
           <dt>Local</dt>
           <dd>{defense.local}</dd>
         </div>
+        {defense.tempo_apresentacao && (
+          <div>
+            <dt>Tempo de apresentação</dt>
+            <dd>
+              {defense.tempo_apresentacao} min (TCC {defense.nivel})
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Avaliador conectado</dt>
           <dd>{defense.avaliador}</dd>
@@ -244,6 +272,7 @@ function EvaluationForm({
   onError: (error: unknown) => void;
 }) {
   const [notes, setNotes] = useState<Record<number, string>>({});
+  const [concepts, setConcepts] = useState<Record<number, ConceptKey>>({});
   const [opinion, setOpinion] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
@@ -253,11 +282,20 @@ function EvaluationForm({
   const [confirm, setConfirm] = useState(false);
   const locked =
     !defense.pode_avaliar || !defense.avaliacao_iniciada || !!defense.avaliacao || busy;
-  const actual = Object.fromEntries(
-    defense.avaliacao?.notas.map((item) => [item.id_criterio, item.nota]) || [],
+  const bands = defense.conceitos || [];
+  const registered = Object.fromEntries(
+    defense.avaliacao?.notas.map((item) => [item.id_criterio, item]) || [],
   );
+  const totalWeight = defense.criterios.reduce((sum, c) => sum + Number(c.peso), 0) || 1;
   const numeric = (c: Criterion) => Number((notes[c.id_criterio] || '').replace(',', '.'));
+  // Upper bound of a lower band is exclusive (7,9 means "below 8,0"), as in the official sheet.
+  const conceptOf = (grade: number): ConceptKey | undefined =>
+    [...bands]
+      .sort((a, b) => Number(b.minimo) - Number(a.minimo))
+      .find((band) => grade >= Number(band.minimo))?.chave;
   function gradeError(c: Criterion) {
+    const concept = concepts[c.id_criterio];
+    if (!concept) return 'Marque o conceito deste critério.';
     const raw = notes[c.id_criterio]?.trim();
     if (!raw) return 'Informe a nota deste critério.';
     if (!/^-?\d+(?:[.,]\d{1,2})?$/.test(raw)) return 'Use um número com até duas casas decimais.';
@@ -265,17 +303,36 @@ function EvaluationForm({
     if (numeric(c) > Number(c.pontuacao_maxima)) {
       return `A pontuação máxima é ${gradeText(c.pontuacao_maxima)}.`;
     }
+    const band = bands.find((item) => item.chave === concept);
+    if (band && conceptOf(numeric(c)) !== concept) {
+      return `A nota dada não pertence ao conceito marcado (${conceptBand(band)}).`;
+    }
     return '';
   }
+  const share = (c: Criterion, grade: number) =>
+    ((grade / Number(c.pontuacao_maxima)) * Number(c.peso) * 10) / totalWeight;
   const complete = defense.criterios.every((c) => !gradeError(c));
   const preview = complete
-    ? (defense.criterios.reduce(
-        (sum, c) => sum + (numeric(c) / Number(c.pontuacao_maxima)) * Number(c.peso),
-        0,
-      ) *
-        10) /
-      defense.criterios.reduce((sum, c) => sum + Number(c.peso), 0)
+    ? defense.criterios.reduce((sum, c) => sum + share(c, numeric(c)), 0)
     : null;
+  const groups = (
+    defense.componentes?.length
+      ? defense.componentes
+      : [{ chave: '', nome: 'Critérios', pontos: '10' }]
+  )
+    .map((component) => ({
+      ...component,
+      criterios: defense.criterios.filter(
+        (c) => (c.componente || '') === component.chave || !defense.componentes?.length,
+      ),
+    }))
+    .filter((component) => component.criterios.length);
+  function subtotal(key: string) {
+    if (defense.avaliacao?.subtotais?.[key]) return gradeText(defense.avaliacao.subtotais[key]);
+    const items = defense.criterios.filter((c) => (c.componente || '') === key);
+    if (items.some((c) => gradeError(c))) return '—';
+    return gradeText(items.reduce((sum, c) => sum + share(c, numeric(c)), 0));
+  }
   async function start() {
     setBusy(true);
     setMessage('');
@@ -311,8 +368,16 @@ function EvaluationForm({
       setFieldErrors(
         Object.fromEntries(invalid.map((c) => [`notas.${c.id_criterio}`, gradeError(c)])),
       );
-      setMessage('Preencha as notas de todos os critérios obrigatórios, respeitando os limites.');
-      document.getElementById(`nota-${invalid[0].id_criterio}`)?.focus();
+      setMessage(
+        'Marque o conceito e preencha a nota de todos os critérios, dentro da faixa do conceito.',
+      );
+      document
+        .getElementById(
+          concepts[invalid[0].id_criterio]
+            ? `nota-${invalid[0].id_criterio}`
+            : `conceito-${invalid[0].id_criterio}-${bands[0]?.chave}`,
+        )
+        ?.focus();
       return;
     }
     if (!confirm) {
@@ -332,6 +397,7 @@ function EvaluationForm({
             parecer: opinion,
             notas: defense.criterios.map((c) => ({
               id_criterio: c.id_criterio,
+              conceito: concepts[c.id_criterio],
               nota: (notes[c.id_criterio] || '').replace(',', '.'),
             })),
           }),
@@ -341,6 +407,7 @@ function EvaluationForm({
       onSaved(result.body.data, result.etag || '');
       setSuccess(true);
       setNotes({});
+      setConcepts({});
     } catch (error) {
       handleWriteError(error);
     } finally {
@@ -393,43 +460,114 @@ function EvaluationForm({
           <h3>Ficha de avaliação</h3>
         </div>
         <p className="academic-hint">
-          A nota de cada item é normalizada pela pontuação máxima. Os pesos definem a participação
-          na nota individual, de 0 a 10.
+          Rubrica oficial da disciplina. Em cada critério, marque o conceito que se aplica e informe
+          a nota dentro da faixa: {bands.map((band) => conceptBand(band)).join('; ')}. Nota
+          ponderada = nota × peso ÷ 10; a nota individual é a soma das ponderadas, de 0 a 10.
         </p>
-        <div className="criteria-list">
-          {defense.criterios.map((c) => (
-            <div className="criterion-card" key={c.id_criterio}>
-              <div>
-                <label htmlFor={`nota-${c.id_criterio}`}>{c.nome}</label>
-                <p id={`descricao-${c.id_criterio}`}>{c.descricao}</p>
-                <small>
-                  Peso {c.peso} · Pontuação máxima {gradeText(c.pontuacao_maxima)}
-                </small>
-              </div>
-              <input
-                id={`nota-${c.id_criterio}`}
-                aria-describedby={`descricao-${c.id_criterio}${fieldErrors[`notas.${c.id_criterio}`] ? ` erro-nota-${c.id_criterio}` : ''}`}
-                aria-invalid={Boolean(fieldErrors[`notas.${c.id_criterio}`])}
-                aria-label={`Nota de ${c.nome}`}
-                inputMode="decimal"
-                required
-                disabled={locked}
-                value={defense.avaliacao ? actual[c.id_criterio] : notes[c.id_criterio] || ''}
-                placeholder="0,00"
-                onChange={(event) => {
-                  setNotes({ ...notes, [c.id_criterio]: event.target.value });
-                  setFieldErrors((previous) => ({ ...previous, [`notas.${c.id_criterio}`]: '' }));
-                  setConfirm(false);
-                }}
-              />
-              {fieldErrors[`notas.${c.id_criterio}`] && (
-                <small id={`erro-nota-${c.id_criterio}`}>
-                  {fieldErrors[`notas.${c.id_criterio}`]}
-                </small>
-              )}
+        {groups.map((component) => (
+          <fieldset className="rubric-component" key={component.chave || 'criterios'}>
+            <legend>
+              {component.nome}
+              {component.chave && ` (${decimal(component.pontos)} pontos)`}
+            </legend>
+            <div className="criteria-list">
+              {component.criterios.map((c) => {
+                const saved = registered[c.id_criterio];
+                // Show band mismatches as soon as both the concept and the grade are filled in.
+                const error =
+                  fieldErrors[`notas.${c.id_criterio}`] ||
+                  (!saved && concepts[c.id_criterio] && notes[c.id_criterio]?.trim()
+                    ? gradeError(c)
+                    : '');
+                const chosen = saved ? saved.conceito : concepts[c.id_criterio];
+                return (
+                  <div className="criterion-card rubric-criterion" key={c.id_criterio}>
+                    <div>
+                      <strong id={`criterio-${c.id_criterio}`}>{c.nome}</strong>
+                      {c.descricao && <p id={`descricao-${c.id_criterio}`}>{c.descricao}</p>}
+                      <small>Peso {decimal(c.peso)}</small>
+                    </div>
+                    <div
+                      className="concept-options"
+                      role="radiogroup"
+                      aria-labelledby={`criterio-${c.id_criterio}`}
+                    >
+                      {bands.map((band) => (
+                        <label
+                          key={band.chave}
+                          className={
+                            chosen === band.chave ? 'concept-option chosen' : 'concept-option'
+                          }
+                          htmlFor={`conceito-${c.id_criterio}-${band.chave}`}
+                        >
+                          <span>
+                            <input
+                              type="radio"
+                              id={`conceito-${c.id_criterio}-${band.chave}`}
+                              name={`conceito-${c.id_criterio}`}
+                              value={band.chave}
+                              aria-label={`${band.nome} (${decimal(band.minimo)} a ${decimal(band.maximo)})`}
+                              checked={chosen === band.chave}
+                              disabled={locked}
+                              onChange={() => {
+                                setConcepts({ ...concepts, [c.id_criterio]: band.chave });
+                                setFieldErrors((previous) => ({
+                                  ...previous,
+                                  [`notas.${c.id_criterio}`]: '',
+                                }));
+                                setConfirm(false);
+                              }}
+                            />
+                            <strong>{band.nome}</strong>
+                            <small>
+                              {decimal(band.minimo)} a {decimal(band.maximo)}
+                            </small>
+                          </span>
+                          {c.descritores && <p>{c.descritores[band.chave]}</p>}
+                        </label>
+                      ))}
+                    </div>
+                    <label className="field" htmlFor={`nota-${c.id_criterio}`}>
+                      Nota para o critério
+                      <input
+                        id={`nota-${c.id_criterio}`}
+                        aria-describedby={error ? `erro-nota-${c.id_criterio}` : undefined}
+                        aria-invalid={Boolean(error)}
+                        inputMode="decimal"
+                        required
+                        disabled={locked}
+                        value={saved ? saved.nota : notes[c.id_criterio] || ''}
+                        placeholder="0,00"
+                        onChange={(event) => {
+                          setNotes({ ...notes, [c.id_criterio]: event.target.value });
+                          setFieldErrors((previous) => ({
+                            ...previous,
+                            [`notas.${c.id_criterio}`]: '',
+                          }));
+                          setConfirm(false);
+                        }}
+                      />
+                    </label>
+                    <small>
+                      Nota ponderada:{' '}
+                      {saved
+                        ? gradeText(saved.nota_ponderada)
+                        : gradeError(c)
+                          ? '—'
+                          : gradeText(share(c, numeric(c)))}
+                    </small>
+                    {error && <small id={`erro-nota-${c.id_criterio}`}>{error}</small>}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+            {component.chave && (
+              <p className="academic-hint">
+                Subtotal {component.nome}: {subtotal(component.chave)} / {decimal(component.pontos)}
+              </p>
+            )}
+          </fieldset>
+        ))}
         <label className="field" htmlFor="evaluation-opinion">
           Parecer do avaliador (opcional)
           <textarea
@@ -489,7 +627,10 @@ function EvaluationForm({
       <ul className="examiner-list">
         {defense.avaliadores.map((item, index) => (
           <li key={index}>
-            <span>{item.nome}</span>
+            <span>
+              {item.nome}
+              {item.papel === 'presidente' && ' (orientador)'}
+            </span>
             <strong>
               {item.enviada ? `${gradeText(item.nota_individual!)} / 10` : 'Pendente'}
             </strong>

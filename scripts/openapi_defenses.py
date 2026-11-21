@@ -6,24 +6,50 @@ def extend(paths, schemas, operation, obj, string, identifier):
         {
             "id_criterio": identifier,
             "nome": string(),
+            "componente": {
+                "type": ["string", "null"],
+                "enum": ["parte_escrita", "parte_oral", None],
+            },
             "descricao": string(),
+            "descritores": {
+                "anyOf": [
+                    obj(
+                        {
+                            "exemplar": string(),
+                            "competente": string(),
+                            "necessita_trabalho": string(),
+                        }
+                    ),
+                    {"type": "null"},
+                ]
+            },
             "peso": string(),
             "pontuacao_maxima": string(),
         },
         ("id_criterio", "nome", "descricao", "peso", "pontuacao_maxima"),
     )
+    concept = string(enum=["exemplar", "competente", "necessita_trabalho"])
     schemas["NotaDefesa"] = obj(
-        {"id_criterio": identifier, "nota": string()},
-        ("id_criterio", "nota"),
+        {"id_criterio": identifier, "conceito": concept, "nota": string()},
+        ("id_criterio", "conceito", "nota"),
         additionalProperties=False,
+    )
+    schemas["NotaRegistrada"] = obj(
+        {
+            "id_criterio": identifier,
+            "conceito": {"type": ["string", "null"]},
+            "nota": string(),
+            "nota_ponderada": string(),
+        }
     )
     schemas["AvaliacaoDefesa"] = obj(
         {
             "id_avaliacao": identifier,
             "data_envio": string(format="date-time"),
             "nota_individual": string(),
+            "subtotais": {"type": "object", "additionalProperties": string()},
             "parecer": {"type": ["string", "null"], "maxLength": 4000},
-            "notas": {"type": "array", "items": {"$ref": "#/components/schemas/NotaDefesa"}},
+            "notas": {"type": "array", "items": {"$ref": "#/components/schemas/NotaRegistrada"}},
         }
     )
     schemas["Defesa"] = obj(
@@ -40,6 +66,19 @@ def extend(paths, schemas, operation, obj, string, identifier):
             "pode_avaliar": {"type": "boolean"},
             "avaliacao_iniciada": {"type": "boolean"},
             "avaliador": string(),
+            "nivel": {"type": "integer"},
+            "tempo_apresentacao": {"type": ["integer", "null"]},
+            "aprovacao_minima": string(),
+            "conceitos": {
+                "type": "array",
+                "items": obj(
+                    {"chave": string(), "nome": string(), "minimo": string(), "maximo": string()}
+                ),
+            },
+            "componentes": {
+                "type": "array",
+                "items": obj({"chave": string(), "nome": string(), "pontos": string()}),
+            },
             "criterios": {
                 "type": "array",
                 "items": {"$ref": "#/components/schemas/CriterioDefesa"},
@@ -55,6 +94,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
                 "items": obj(
                     {
                         "nome": string(),
+                        "papel": string(enum=["presidente", "examinador"]),
                         "enviada": {"type": "boolean"},
                         "nota_individual": {"type": ["string", "null"]},
                     }
@@ -111,7 +151,9 @@ def extend(paths, schemas, operation, obj, string, identifier):
         params=[identifier_param, version_param],
         description=(
             "Restrito ao examinador com participação aceita e acesso vigente, no dia da defesa "
-            "em America/Manaus. Nota individual: 10 × soma(nota / máximo × peso) / soma(pesos). "
+            "em America/Manaus. Cada critério exige o conceito marcado e uma nota dentro da "
+            "faixa (Exemplar 8,0-10,0; Competente 6,0-7,9; Necessita de Trabalho 0,0-5,9), "
+            "senão UC_09_M09. Nota ponderada = nota × peso / 10; nota individual = soma. "
             "Média final sem arredondamento intermediário; exibição com duas casas e ROUND_HALF_UP."
         ),
     )
