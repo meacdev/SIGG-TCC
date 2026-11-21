@@ -32,6 +32,10 @@ def register_errors(app):
             "UNIQUE constraint failed: usuario.email_usuario" in detail
         ):
             return error_response(409, "UC_01_M04", "Este endereço de e-mail já está cadastrado.")
+        if constraint == "usuario_cpf_usuario_key" or (
+            "UNIQUE constraint failed: usuario.cpf_usuario" in detail
+        ):
+            return error_response(409, "CPF_DUPLICADO", "Este CPF já está cadastrado.")
         if constraint in {"turma_unique_0", "uq_turma_codigo_normalizado"} or (
             "UNIQUE constraint failed: turma.id_periodo_letivo, turma.codigo_turma" in detail
         ):

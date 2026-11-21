@@ -1,41 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { emptyForm, fromUser, payload, validate } from './validation';
+import {
+  emptyForm,
+  fromUser,
+  payload,
+  validCpf,
+  validPassword,
+  validPhone,
+  validate,
+} from './validation';
 import type { FormValues, User } from './types';
 
 const teacher: FormValues = {
   ...emptyForm,
-  tipo_cadastro: 'docente',
+  tipo_cadastro: 'professor',
   nome_usuario: ' Maria Silva ',
   email_usuario: ' Maria@Example.com ',
   senha: 'Senha de teste 123',
   confirmacao_senha: 'Senha de teste 123',
-  titulacao_docente: 'mestre',
+  titulacao_professor: 'Mestre',
 };
 
 describe('regras do cadastro', () => {
-  it('aceita docente sem áreas, Lattes ou instituição', () => {
+  it('aceita professor sem áreas, Lattes ou instituição', () => {
     expect(validate(teacher)).toEqual({});
     expect(payload(teacher)).toMatchObject({
       nome_usuario: 'Maria Silva',
       email_usuario: 'maria@example.com',
       areas_interesse: [],
-      url_lattes_docente: null,
+      url_lattes_professor: null,
     });
   });
   it('exige os campos obrigatórios e mascara a validação de espaços', () => {
     expect(
-      validate({ ...teacher, nome_usuario: ' ', titulacao_docente: '', senha: '            ' }),
+      validate({ ...teacher, nome_usuario: ' ', titulacao_professor: '', senha: '            ' }),
     ).toMatchObject({
       nome_usuario: expect.any(String),
-      titulacao_docente: expect.any(String),
+      titulacao_professor: expect.any(String),
       senha: expect.any(String),
     });
   });
-  it('não envia dados docentes para estudante e preserva zeros da matrícula', () => {
+  it('não envia dados de professor para estudante e preserva zeros da matrícula', () => {
     const values = {
       ...teacher,
-      tipo_cadastro: 'aluno' as const,
-      matricula_aluno: '00001234',
+      tipo_cadastro: 'estudante' as const,
+      matricula_estudante: '00001234',
       id_curso: '9',
     };
     expect(validate(values)).toEqual({});
@@ -43,8 +51,8 @@ describe('regras do cadastro', () => {
       nome_usuario: 'Maria Silva',
       email_usuario: 'maria@example.com',
       senha: teacher.senha,
-      tipo_cadastro: 'aluno',
-      matricula_aluno: '00001234',
+      tipo_cadastro: 'estudante',
+      matricula_estudante: '00001234',
       id_curso: 9,
     });
   });
@@ -52,19 +60,36 @@ describe('regras do cadastro', () => {
     expect(
       validate({
         ...teacher,
-        url_lattes_docente: 'javascript:alert(1)',
+        url_lattes_professor: 'javascript:alert(1)',
         areas_interesse: Array.from({ length: 21 }, (_, i) => `Área ${i}`).join(','),
         confirmacao_senha: 'outra senha',
       }),
     ).toMatchObject({
-      url_lattes_docente: expect.any(String),
+      url_lattes_professor: expect.any(String),
       areas_interesse: expect.any(String),
       confirmacao_senha: expect.any(String),
     });
     expect(
-      validate({ ...teacher, url_lattes_docente: 'https://nome:senha@exemplo.com' })
-        .url_lattes_docente,
+      validate({ ...teacher, url_lattes_professor: 'https://nome:senha@exemplo.com' })
+        .url_lattes_professor,
     ).toBeDefined();
+    expect(
+      validate({ ...teacher, url_lattes_professor: 'https://exemplo.com/lattes' })
+        .url_lattes_professor,
+    ).toBeDefined();
+    expect(validate({ ...teacher, url_lattes_professor: 'https://lattes.cnpq.br/123' })).toEqual(
+      {},
+    );
+  });
+  it('aplica as regras do dicionário de dados ao nome e ao professor externo', () => {
+    expect(validate({ ...teacher, nome_usuario: 'Al' }).nome_usuario).toBeDefined();
+    expect(validate({ ...teacher, nome_usuario: 'x'.repeat(101) }).nome_usuario).toBeDefined();
+    expect(
+      validate({ ...teacher, tipo_professor: 'externo' }).instituicao_origem_professor,
+    ).toBeDefined();
+    expect(
+      validate({ ...teacher, tipo_professor: 'externo', instituicao_origem_professor: 'UFAM' }),
+    ).toEqual({});
   });
   it('normaliza áreas, evita duplicatas e mantém a senha como digitada', () => {
     expect(
@@ -79,18 +104,20 @@ describe('regras do cadastro', () => {
       ativo_usuario: true,
       data_criacao_usuario: '2026-10-23T12:00:00Z',
       data_atualizacao_usuario: '2026-10-23T12:00:00Z',
+      cpf_usuario: null,
+      telefone_usuario: null,
       perfis: [],
-      docente: {
-        tipo_docente: 'interno',
-        titulacao_docente: 'mestre',
+      professor: {
+        tipo_professor: 'interno',
+        titulacao_professor: 'Mestre',
         areas_interesse: [],
-        url_lattes_docente: null,
-        instituicao_origem_docente: null,
+        url_lattes_professor: null,
+        instituicao_origem_professor: null,
       },
     };
     const values = fromUser(user);
     expect(payload(values, user)).not.toHaveProperty('email_usuario');
-    expect(payload(values, user)).not.toHaveProperty('tipo_docente');
+    expect(payload(values, user)).not.toHaveProperty('tipo_professor');
     expect(payload(values, user)).not.toHaveProperty('senha');
     expect(
       validate({ ...values, email_usuario: 'nova@example.com' }, user).senha_atual,
@@ -98,5 +125,59 @@ describe('regras do cadastro', () => {
     expect(
       payload({ ...values, email_usuario: 'nova@example.com', senha_atual: 'atual' }, user),
     ).toMatchObject({ email_usuario: 'nova@example.com', senha_atual: 'atual' });
+  });
+});
+
+describe('RF20.1 e RF21.1.1', () => {
+  it('aplica a política mínima de senha', () => {
+    expect(validPassword('Abcdef1!')).toBe(true);
+    expect(validPassword('Senha de teste 123')).toBe(true);
+    for (const weak of [
+      'Ab1!xyz',
+      'semmaiuscula1!',
+      'SemNumero!!',
+      'SemEspecial12',
+      'A1!' + 'x'.repeat(126),
+    ])
+      expect(validPassword(weak)).toBe(false);
+    expect(validate({ ...teacher, senha: 'fraca', confirmacao_senha: 'fraca' }).senha).toMatch(
+      /maiúscula/,
+    );
+  });
+  it('valida CPF e telefone opcionais', () => {
+    expect(validCpf('529.982.247-25')).toBe(true);
+    expect(validCpf('52998224725')).toBe(true);
+    expect(validCpf('123.456.789-00')).toBe(false);
+    expect(validCpf('111.111.111-11')).toBe(false);
+    expect(validPhone('(92) 99999-9999')).toBe(true);
+    expect(validPhone('123')).toBe(false);
+    expect(validate({ ...teacher, cpf_usuario: '123', telefone_usuario: 'abc' })).toMatchObject({
+      cpf_usuario: expect.any(String),
+      telefone_usuario: expect.any(String),
+    });
+  });
+  it('envia CPF e telefone normalizados no cadastro e só quando mudam na edição', () => {
+    expect(payload(teacher)).not.toHaveProperty('cpf_usuario');
+    expect(
+      payload({ ...teacher, cpf_usuario: '529.982.247-25', telefone_usuario: '(92) 99999-9999' }),
+    ).toMatchObject({ cpf_usuario: '52998224725', telefone_usuario: '92999999999' });
+    const user: User = {
+      id_usuario: 1,
+      nome_usuario: 'Maria',
+      email_usuario: 'maria@example.com',
+      cpf_usuario: '52998224725',
+      telefone_usuario: '92999999999',
+      ativo_usuario: true,
+      data_criacao_usuario: '2026-10-23T12:00:00Z',
+      data_atualizacao_usuario: '2026-10-23T12:00:00Z',
+      perfis: ['estudante'],
+      estudante: { matricula_estudante: '1', id_curso: 1 },
+    };
+    const values = fromUser(user);
+    expect(values.cpf_usuario).toBe('529.982.247-25');
+    expect(payload(values, user)).not.toHaveProperty('cpf_usuario');
+    expect(payload({ ...values, telefone_usuario: '' }, user)).toMatchObject({
+      telefone_usuario: null,
+    });
   });
 });

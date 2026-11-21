@@ -9,8 +9,8 @@ def test_malformed_lattes_is_validation_error(client, password, url):
             "nome_usuario": "Nome",
             "email_usuario": "edge@example.com",
             "senha": password,
-            "titulacao_docente": "mestre",
-            "url_lattes_docente": url,
+            "titulacao_professor": "mestre",
+            "url_lattes_professor": url,
         },
     )
     assert response.status_code == 422

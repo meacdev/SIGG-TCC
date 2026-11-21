@@ -6,7 +6,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         {
             "id_matricula": identifier,
             "id_turma": identifier,
-            "id_aluno": identifier,
+            "id_estudante": identifier,
             "nome": string(),
             "matricula": string(),
             "situacao": string(),
@@ -40,7 +40,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "get",
         "Buscar estudantes do curso",
         "Matrículas",
-        obj({"id_aluno": identifier, "nome": string(), "matricula": string()}),
+        obj({"id_estudante": identifier, "nome": string(), "matricula": string()}),
         params=[
             path("class_id"),
             *pages,
@@ -68,7 +68,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         "Matricular estudante",
         "Matrículas",
         "Matricula",
-        obj({"id_aluno": identifier}, ("id_aluno",), additionalProperties=False),
+        obj({"id_estudante": identifier}, ("id_estudante",), additionalProperties=False),
         201,
         params=[path("class_id")],
     )

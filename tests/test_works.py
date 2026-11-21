@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from backend.db import db
-from backend.defense_models import Etapa, Matricula, Orientacao, Trabalho
+from backend.defense_models import Etapa, Matricula, Orientacao, TrabalhoTcc
 from tests.test_enrollments import student as student
 
 
@@ -11,7 +11,7 @@ def work_payload(client, teacher, created_class, student):
     result = client.post(
         f"/api/v1/turmas/{created_class.json['data']['id_turma']}/matriculas",
         headers=teacher["headers"],
-        json={"id_aluno": student["id_usuario"]},
+        json={"id_estudante": student["id_usuario"]},
     )
     assert result.status_code == 201
     return {
@@ -46,7 +46,9 @@ def test_create_edit_and_orientation_acceptance(
         ).status_code
         == 428
     )
-    current = client.get(f"/api/v1/orientacoes/{data['id_trabalho']}", headers=teacher["headers"])
+    current = client.get(
+        f"/api/v1/orientacoes/{data['id_trabalho_tcc']}", headers=teacher["headers"]
+    )
     decision = client.post(
         f"/api/v1/orientacoes/{data['orientacoes'][0]['id_orientacao']}/resposta",
         headers={**teacher["headers"], "If-Match": current.headers["ETag"]},
@@ -67,7 +69,7 @@ def test_create_edit_and_orientation_acceptance(
     )
     assert update.status_code == 200
     with app.app_context():
-        assert db.session.query(Trabalho).count() == 1
+        assert db.session.query(TrabalhoTcc).count() == 1
         assert db.session.query(Etapa).count() == 1
         assert db.session.scalar(select(Orientacao)).situacao_aceite_orientacao == "aceito"
     assert client.delete("/api/v1/meu-trabalho", headers=student["headers"]).status_code == 405
@@ -99,7 +101,7 @@ def test_validation_preserves_no_partial_records(app, client, student, work_payl
     assert result.status_code == 422, result.json
     assert result.json["error"]["code"] == code
     with app.app_context():
-        assert db.session.query(Trabalho).count() == 0
+        assert db.session.query(TrabalhoTcc).count() == 0
 
 
 def test_article_fields_permissions_removed_enrollment_and_rf05(
@@ -115,6 +117,15 @@ def test_article_fields_permissions_removed_enrollment_and_rf05(
     response = client.put("/api/v1/meu-trabalho", headers=student["headers"], json=article)
     assert response.status_code == 201, response.json
     assert response.json["data"]["doi"] == "10.1234/artigo"
+    assert response.json["data"]["modalidade"] == "artigo"
+    assert response.json["data"]["tipo_artigo"] == "publicado"
+    with app.app_context():
+        stored = db.session.get(TrabalhoTcc, response.json["data"]["id_trabalho_tcc"])
+        # ck_trabalho_tcc_tipo_artigo_modalidade: modality and article type are separate columns.
+        assert (stored.modalidade_trabalho_tcc, stored.tipo_artigo_trabalho_tcc) == (
+            "artigo",
+            "publicado",
+        )
     assert (
         client.put(
             "/api/v1/meu-trabalho", headers=teacher["headers"], json=work_payload
@@ -123,7 +134,7 @@ def test_article_fields_permissions_removed_enrollment_and_rf05(
     )
     outsider = signup()
     headers = {"Authorization": f"Bearer {login(outsider)['access_token']}"}
-    identifier = response.json["data"]["id_trabalho"]
+    identifier = response.json["data"]["id_trabalho_tcc"]
     assert client.get(f"/api/v1/orientacoes/{identifier}", headers=headers).status_code == 404
     assert client.get("/api/v1/orientacoes", headers=headers).json["data"] == []
     swap = client.put(

@@ -23,7 +23,7 @@ def test_concurrent_enrollment_has_one_link(app, created_class, teacher, student
             return client.post(
                 f"/api/v1/turmas/{created_class.json['data']['id_turma']}/matriculas",
                 headers=teacher["headers"],
-                json={"id_aluno": student["id_usuario"]},
+                json={"id_estudante": student["id_usuario"]},
             ).status_code
 
     with ThreadPoolExecutor(max_workers=2) as executor:

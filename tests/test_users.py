@@ -11,12 +11,12 @@ def test_signup_hash_timestamp_and_optional_fields(app, signup, password):
     user = signup(
         email_usuario="PROFESSOR@example.com",
         areas_interesse=["IA", "IA", "Engenharia"],
-        url_lattes_docente="https://lattes.cnpq.br/123",
+        url_lattes_professor="https://lattes.cnpq.br/123",
     )
     assert user["email_usuario"] == "professor@example.com"
     assert user["perfis"] == []
     assert user["data_criacao_usuario"].endswith("Z")
-    assert sorted(user["docente"]["areas_interesse"]) == ["Engenharia", "IA"]
+    assert sorted(user["professor"]["areas_interesse"]) == ["Engenharia", "IA"]
     with app.app_context():
         row = db.session.get(Usuario, user["id_usuario"])
         assert row.hash_senha_usuario != password
@@ -30,11 +30,25 @@ def test_signup_hash_timestamp_and_optional_fields(app, signup, password):
     [
         ("email_usuario", "inválido", "UC_01_M03"),
         ("nome_usuario", " ", "VALIDACAO"),
+        ("nome_usuario", " Al ", "VALIDACAO"),
+        ("nome_usuario", "x" * 101, "VALIDACAO"),
         ("senha", "curta", "SENHA_INVALIDA"),
-        ("titulacao_docente", "graduado", "VALIDACAO"),
-        ("titulacao_docente", None, "UC_01_M02"),
-        ("url_lattes_docente", "javascript:alert(1)", "URL_INVALIDA"),
-        ("url_lattes_docente", "https://", "URL_INVALIDA"),
+        ("senha", "Ab1!xyz", "SENHA_INVALIDA"),
+        ("senha", "semmaiuscula1!", "SENHA_INVALIDA"),
+        ("senha", "SemNumero!!", "SENHA_INVALIDA"),
+        ("senha", "SemEspecial12", "SENHA_INVALIDA"),
+        ("senha", "A1!" + "x" * 126, "SENHA_INVALIDA"),
+        ("cpf_usuario", "123.456.789-00", "CPF_INVALIDO"),
+        ("cpf_usuario", "111.111.111-11", "CPF_INVALIDO"),
+        ("cpf_usuario", 52998224725, "CPF_INVALIDO"),
+        ("telefone_usuario", "123", "TELEFONE_INVALIDO"),
+        ("telefone_usuario", "92 9999-abcd", "TELEFONE_INVALIDO"),
+        ("titulacao_professor", "graduado", "VALIDACAO"),
+        ("titulacao_professor", None, "UC_01_M02"),
+        ("url_lattes_professor", "javascript:alert(1)", "URL_INVALIDA"),
+        ("url_lattes_professor", "https://", "URL_INVALIDA"),
+        ("url_lattes_professor", "https://example.com/lattes.cnpq.br/1", "URL_INVALIDA"),
+        ("tipo_professor", "externo", "UC_01_M02"),
         ("areas_interesse", "IA", "VALIDACAO"),
         ("tipo_cadastro", "admin", "VALIDACAO"),
     ],
@@ -44,12 +58,19 @@ def test_registration_validation(client, password, field, value, code):
         "nome_usuario": "Nome",
         "email_usuario": "pessoa@example.com",
         "senha": password,
-        "titulacao_docente": "mestre",
+        "titulacao_professor": "mestre",
         field: value,
     }
     response = client.post("/api/v1/usuarios", json=payload)
     assert response.status_code == 422
     assert response.json["error"]["code"] == code
+
+
+def test_title_is_stored_with_dictionary_spelling(app, signup):
+    user = signup(titulacao_professor="DOUTOR")
+    assert user["professor"]["titulacao_professor"] == "Doutor"
+    external = signup(tipo_professor="externo", instituicao_origem_professor="UFAM")
+    assert external["professor"]["tipo_professor"] == "externo"
 
 
 def test_duplicate_email_is_case_insensitive(client, signup, password):
@@ -60,7 +81,7 @@ def test_duplicate_email_is_case_insensitive(client, signup, password):
             "nome_usuario": "Outra",
             "email_usuario": "PESSOA@example.com",
             "senha": password,
-            "titulacao_docente": "doutor",
+            "titulacao_professor": "doutor",
         },
     )
     assert response.status_code == 409
@@ -77,19 +98,19 @@ def test_student_registration(client, password):
         "nome_usuario": "Estudante",
         "email_usuario": "aluno@example.com",
         "senha": password,
-        "tipo_cadastro": "aluno",
-        "matricula_aluno": "00012",
+        "tipo_cadastro": "estudante",
+        "matricula_estudante": "00012",
         "id_curso": 1,
     }
     response = client.post("/api/v1/usuarios", json=payload)
     assert response.status_code == 201, response.json
-    assert response.json["data"]["perfis"] == ["aluno"]
-    assert response.json["data"]["aluno"]["matricula_aluno"] == "00012"
+    assert response.json["data"]["perfis"] == ["estudante"]
+    assert response.json["data"]["estudante"]["matricula_estudante"] == "00012"
     payload["email_usuario"] = "outro@example.com"
     assert client.post("/api/v1/usuarios", json=payload).status_code == 409
     payload["id_curso"] = 999
     assert client.post("/api/v1/usuarios", json=payload).status_code == 422
-    payload["titulacao_docente"] = "mestre"
+    payload["titulacao_professor"] = "mestre"
     assert client.post("/api/v1/usuarios", json=payload).status_code == 422
 
 
@@ -105,10 +126,10 @@ def test_profile_update_and_logical_deletion(client, signup, login, password, ap
         headers=auth | {"If-Match": tag},
         json={
             "nome_usuario": "Novo Nome",
-            "titulacao_docente": "doutor",
+            "titulacao_professor": "doutor",
             "areas_interesse": ["IA"],
-            "instituicao_origem_docente": "UFAM",
-            "url_lattes_docente": "https://lattes.cnpq.br/456",
+            "instituicao_origem_professor": "UFAM",
+            "url_lattes_professor": "https://lattes.cnpq.br/456",
         },
     )
     assert changed.status_code == 200, changed.json
@@ -161,3 +182,74 @@ def test_email_change_requires_password_and_revokes_session(client, signup, logi
         == 200
     )
     assert client.get("/api/v1/usuarios/me", headers=auth).status_code == 401
+
+
+def test_minimum_password_policy_is_accepted(signup):
+    assert signup(senha="Abcdef1!")["email_usuario"]
+
+
+def test_cpf_and_phone_are_optional_normalized_and_unique(client, signup, login, password):
+    assert signup()["cpf_usuario"] is None
+    user = signup(cpf_usuario="529.982.247-25", telefone_usuario="(92) 99999-9999")
+    assert user["cpf_usuario"] == "52998224725"
+    assert user["telefone_usuario"] == "92999999999"
+    response = client.post(
+        "/api/v1/usuarios",
+        json={
+            "nome_usuario": "Outra Pessoa",
+            "email_usuario": "outra@example.com",
+            "senha": password,
+            "titulacao_professor": "mestre",
+            "cpf_usuario": "52998224725",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json["error"]["code"] == "CPF_DUPLICADO"
+
+    other = signup(cpf_usuario="11144477735")
+    auth = headers(login(other)["access_token"])
+    tag = client.get("/api/v1/usuarios/me", headers=auth).headers["ETag"]
+    duplicate = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"cpf_usuario": "529.982.247-25"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json["error"]["code"] == "CPF_DUPLICADO"
+    # Keeping one's own CPF is not a duplicate; null clears the phone.
+    changed = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"cpf_usuario": "111.444.777-35", "telefone_usuario": "+55 92 3333-4444"},
+    )
+    assert changed.status_code == 200, changed.json
+    assert changed.json["data"]["telefone_usuario"] == "559233334444"
+    cleared = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": changed.headers["ETag"]},
+        json={"cpf_usuario": None, "telefone_usuario": ""},
+    )
+    assert cleared.status_code == 200, cleared.json
+    assert cleared.json["data"]["cpf_usuario"] is None
+    assert cleared.json["data"]["telefone_usuario"] is None
+
+
+def test_student_can_update_contact_fields(client, password, login):
+    payload = {
+        "nome_usuario": "Estudante",
+        "email_usuario": "contato@example.com",
+        "senha": password,
+        "tipo_cadastro": "estudante",
+        "matricula_estudante": "00099",
+        "id_curso": 1,
+    }
+    user = client.post("/api/v1/usuarios", json=payload).json["data"]
+    auth = headers(login(user)["access_token"])
+    tag = client.get("/api/v1/usuarios/me", headers=auth).headers["ETag"]
+    response = client.patch(
+        "/api/v1/usuarios/me",
+        headers=auth | {"If-Match": tag},
+        json={"telefone_usuario": "92988887777"},
+    )
+    assert response.status_code == 200, response.json
+    assert response.json["data"]["telefone_usuario"] == "92988887777"

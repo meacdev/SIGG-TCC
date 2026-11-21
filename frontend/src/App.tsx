@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
-import { Field, Icon, Notice, Password, inputA11y } from './components';
+import { Field, Icon, Notice, Password, inputA11y, type IconName } from './components';
 import type { Course, FieldErrors, FormValues, User } from './types';
-import { emptyForm, fromUser, payload, validEmail, validate } from './validation';
+import { PASSWORD_RULE, emptyForm, fromUser, payload, validEmail, validate } from './validation';
 import { RecoveryForm } from './RecoveryForm';
 import { Classes } from './classes';
 import { Enrollments } from './enrollments';
 import { Works } from './works';
 import { Meetings } from './meetings';
 import { Monitoring } from './monitoring';
+import { DefenseManagement, ManuscriptAccess } from './defense-management';
+import { Defenses } from './defenses';
+import { StudentDocuments, VerifyDocument } from './documents';
+import { canAccess, type AcademicPage } from './navigation';
 import './academic.css';
 
 type Page =
@@ -20,9 +24,14 @@ type Page =
   | 'matriculas'
   | 'trabalhos'
   | 'reunioes'
-  | 'monitoramento';
+  | 'monitoramento'
+  | 'organizar-defesas'
+  | 'manuscrito-banca'
+  | 'bancas'
+  | 'documentos'
+  | 'verificar-documento';
 const currentPage = (): Page => {
-  const page = window.location.hash.replace('#/', '');
+  const page = window.location.hash.replace('#/', '').split('?')[0];
   return [
     'entrar',
     'recuperar-senha',
@@ -32,6 +41,11 @@ const currentPage = (): Page => {
     'trabalhos',
     'reunioes',
     'monitoramento',
+    'organizar-defesas',
+    'manuscrito-banca',
+    'bancas',
+    'documentos',
+    'verificar-documento',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -40,58 +54,116 @@ const navigate = (page: Page) => {
   window.location.hash = `/${page}`;
 };
 
+const TITLES: Record<Page, string> = {
+  cadastro: 'Crie sua conta',
+  entrar: 'Entrar',
+  'recuperar-senha': 'Recuperar senha',
+  perfil: 'Meu cadastro',
+  turmas: 'Turmas',
+  matriculas: 'Matrículas',
+  trabalhos: 'Trabalhos',
+  reunioes: 'Reuniões',
+  monitoramento: 'Monitorar Prazos',
+  'organizar-defesas': 'Organizar defesas',
+  'manuscrito-banca': 'Manuscrito da defesa',
+  bancas: 'Minhas bancas',
+  documentos: 'Minhas atas',
+  'verificar-documento': 'Verificar documento',
+};
+
+const roleLabel = (user: User) =>
+  user.perfis.includes('coordenador')
+    ? 'Coordenador(a) de curso'
+    : user.professor
+      ? 'Professor / avaliador'
+      : 'Estudante';
+
+type NavLink<P extends Page = Page> = { page: P; label: string; icon: IconName };
+const ACADEMIC_LINKS: NavLink<AcademicPage>[] = [
+  { page: 'perfil', label: 'Meu cadastro', icon: 'user' },
+  { page: 'turmas', label: 'Turmas', icon: 'users' },
+  { page: 'matriculas', label: 'Matrículas', icon: 'cap' },
+  { page: 'trabalhos', label: 'Trabalhos', icon: 'book' },
+  { page: 'reunioes', label: 'Reuniões', icon: 'chat' },
+  { page: 'monitoramento', label: 'Monitorar Prazos', icon: 'clock' },
+  { page: 'organizar-defesas', label: 'Organizar defesas', icon: 'cal' },
+  { page: 'bancas', label: 'Minhas bancas', icon: 'users' },
+  { page: 'documentos', label: 'Minhas atas', icon: 'file' },
+];
+const ACCESS_LINKS: NavLink[] = [
+  { page: 'entrar', label: 'Entrar', icon: 'key' },
+  { page: 'cadastro', label: 'Criar conta', icon: 'plus' },
+  { page: 'recuperar-senha', label: 'Recuperar senha', icon: 'shield' },
+  { page: 'verificar-documento', label: 'Verificar documento', icon: 'file' },
+];
+
 function errorDetails(error: unknown): { message: string; fields: FieldErrors } {
   if (!(error instanceof ApiError))
     return { message: 'Não foi possível concluir a operação. Tente novamente.', fields: {} };
   const fields: FieldErrors = { ...error.fields };
   if (['UC_01_M03', 'UC_01_M04'].includes(error.code)) fields.email_usuario = error.message;
   if (error.code === 'SENHA_INVALIDA') fields.senha = error.message;
-  if (error.code === 'URL_INVALIDA') fields.url_lattes_docente = error.message;
-  if (error.code === 'MATRICULA_DUPLICADA') fields.matricula_aluno = error.message;
+  if (['CPF_INVALIDO', 'CPF_DUPLICADO'].includes(error.code)) fields.cpf_usuario = error.message;
+  if (error.code === 'TELEFONE_INVALIDO') fields.telefone_usuario = error.message;
+  if (error.code === 'URL_INVALIDA') fields.url_lattes_professor = error.message;
+  if (error.code === 'MATRICULA_DUPLICADA') fields.matricula_estudante = error.message;
   if (error.code === 'CURSO_INVALIDO') fields.id_curso = error.message;
   return { message: error.message, fields };
 }
 
 export function App() {
   const [page, setPage] = useState<Page>(currentPage);
+  const returnAfterLogin = useRef('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
-  const protectedPage = [
-    'perfil',
-    'turmas',
-    'matriculas',
-    'trabalhos',
-    'reunioes',
-    'monitoramento',
-  ].includes(page);
+  const academicPage = (
+    page === 'manuscrito-banca' || ACADEMIC_LINKS.some((link) => link.page === page) ? page : null
+  ) as AcademicPage | null;
+  const protectedPage = academicPage !== null;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [me, setMe] = useState<User | null>(() => api.sessionUser());
   useEffect(() => {
     const change = () => {
       setPage(currentPage());
       setNotice('');
+      setMenuOpen(false);
     };
     window.addEventListener('hashchange', change);
     return () => window.removeEventListener('hashchange', change);
   }, []);
   useEffect(() => {
-    const titles = {
-      cadastro: 'Crie sua conta',
-      entrar: 'Entrar',
-      'recuperar-senha': 'Recuperar senha',
-      perfil: 'Meu cadastro',
-      turmas: 'Turmas',
-      matriculas: 'Matrículas',
-      trabalhos: 'Trabalhos',
-      reunioes: 'Reuniões',
-      monitoramento: 'Monitorar Prazos',
-    };
-    document.title = `${titles[page]} · SIGG-TCC`;
+    document.title = `${TITLES[page]} · SIGG-TCC`;
     window.scrollTo(0, 0);
     if (protectedPage && !api.hasSession()) {
+      returnAfterLogin.current = window.location.hash;
       navigate('entrar');
     }
   }, [page]);
+  // Página fora do perfil aberta pelo endereço: volta para "Meu cadastro" (o backend também bloqueia).
+  const forbidden = !!(academicPage && me && api.hasSession() && !canAccess(academicPage, me));
+  useEffect(() => {
+    if (!forbidden) return;
+    window.history.replaceState(null, '', '#/perfil');
+    setPage('perfil');
+  }, [forbidden]);
+  // Identificação do usuário na barra superior; falhas ficam a cargo de cada tela.
+  const needsIdentity = protectedPage && api.hasSession() && !me;
+  useEffect(() => {
+    if (!needsIdentity) return;
+    let active = true;
+    api
+      .profile()
+      .then((result) => {
+        if (active) setMe(result.body.data);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [needsIdentity]);
 
   function sessionEnded(message: string) {
+    setMe(null);
     api.clearSession();
     setPage('entrar');
     // Replace the hash without triggering the listener that clears the feedback.
@@ -110,6 +182,21 @@ export function App() {
     }
   }
 
+  const signedIn = protectedPage && api.hasSession();
+  const view = forbidden ? null : page;
+  // Sem os perfis ainda carregados, mostra só o que todo usuário logado pode usar.
+  const links: NavLink[] = signedIn
+    ? ACADEMIC_LINKS.filter((link) => (me ? canAccess(link.page, me) : link.page === 'perfil'))
+    : ACCESS_LINKS;
+  const initials = (me?.nome_usuario || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part, index, parts) => (index === 0 || index === parts.length - 1 ? part[0] : ''))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="app-shell">
       <a
@@ -122,85 +209,80 @@ export function App() {
       >
         Ir para o conteúdo
       </a>
-      <aside className="brand-panel" aria-label="Sobre o SIGG-TCC">
-        <a className="brand" href="#/cadastro">
+      <aside className={`side ${menuOpen ? 'open' : ''}`} aria-label="Navegação principal">
+        <a className="brand" href={signedIn ? '#/perfil' : '#/entrar'}>
           <span className="brand-symbol">
-            <Icon name="cap" size={30} />
+            <Icon name="cap" size={24} />
           </span>
           <span>
             SIGG<span className="brand-dash">-</span>TCC<small>GESTÃO E GOVERNANÇA</small>
           </span>
         </a>
-        <div className="brand-content">
-          <span className="eyebrow light">NUCOMP · UNIVERSIDADE DO ESTADO DO AMAZONAS</span>
-          <h1>
-            Grandes ideias.
-            <br />
-            Uma jornada
-            <br />
-            <em>compartilhada.</em>
-          </h1>
-          <p>
-            Um ponto de encontro para estudantes e docentes em cada etapa do trabalho de conclusão
-            de curso.
-          </p>
-          <div className="journey" aria-label="Etapas da jornada acadêmica">
-            <div>
-              <span className="journey-dot">
-                <Icon name="book" size={18} />
-              </span>
-              <p>
-                <strong>Do primeiro tema à defesa</strong>
-                <small>Seu percurso acadêmico em um só lugar.</small>
-              </p>
-            </div>
-            <div>
-              <span className="journey-dot">
-                <Icon name="user" size={18} />
-              </span>
-              <p>
-                <strong>Conhecimento que conecta</strong>
-                <small>Estudantes, orientadores e avaliadores.</small>
-              </p>
-            </div>
-            <div>
-              <span className="journey-dot">
-                <Icon name="shield" size={18} />
-              </span>
-              <p>
-                <strong>Cada etapa com seu registro</strong>
-                <small>Mais organização para seguir em frente.</small>
-              </p>
-            </div>
-          </div>
+        <button
+          type="button"
+          className="icon-btn menu-btn"
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuOpen}
+          aria-controls="side-nav"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <Icon name={menuOpen ? 'close' : 'menu'} size={20} />
+        </button>
+        <div className="side-body" id="side-nav">
+          <p className="side-label">{signedIn ? 'ÁREA ACADÊMICA' : 'ACESSO AO PORTAL'}</p>
+          <nav aria-label={signedIn ? 'Área acadêmica' : 'Acesso'}>
+            {links.map((link) => (
+              <a
+                key={link.page}
+                href={`#/${link.page}`}
+                aria-current={page === link.page ? 'page' : undefined}
+              >
+                <Icon name={link.icon} size={18} />
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          {!signedIn && (
+            <p className="side-note">
+              Um ponto de encontro para estudantes e docentes em cada etapa do trabalho de conclusão
+              de curso.
+            </p>
+          )}
         </div>
-        <div className="institution">
-          <span className="uea-wordmark">
-            UEA
-            <span>
-              UNIVERSIDADE DO
-              <br />
-              ESTADO DO AMAZONAS
-            </span>
-          </span>
-          <span className="institution-unit">
-            NUCOMP<small>Núcleo de Computação</small>
+        <div className="side-foot">
+          <b className="uea">UEA</b>
+          <span>
+            NUCOMP
+            <br />
+            Núcleo de Computação
           </span>
         </div>
         <span className="panel-grid" aria-hidden="true" />
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <span>
-            Portal acadêmico <span className="topbar-divider">/</span>{' '}
-            {protectedPage ? 'Área acadêmica' : 'Acesso'}
-          </span>
-          {protectedPage ? (
-            <button className="text-button" onClick={logout}>
-              Sair da conta <Icon name="arrow" size={16} />
-            </button>
+          <p className="topbar-path">
+            Portal acadêmico <span className="topbar-divider">/</span> {TITLES[page]}
+          </p>
+          {signedIn ? (
+            <div className="top-right">
+              {me && (
+                <div className="who">
+                  <span className="avatar" aria-hidden="true">
+                    {initials}
+                  </span>
+                  <div>
+                    <strong>{me.nome_usuario}</strong>
+                    <small>{roleLabel(me)}</small>
+                  </div>
+                </div>
+              )}
+              <button className="text-button" onClick={logout}>
+                Sair da conta <Icon name="arrow" size={16} />
+              </button>
+            </div>
           ) : (
-            <span>
+            <span className="top-right">
               {page === 'cadastro' ? 'Já tem uma conta?' : 'Ainda não tem conta?'}{' '}
               <a href={page === 'cadastro' ? '#/entrar' : '#/cadastro'}>
                 {page === 'cadastro' ? 'Entrar' : 'Cadastre-se'} <span aria-hidden="true">↗</span>
@@ -208,32 +290,7 @@ export function App() {
             </span>
           )}
         </header>
-        <main id="main-content" tabIndex={-1}>
-          {api.hasSession() && protectedPage && (
-            <nav className="account-nav" aria-label="Área acadêmica">
-              <a href="#/perfil" aria-current={page === 'perfil' ? 'page' : undefined}>
-                Meu cadastro
-              </a>
-              <a href="#/turmas" aria-current={page === 'turmas' ? 'page' : undefined}>
-                Turmas
-              </a>
-              <a href="#/matriculas" aria-current={page === 'matriculas' ? 'page' : undefined}>
-                Matrículas
-              </a>
-              <a href="#/trabalhos" aria-current={page === 'trabalhos' ? 'page' : undefined}>
-                Trabalhos
-              </a>
-              <a href="#/reunioes" aria-current={page === 'reunioes' ? 'page' : undefined}>
-                Reuniões
-              </a>
-              <a
-                href="#/monitoramento"
-                aria-current={page === 'monitoramento' ? 'page' : undefined}
-              >
-                Monitorar Prazos
-              </a>
-            </nav>
-          )}
+        <main id="main-content" tabIndex={-1} className={signedIn ? 'main-wide' : 'main-narrow'}>
           {page === 'cadastro' && (
             <AccountForm
               key="signup"
@@ -248,8 +305,11 @@ export function App() {
               initialEmail={email}
               notice={notice}
               onLogin={() => {
-                window.history.replaceState(null, '', '#/perfil');
-                setPage('perfil');
+                const next = returnAfterLogin.current || '#/perfil';
+                returnAfterLogin.current = '';
+                setMe(api.sessionUser());
+                window.history.replaceState(null, '', next);
+                setPage(currentPage());
                 setNotice('Login realizado com sucesso!');
               }}
               onForgot={setEmail}
@@ -264,16 +324,29 @@ export function App() {
               }}
             />
           )}
-          {page === 'perfil' && api.hasSession() && (
-            <Profile onSessionEnded={sessionEnded} initialNotice={notice} />
+          {view === 'perfil' && api.hasSession() && (
+            <Profile onSessionEnded={sessionEnded} initialNotice={notice} onUserChanged={setMe} />
           )}
-          {page === 'turmas' && api.hasSession() && <Classes onSessionEnded={sessionEnded} />}
-          {page === 'matriculas' && api.hasSession() && (
+          {view === 'turmas' && api.hasSession() && (
+            <Classes onSessionEnded={sessionEnded} user={me} />
+          )}
+          {view === 'matriculas' && api.hasSession() && (
             <Enrollments onSessionEnded={sessionEnded} />
           )}
-          {page === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
-          {page === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
-          {page === 'monitoramento' && api.hasSession() && (
+          {view === 'trabalhos' && api.hasSession() && <Works onSessionEnded={sessionEnded} />}
+          {view === 'reunioes' && api.hasSession() && <Meetings onSessionEnded={sessionEnded} />}
+          {view === 'organizar-defesas' && api.hasSession() && (
+            <DefenseManagement onSessionEnded={sessionEnded} />
+          )}
+          {view === 'manuscrito-banca' && api.hasSession() && (
+            <ManuscriptAccess onSessionEnded={sessionEnded} />
+          )}
+          {view === 'bancas' && api.hasSession() && <Defenses onSessionEnded={sessionEnded} />}
+          {view === 'documentos' && api.hasSession() && (
+            <StudentDocuments onSessionEnded={sessionEnded} />
+          )}
+          {page === 'verificar-documento' && <VerifyDocument />}
+          {view === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}
         </main>
@@ -312,7 +385,7 @@ function AccountForm({
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseStatus, setCourseStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [courseAttempt, setCourseAttempt] = useState(0);
-  const student = values.tipo_cadastro === 'aluno';
+  const student = values.tipo_cadastro === 'estudante';
 
   useEffect(() => {
     if (!student) return;
@@ -416,7 +489,7 @@ function AccountForm({
           <Icon name="check" size={36} />
         </span>
         <span className="eyebrow">TUDO PRONTO PARA COMEÇAR</span>
-        <h2>Boas-vindas ao SIGG-TCC!</h2>
+        <h1>Boas-vindas ao SIGG-TCC!</h1>
         <Notice success message="Cadastro realizado com sucesso!" />
         <p>
           Sua conta foi criada para <strong>{receipt.email_usuario}</strong>. Agora você já pode
@@ -429,10 +502,10 @@ function AccountForm({
           </div>
           <div>
             <dt>Tipo de cadastro</dt>
-            <dd>{receipt.docente ? 'Docente / avaliador' : 'Estudante'}</dd>
+            <dd>{receipt.professor ? 'Professor / avaliador' : 'Estudante'}</dd>
           </div>
         </dl>
-        {receipt.docente && (
+        {receipt.professor && (
           <p className="muted">
             As permissões de orientação, avaliação e gestão são atribuídas pela administração
             conforme seu vínculo acadêmico.
@@ -451,7 +524,7 @@ function AccountForm({
           <span className="eyebrow">
             <span className="tiny-dot" /> FAÇA PARTE DESSA JORNADA
           </span>
-          <h2>Crie sua conta</h2>
+          <h1>Crie sua conta</h1>
           <p>Preencha seus dados para começar no SIGG-TCC.</p>
         </div>
       )}
@@ -465,7 +538,7 @@ function AccountForm({
           <fieldset className="account-type" disabled={busy}>
             <legend>Como você participa do TCC?</legend>
             <div className="type-options">
-              {(['aluno', 'docente'] as const).map((kind) => (
+              {(['estudante', 'professor'] as const).map((kind) => (
                 <label
                   key={kind}
                   className={`type-option ${values.tipo_cadastro === kind ? 'selected' : ''}`}
@@ -482,14 +555,14 @@ function AccountForm({
                     }}
                   />
                   <span className="type-icon">
-                    <Icon name={kind === 'aluno' ? 'cap' : 'book'} size={23} />
+                    <Icon name={kind === 'estudante' ? 'cap' : 'book'} size={23} />
                   </span>
                   <span>
                     <strong>
-                      {kind === 'aluno' ? 'Sou estudante' : 'Sou docente / avaliador'}
+                      {kind === 'estudante' ? 'Sou estudante' : 'Sou docente / avaliador'}
                     </strong>
                     <small>
-                      {kind === 'aluno'
+                      {kind === 'estudante'
                         ? 'Estudante de TCC1 ou TCC2'
                         : 'Orientação, banca ou gestão'}
                     </small>
@@ -513,7 +586,7 @@ function AccountForm({
         )}
         <div className="section-heading">
           <span>01</span>
-          <h3>Dados pessoais{!original && ' e acesso'}</h3>
+          <h2>Dados pessoais{!original && ' e acesso'}</h2>
           <small>Campos obrigatórios, salvo indicação</small>
         </div>
         <div className="fields-grid">
@@ -540,14 +613,32 @@ function AccountForm({
               />
             </Field>
           </div>
+          <Field name="cpf_usuario" label="CPF" errors={errors} optional>
+            <input
+              {...field('cpf_usuario')}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+          </Field>
+          <Field name="telefone_usuario" label="Telefone de contato" errors={errors} optional>
+            <input
+              {...field('telefone_usuario')}
+              type="tel"
+              autoComplete="tel"
+              placeholder="(92) 99999-9999"
+              maxLength={30}
+            />
+          </Field>
           {!original && (
             <>
-              <Field name="senha" label="Senha" errors={errors} hint="Use de 12 a 128 caracteres.">
+              <Field name="senha" label="Senha" errors={errors} hint={PASSWORD_RULE}>
                 <Password
                   {...field('senha', true)}
                   label="Senha"
                   autoComplete="new-password"
-                  minLength={12}
+                  minLength={8}
                   maxLength={128}
                   required
                   placeholder="Crie uma senha segura"
@@ -585,14 +676,14 @@ function AccountForm({
         </div>
         <div className="section-heading">
           <span>02</span>
-          <h3>Informações acadêmicas</h3>
+          <h2>Informações acadêmicas</h2>
         </div>
         <div className="fields-grid">
           {student ? (
             <>
-              <Field name="matricula_aluno" label="Matrícula" errors={errors}>
+              <Field name="matricula_estudante" label="Matrícula" errors={errors}>
                 <input
-                  {...field('matricula_aluno')}
+                  {...field('matricula_estudante')}
                   disabled={busy || !!original}
                   autoComplete="off"
                   maxLength={30}
@@ -654,29 +745,29 @@ function AccountForm({
             </>
           ) : (
             <>
-              <Field name="titulacao_docente" label="Titulação" errors={errors}>
-                <select {...field('titulacao_docente')} required>
+              <Field name="titulacao_professor" label="Titulação" errors={errors}>
+                <select {...field('titulacao_professor')} required>
                   <option value="">Selecione sua titulação</option>
-                  <option value="especialista">Especialista</option>
-                  <option value="mestre">Mestre</option>
-                  <option value="doutor">Doutor</option>
+                  <option value="Especialista">Especialista</option>
+                  <option value="Mestre">Mestre</option>
+                  <option value="Doutor">Doutor</option>
                 </select>
               </Field>
-              <Field name="tipo_docente" label="Vínculo institucional" errors={errors}>
-                <select {...field('tipo_docente')} disabled={busy || !!original}>
-                  <option value="interno">Docente interno · UEA</option>
-                  <option value="externo">Docente / avaliador externo</option>
+              <Field name="tipo_professor" label="Vínculo institucional" errors={errors}>
+                <select {...field('tipo_professor')} disabled={busy || !!original}>
+                  <option value="interno">Professor interno · UEA</option>
+                  <option value="externo">Professor / avaliador externo</option>
                 </select>
               </Field>
               <div className="full">
                 <Field
-                  name="instituicao_origem_docente"
+                  name="instituicao_origem_professor"
                   label="Instituição de origem"
-                  optional
+                  optional={values.tipo_professor !== 'externo'}
                   errors={errors}
                 >
                   <input
-                    {...field('instituicao_origem_docente')}
+                    {...field('instituicao_origem_professor')}
                     autoComplete="organization"
                     maxLength={200}
                     placeholder="Nome da instituição"
@@ -699,13 +790,13 @@ function AccountForm({
               </div>
               <div className="full">
                 <Field
-                  name="url_lattes_docente"
+                  name="url_lattes_professor"
                   label="Link do Currículo Lattes"
                   optional
                   errors={errors}
                 >
                   <input
-                    {...field('url_lattes_docente')}
+                    {...field('url_lattes_professor')}
                     type="url"
                     maxLength={2048}
                     placeholder="https://lattes.cnpq.br/…"
@@ -814,7 +905,7 @@ function LoginForm({
     <section className="login-section">
       <div className="page-intro">
         <span className="eyebrow">BOM TER VOCÊ DE VOLTA</span>
-        <h2>Entre na sua conta</h2>
+        <h1>Entre na sua conta</h1>
         <p>Acesse e mantenha seu cadastro atualizado.</p>
       </div>
       {notice && <Notice success message={notice} />}
@@ -861,9 +952,11 @@ function LoginForm({
 function Profile({
   onSessionEnded,
   initialNotice,
+  onUserChanged,
 }: {
   onSessionEnded: (message: string) => void;
   initialNotice: string;
+  onUserChanged?: (user: User) => void;
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
@@ -893,7 +986,7 @@ function Profile({
     <section className="profile-section">
       <div className="page-intro">
         <span className="eyebrow">SUA CONTA NO SIGG-TCC</span>
-        <h2>Meu cadastro</h2>
+        <h1>Meu cadastro</h1>
         <p>Consulte e atualize suas informações.</p>
       </div>
       {message && (
@@ -912,7 +1005,7 @@ function Profile({
             <div>
               <strong>{user.nome_usuario}</strong>
               <small>
-                Cadastro #{user.id_usuario} · {user.docente ? 'Docente / avaliador' : 'Estudante'}
+                Cadastro #{user.id_usuario} · {roleLabel(user)}
               </small>
             </div>
             <span className="active-badge">Conta ativa</span>
@@ -923,6 +1016,7 @@ function Profile({
             etag={etag || undefined}
             onSaved={(updated, nextEtag) => {
               setUser(updated);
+              onUserChanged?.(updated);
               setEtag(nextEtag);
               setVersion((value) => value + 1);
               setSuccess('Cadastro atualizado com sucesso!');
@@ -938,7 +1032,7 @@ function Profile({
           </p>
           <div className="danger-zone">
             <div>
-              <h3>Inativar minha conta</h3>
+              <h2>Inativar minha conta</h2>
               <p>Seu acesso será encerrado. O histórico acadêmico será preservado.</p>
             </div>
             <button

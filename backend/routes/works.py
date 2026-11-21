@@ -3,9 +3,9 @@ from sqlalchemy import exists, select
 
 from backend import validation as v
 from backend.db import db
-from backend.defense_models import Orientacao, Trabalho
+from backend.defense_models import Orientacao, TrabalhoTcc
 from backend.errors import APIError
-from backend.models import Docente, Usuario
+from backend.models import Professor, Usuario
 from backend.routes.catalogs import page_response
 from backend.security import authenticated
 from backend.serialization import resource_response
@@ -32,25 +32,25 @@ def mine():
     )
 
 
-@bp.get("/docentes-orientacao")
+@bp.get("/professores-orientacao")
 @authenticated()
 def teachers():
-    if not g.user.aluno:
+    if not g.user.estudante:
         raise APIError(
             403, "ACESSO_NEGADO", "O catálogo de orientação exige uma conta de estudante."
         )
     query = (
-        select(Docente)
+        select(Professor)
         .join(Usuario)
-        .where(Docente.ativo_docente.is_(True), Usuario.ativo_usuario.is_(True))
-        .order_by(Usuario.nome_usuario, Docente.id_docente)
+        .where(Professor.ativo_professor.is_(True), Usuario.ativo_usuario.is_(True))
+        .order_by(Usuario.nome_usuario, Professor.id_professor)
     )
     return page_response(
         query,
         lambda d: {
-            "id_docente": d.id_docente,
+            "id_professor": d.id_professor,
             "nome": d.usuario.nome_usuario,
-            "titulacao": d.titulacao_docente,
+            "titulacao": d.titulacao_professor,
         },
     )
 
@@ -58,20 +58,20 @@ def teachers():
 @bp.get("/orientacoes")
 @authenticated()
 def assigned():
-    if not g.user.docente or not g.user.docente.ativo_docente:
+    if not g.user.professor or not g.user.professor.ativo_professor:
         raise APIError(403, "ACESSO_NEGADO", "Esta consulta exige docente ativo.")
     query = (
-        select(Trabalho)
+        select(TrabalhoTcc)
         .where(
             exists(
                 select(Orientacao.id_orientacao).where(
-                    Orientacao.id_trabalho == Trabalho.id_trabalho,
-                    Orientacao.id_docente == g.user.id_usuario,
+                    Orientacao.id_trabalho_tcc == TrabalhoTcc.id_trabalho_tcc,
+                    Orientacao.id_professor == g.user.id_usuario,
                     Orientacao.data_encerramento_orientacao.is_(None),
                 )
             )
         )
-        .order_by(Trabalho.id_trabalho)
+        .order_by(TrabalhoTcc.id_trabalho_tcc)
     )
     return page_response(query, works.serialize)
 
@@ -79,12 +79,12 @@ def assigned():
 @bp.get("/orientacoes/<int:work_id>")
 @authenticated()
 def detail(work_id):
-    item = db.session.get(Trabalho, work_id)
+    item = db.session.get(TrabalhoTcc, work_id)
     if (
         not item
-        or not g.user.docente
-        or not g.user.docente.ativo_docente
-        or not any(o.id_docente == g.user.id_usuario for o in works.orientations(item))
+        or not g.user.professor
+        or not g.user.professor.ativo_professor
+        or not any(o.id_professor == g.user.id_usuario for o in works.orientations(item))
     ):
         raise APIError(404, "TRABALHO_AUSENTE", "Trabalho não encontrado para seu vínculo.")
     return resource_response(item, works.serialize(item))
@@ -97,8 +97,8 @@ def respond(orientation_id):
     if not record:
         raise APIError(404, "ORIENTACAO_AUSENTE", "Vínculo não encontrado.")
     item = db.session.scalar(
-        select(Trabalho)
-        .where(Trabalho.id_trabalho == record.id_trabalho)
+        select(TrabalhoTcc)
+        .where(TrabalhoTcc.id_trabalho_tcc == record.id_trabalho_tcc)
         .with_for_update()
         .execution_options(populate_existing=True)
     )

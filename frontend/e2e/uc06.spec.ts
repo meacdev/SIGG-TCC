@@ -36,14 +36,14 @@ test('UC06: artigo publicado, nível herdado, edição e aceite do orientador', 
           codigo_turma: 'ESTSI06',
           nivel_turma: 2,
           id_curso: 1,
-          id_docente_responsavel: teacher.usuario.id_usuario,
+          id_professor_responsavel: teacher.usuario.id_usuario,
         },
       })
     ).json()
   ).data;
   const added = await request.post(api + `/turmas/${turma.id_turma}/matriculas`, {
     headers,
-    data: { id_aluno: student.usuario.id_usuario },
+    data: { id_estudante: student.usuario.id_usuario },
   });
   expect(added.status()).toBe(201);
   const membership = (await added.json()).data.id_matricula;

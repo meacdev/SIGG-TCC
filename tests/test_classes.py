@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from backend.db import db, utcnow
-from backend.models import DocenteCurso, Perfil, Turma, UsuarioPerfil
+from backend.models import Perfil, ProfessorCurso, Turma, UsuarioPerfil
 from tests.conftest import headers
 
 
@@ -14,6 +14,9 @@ def test_create_code_unique_per_period_and_multiple_classes(
 ):
     data = created_class.json["data"]
     assert data["autoinscricao_ativa_turma"] is True
+    assert data["nome_professor_responsavel"] == teacher["nome_usuario"]
+    listed = client.get("/api/v1/turmas", headers=teacher["headers"]).json["data"]
+    assert listed[0]["nome_professor_responsavel"] == teacher["nome_usuario"]
     assert data["codigo_acesso"].isalnum()
     assert len(data["codigo_acesso"]) == 24
     with app.app_context():
@@ -48,7 +51,7 @@ def test_create_code_unique_per_period_and_multiple_classes(
         ("codigo_turma", "COMP-01"),
         ("codigo_turma", "ESTCOMP"),
         ("id_curso", 999),
-        ("id_docente_responsavel", 999),
+        ("id_professor_responsavel", 999),
     ],
 )
 def test_validation(client, teacher, class_payload, field, value):
@@ -68,10 +71,10 @@ def test_permissions_and_scope(app, client, teacher, class_payload, signup, logi
         )
         db.session.add(UsuarioPerfil(id_usuario=user["id_usuario"], id_perfil=profile.id_perfil))
         db.session.add(
-            DocenteCurso(
-                id_docente=user["id_usuario"],
+            ProfessorCurso(
+                id_professor=user["id_usuario"],
                 id_curso=2,
-                data_inicio_docente_curso=utcnow().date() - timedelta(days=1),
+                data_inicio_professor_curso=utcnow().date() - timedelta(days=1),
             )
         )
         db.session.commit()
@@ -134,9 +137,7 @@ def test_class_filters_and_pagination(client, teacher, created_class):
         assert client.get("/api/v1/turmas?" + query, headers=teacher["headers"]).status_code == 422
 
 
-def test_coordinator_can_assign_teacher_and_catalogs(
-    app, client, teacher, signup, login, class_payload
-):
+def test_coordinator_requires_department(app, signup):
     coordinator = signup()
     result = app.test_cli_runner().invoke(
         args=[
@@ -151,14 +152,37 @@ def test_coordinator_can_assign_teacher_and_catalogs(
             "Designação institucional",
         ]
     )
+    assert result.exit_code == 1
+    assert "--departamento" in result.output
+
+
+def test_coordinator_can_assign_teacher_and_catalogs(
+    app, client, teacher, signup, login, class_payload
+):
+    coordinator = signup()
+    result = app.test_cli_runner().invoke(
+        args=[
+            "conceder-perfil",
+            "--email",
+            coordinator["email_usuario"],
+            "--perfil",
+            "coordenador",
+            "--id-curso",
+            "1",
+            "--departamento",
+            "Escola Superior de Tecnologia",
+            "--justificativa",
+            "Designação institucional",
+        ]
+    )
     assert result.exit_code == 0, result.output + str(result.exception)
     auth = headers(login(coordinator)["access_token"])
     assert client.post("/api/v1/turmas", json=class_payload, headers=auth).status_code == 201
-    response = client.get("/api/v1/docentes?id_curso=1", headers=auth)
+    response = client.get("/api/v1/professores?id_curso=1", headers=auth)
     assert response.status_code == 200, response.json
-    assert [d["id_docente"] for d in response.json["data"]] == [teacher["id_usuario"]]
-    assert client.get("/api/v1/docentes?id_curso=2", headers=auth).status_code == 403
-    assert client.get("/api/v1/docentes", headers=auth).status_code == 422
+    assert [d["id_professor"] for d in response.json["data"]] == [teacher["id_usuario"]]
+    assert client.get("/api/v1/professores?id_curso=2", headers=auth).status_code == 403
+    assert client.get("/api/v1/professores", headers=auth).status_code == 422
     assert client.get("/api/v1/periodos-letivos", headers=auth).json["data"]
 
 

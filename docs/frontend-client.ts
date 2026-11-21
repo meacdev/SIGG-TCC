@@ -1,5 +1,5 @@
 /** Minimal integration example for React/TypeScript. Keep credentials in memory. */
-export type Perfil = "aluno" | "professor_disciplina" | "orientador" | "coordenador" | "avaliador";
+export type Perfil = "estudante" | "professor_disciplina" | "orientador" | "coordenador" | "avaliador";
 export interface Usuario {
   id_usuario: number;
   nome_usuario: string;
@@ -18,7 +18,7 @@ export interface CriarTurma {
   codigo_turma: string;
   nivel_turma: 1 | 2;
   id_curso: number;
-  id_docente_responsavel: number;
+  id_professor_responsavel: number;
 }
 export interface Turma extends CriarTurma {
   id_turma: number;

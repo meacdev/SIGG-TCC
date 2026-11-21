@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from './api';
-import type { Course } from './types';
+import type { Course, User } from './types';
 import { Notice } from './components';
 import {
   AcademicField,
@@ -19,14 +19,15 @@ export interface ClassItem {
   periodo_letivo: string;
   nivel_turma: number;
   id_curso: number;
-  id_docente_responsavel: number;
+  id_professor_responsavel: number;
+  nome_professor_responsavel: string | null;
   ativa_turma: boolean;
   autoinscricao_ativa_turma: boolean;
   data_expiracao_acesso_turma: string | null;
   codigo_acesso?: string;
 }
 interface Teacher {
-  id_docente: number;
+  id_professor: number;
   nome_usuario: string;
 }
 const empty = {
@@ -34,9 +35,10 @@ const empty = {
   codigo_turma: '',
   nivel_turma: '',
   id_curso: '',
-  id_docente_responsavel: '',
+  id_professor_responsavel: '',
 };
-export function Classes({ onSessionEnded }: SessionProps) {
+export function Classes({ onSessionEnded, user }: SessionProps & { user: User | null }) {
+  const coordinator = !!user?.perfis.includes('coordenador');
   const [items, setItems] = useState<ClassItem[]>([]),
     [courses, setCourses] = useState<Course[]>([]),
     [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -100,7 +102,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
     let active = true;
     setTeachers([]);
     if (values.id_curso)
-      catalog<Teacher>(`/docentes?id_curso=${values.id_curso}`)
+      catalog<Teacher>(`/professores?id_curso=${values.id_curso}`)
         .then((data) => {
           if (active) setTeachers(data);
         })
@@ -135,7 +137,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
         codigo_turma: v.codigo_turma,
         nivel_turma: String(v.nivel_turma),
         id_curso: String(v.id_curso),
-        id_docente_responsavel: String(v.id_docente_responsavel),
+        id_professor_responsavel: String(v.id_professor_responsavel),
       });
       setErrors({});
     } catch (e) {
@@ -171,7 +173,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
             ...values,
             nivel_turma: Number(values.nivel_turma),
             id_curso: Number(values.id_curso),
-            id_docente_responsavel: Number(values.id_docente_responsavel),
+            id_professor_responsavel: Number(values.id_professor_responsavel),
           }),
         },
         true,
@@ -233,8 +235,12 @@ export function Classes({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">ORGANIZAÇÃO DO SEMESTRE</span>
-        <h2>Turmas</h2>
-        <p>Cadastre as ofertas de TCC e acompanhe as turmas sob sua responsabilidade.</p>
+        <h1>Turmas</h1>
+        <p>
+          {coordinator
+            ? 'Cadastre as ofertas de TCC e acompanhe todas as turmas dos cursos que você coordena.'
+            : 'Cadastre as ofertas de TCC e acompanhe as turmas sob sua responsabilidade.'}
+        </p>
       </div>
       {message && (
         <Notice message={message}>
@@ -247,7 +253,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
       )}
       {success && <Notice success message={success} />}
       <form className="academic-box" onSubmit={save} noValidate aria-label="Cadastro de turma">
-        <h3>{selected ? 'Editar turma' : 'Nova turma'}</h3>
+        <h2>{selected ? 'Editar turma' : 'Nova turma'}</h2>
         <div className="academic-grid">
           <AcademicField
             name="periodo_letivo"
@@ -294,7 +300,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
               aria-invalid={!!errors.id_curso}
               value={values.id_curso}
               onChange={(e) => {
-                setValues({ ...values, id_curso: e.target.value, id_docente_responsavel: '' });
+                setValues({ ...values, id_curso: e.target.value, id_professor_responsavel: '' });
                 setMessage('');
               }}
               disabled={busy || !courses.length}
@@ -309,15 +315,15 @@ export function Classes({ onSessionEnded }: SessionProps) {
             </select>
           </AcademicField>
           <AcademicField
-            name="id_docente_responsavel"
-            label="Docente responsável"
-            error={errors.id_docente_responsavel}
+            name="id_professor_responsavel"
+            label="Professor responsável"
+            error={errors.id_professor_responsavel}
           >
             <select
-              id="id_docente_responsavel"
-              aria-invalid={!!errors.id_docente_responsavel}
-              value={values.id_docente_responsavel}
-              onChange={(e) => setValues({ ...values, id_docente_responsavel: e.target.value })}
+              id="id_professor_responsavel"
+              aria-invalid={!!errors.id_professor_responsavel}
+              value={values.id_professor_responsavel}
+              onChange={(e) => setValues({ ...values, id_professor_responsavel: e.target.value })}
               disabled={busy || !teachers.length}
               required
             >
@@ -325,7 +331,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
                 {teachers.length ? 'Selecione' : 'Selecione um curso com docentes autorizados'}
               </option>
               {teachers.map((t) => (
-                <option key={t.id_docente} value={t.id_docente}>
+                <option key={t.id_professor} value={t.id_professor}>
                   {t.nome_usuario}
                 </option>
               ))}
@@ -349,7 +355,7 @@ export function Classes({ onSessionEnded }: SessionProps) {
       </form>
       {selected && (
         <div className="academic-box">
-          <h3>Acesso e situação da turma</h3>
+          <h2>Acesso e situação da turma</h2>
           <p>
             {selected.ativa_turma ? 'Turma ativa' : 'Turma inativa'} ·{' '}
             {selected.autoinscricao_ativa_turma
@@ -423,21 +429,30 @@ export function Classes({ onSessionEnded }: SessionProps) {
         <p className="academic-empty">Nenhuma turma disponível para seu vínculo e filtro.</p>
       ) : (
         <div className="academic-list">
-          {items.map((item) => (
-            <article className="academic-box" key={item.id_turma}>
-              <h3>
-                {item.codigo_turma} · {item.periodo_letivo}
-              </h3>
-              <p className="academic-meta">
-                TCC {item.nivel_turma} · {item.ativa_turma ? 'Ativa' : 'Inativa'} ·{' '}
-                {courses.find((c) => c.id_curso === item.id_curso)?.nome_curso ||
-                  'Curso cadastrado'}
-              </p>
-              <button className="secondary" onClick={() => open(item.id_turma)} disabled={busy}>
-                Gerenciar {item.codigo_turma}
-              </button>
-            </article>
-          ))}
+          {items.map((item) => {
+            // Until the user loads, avoid flagging every class as someone else's.
+            const own = !user || item.id_professor_responsavel === user.id_usuario;
+            return (
+              <article className={`academic-box${own ? '' : ' class-other'}`} key={item.id_turma}>
+                <h2>
+                  {item.codigo_turma} · {item.periodo_letivo}
+                  {!own && <span className="class-tag">Turma de outro docente</span>}
+                </h2>
+                <p className="academic-meta">
+                  TCC {item.nivel_turma} · {item.ativa_turma ? 'Ativa' : 'Inativa'} ·{' '}
+                  {courses.find((c) => c.id_curso === item.id_curso)?.nome_curso ||
+                    'Curso cadastrado'}
+                </p>
+                <p className="academic-meta">
+                  Responsável: {item.nome_professor_responsavel || 'não informado'}
+                  {own && user && ' (você)'}
+                </p>
+                <button className="secondary" onClick={() => open(item.id_turma)} disabled={busy}>
+                  Gerenciar {item.codigo_turma}
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
       <Pager page={page} pages={pages} onChange={setPage} />

@@ -6,7 +6,7 @@ import { catalog, failure, Pager, sessionError, type SessionProps } from './acad
 interface Stage {
   id_etapa: number;
   titulo: string;
-  aluno: string;
+  estudante: string;
   codigo_turma: string;
   nivel_turma: number;
   pode_registrar: boolean;
@@ -22,7 +22,7 @@ interface Meeting {
 interface Attendance {
   id_matricula: number;
   id_etapa: number | null;
-  aluno: string;
+  estudante: string;
   matricula: string;
   codigo_turma: string;
   titulo: string | null;
@@ -160,7 +160,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">HISTÓRICO DA ORIENTAÇÃO</span>
-        <h2>Reuniões</h2>
+        <h1>Reuniões</h1>
         <p>Registre os encontros e acompanhe os encaminhamentos do trabalho.</p>
       </div>
       {message && <Notice message={message} />} {success && <Notice success message={success} />}
@@ -170,7 +170,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
           <option value="">Selecione um trabalho</option>
           {stages.map((s) => (
             <option key={s.id_etapa} value={s.id_etapa}>
-              {s.titulo} · {s.aluno} · {s.codigo_turma}
+              {s.titulo} · {s.estudante} · {s.codigo_turma}
             </option>
           ))}
         </select>
@@ -184,9 +184,9 @@ export function Meetings({ onSessionEnded }: SessionProps) {
       {stage && (
         <>
           <div className="academic-box">
-            <h3>{stage.titulo}</h3>
+            <h2>{stage.titulo}</h2>
             <p>
-              {stage.aluno} · {stage.codigo_turma} · TCC {stage.nivel_turma}
+              {stage.estudante} · {stage.codigo_turma} · TCC {stage.nivel_turma}
             </p>
           </div>
           {stage.pode_registrar ? (
@@ -196,7 +196,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
               onSubmit={save}
               noValidate
             >
-              <h3>Nova ata de reunião</h3>
+              <h2>Nova ata de reunião</h2>
               <div className="field">
                 <label htmlFor="data-encontro">Data do encontro</label>
                 <input
@@ -246,7 +246,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
               professor da disciplina consulta as atas de suas turmas.
             </p>
           )}
-          <h3>Atas registradas</h3>
+          <h2>Atas registradas</h2>
           {busy && <p aria-live="polite">Carregando…</p>}
           {!rows.length && !busy && (
             <p className="academic-empty">Nenhuma ata registrada para esta etapa.</p>
@@ -254,7 +254,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
           <div className="academic-list">
             {rows.map((r) => (
               <article className="academic-box" key={r.id_reuniao}>
-                <h3>Encontro de {r.data_encontro}</h3>
+                <h2>Encontro de {r.data_encontro}</h2>
                 <p className="academic-summary">{r.resumo}</p>
                 <p className="academic-hint">
                   Orientador: {r.orientador}
@@ -269,7 +269,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
       )}
       {teacher && (
         <div className="academic-box">
-          <h3>Assiduidade das minhas turmas</h3>
+          <h2>Assiduidade das minhas turmas</h2>
           <p className="academic-hint">
             Sem encontro registrado, os dias são contados desde a matrícula. O alerta aparece após
             mais de 30 dias.
@@ -277,9 +277,9 @@ export function Meetings({ onSessionEnded }: SessionProps) {
           <div className="academic-list">
             {overview.map((r) => (
               <article className="academic-box" key={r.id_matricula}>
-                <h4>
-                  {r.aluno} · {r.codigo_turma}
-                </h4>
+                <h3>
+                  {r.estudante} · {r.codigo_turma}
+                </h3>
                 <p>
                   {r.quantidade_reunioes} {r.quantidade_reunioes === 1 ? 'reunião' : 'reuniões'} ·
                   Último encontro: {r.ultimo_encontro || 'Nenhum'}
@@ -291,7 +291,7 @@ export function Meetings({ onSessionEnded }: SessionProps) {
                 {!r.id_etapa && <p className="academic-hint">Trabalho ainda não cadastrado.</p>}
                 {r.id_etapa && (
                   <button className="secondary" onClick={() => choose(String(r.id_etapa))}>
-                    Ver histórico de {r.aluno}
+                    Ver histórico de {r.estudante}
                   </button>
                 )}
               </article>

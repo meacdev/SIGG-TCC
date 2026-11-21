@@ -10,6 +10,7 @@
   --muted: #5d6d62;
   --line: #dce3dd;
   --lime: #d2e5b6;
+  --soft: #edf2e7;
   --danger: #a12e35;
 }
 * {
@@ -17,6 +18,7 @@
 }
 body {
   margin: 0;
+  background: #fbfcfa;
 }
 button,
 input,
@@ -60,6 +62,7 @@ select:focus-visible {
 h1,
 h2,
 h3,
+h4,
 p {
   margin: 0;
 }
@@ -80,61 +83,223 @@ svg {
 .skip-link:focus {
   top: 1rem;
 }
+/* ---------- Shell com barra lateral (mesmo visual dos protótipos de painel) ---------- */
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(335px, 36%) minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100svh;
 }
-.brand-panel {
+.side {
   background: var(--dark);
   color: #f2f5e9;
-  padding: 48px clamp(30px, 4.2vw, 74px) 35px;
+  padding: 28px 20px 24px;
   position: sticky;
   top: 0;
   height: 100svh;
-  min-height: 700px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   text-decoration: none;
   color: #fff;
-  font-size: 25px;
+  font-size: 21px;
   font-weight: 650;
-  letter-spacing: -0.9px;
+  letter-spacing: -0.8px;
+  padding: 0 6px;
   position: relative;
   z-index: 1;
 }
 .brand small {
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 500;
   display: block;
   letter-spacing: 2px;
-  margin-top: 0;
 }
 .brand-symbol {
   display: grid;
   place-items: center;
-  width: 47px;
-  height: 47px;
+  width: 40px;
+  height: 40px;
   border: 1px solid #72917b;
-  border-radius: 12px;
+  border-radius: 11px;
   color: #d8e8bc;
 }
 .brand-dash {
   font-weight: 300;
   color: #a6c28e;
 }
-.brand-content {
+.side-body {
   position: relative;
   z-index: 1;
-  margin: 55px 0;
 }
+.side-label {
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  color: #a9bdaf;
+  font-weight: 650;
+  margin: 34px 8px 10px;
+}
+.side nav {
+  display: grid;
+  gap: 3px;
+}
+.side nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px;
+  border-radius: 8px;
+  color: #d3e0d6;
+  text-decoration: none;
+  font-size: 13px;
+}
+.side nav a:hover {
+  background: #ffffff0d;
+  color: #fff;
+}
+.side nav a[aria-current='page'] {
+  background: #ffffff14;
+  color: #fff;
+  box-shadow: inset 3px 0 0 #c9dfa9;
+}
+.side-note {
+  margin: 26px 8px 0;
+  font-size: 12px;
+  line-height: 1.75;
+  color: #c2d1c8;
+}
+.side-foot {
+  margin-top: auto;
+  border-top: 1px solid #40614e;
+  padding: 18px 6px 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.side-foot .uea {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+}
+.side-foot span {
+  font-size: 10px;
+  color: #c6d5c9;
+  line-height: 1.4;
+  border-left: 1px solid #56705c;
+  padding-left: 12px;
+}
+.panel-grid {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border: 1px solid #ffffff08;
+  border-radius: 50%;
+  bottom: -250px;
+  left: -140px;
+  box-shadow:
+    0 0 0 50px #ffffff03,
+    0 0 0 100px #ffffff03;
+  pointer-events: none;
+}
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #4f735c;
+}
+.menu-btn {
+  display: none;
+}
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar {
+  height: 72px;
+  min-height: 72px;
+  border-bottom: 1px solid #e8ece6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 clamp(16px, 3.5vw, 48px);
+  font-size: 11px;
+  color: #66746c;
+  background: #fbfcfa;
+}
+.topbar-path {
+  font-size: 11px;
+  font-weight: 400;
+  color: #66746c;
+}
+.topbar-divider {
+  margin: 0 10px;
+  color: #a4afa5;
+}
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.topbar a {
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+}
+.topbar a span {
+  margin-left: 4px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.who .avatar {
+  width: 38px;
+  height: 38px;
+  background: var(--lime);
+  color: var(--dark);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+}
+.who strong {
+  display: block;
+  font-size: 12px;
+  color: #20392f;
+}
+.who small {
+  display: block;
+  font-size: 10px;
+}
+.topbar .text-button {
+  text-decoration: none;
+  font-size: 11px;
+}
+main {
+  flex: 1;
+  width: 100%;
+  padding: 34px clamp(16px, 3.5vw, 48px) 30px;
+  outline: none;
+}
+.main-wide > section:not([class]) {
+  max-width: 1120px;
+}
+.main-wide .profile-section {
+  margin: 0;
+}
+/* ---------- Cabeçalho das telas ---------- */
 .eyebrow {
   font-size: 10px;
   font-weight: 650;
@@ -143,146 +308,6 @@ svg {
   align-items: center;
   gap: 9px;
   color: var(--green);
-}
-.eyebrow.light {
-  color: #bdcdb5;
-  font-size: 8px;
-  letter-spacing: 1.35px;
-  line-height: 1.8;
-  max-width: 260px;
-}
-.brand-content h1 {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(36px, 3.7vw, 59px);
-  font-weight: 400;
-  line-height: 1.13;
-  letter-spacing: -1.8px;
-  margin: 23px 0;
-}
-.brand-content h1 em {
-  font-weight: 400;
-  color: #c9dfa9;
-}
-.brand-content > p {
-  font-size: 13px;
-  color: #c2d1c8;
-  max-width: 310px;
-  line-height: 1.85;
-}
-.journey {
-  margin-top: 40px;
-  display: grid;
-  gap: 21px;
-}
-.journey > div {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-.journey-dot {
-  display: grid;
-  place-items: center;
-  width: 37px;
-  height: 37px;
-  border: 1px solid #52745d;
-  border-radius: 10px;
-  color: #d0e2b6;
-  flex-shrink: 0;
-}
-.journey strong {
-  display: block;
-  font-size: 12px;
-  font-weight: 550;
-}
-.journey small {
-  display: block;
-  color: #b9cdc0;
-  font-size: 10px;
-  margin-top: 3px;
-}
-.institution {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border-top: 1px solid #40614e;
-  padding-top: 23px;
-  position: relative;
-  z-index: 1;
-}
-.uea-wordmark {
-  font-size: 32px;
-  letter-spacing: -2px;
-  font-weight: 700;
-  line-height: 1;
-}
-.uea-wordmark > span {
-  font-size: 5px;
-  line-height: 1.4;
-  letter-spacing: 0.6px;
-  display: block;
-  margin-top: 5px;
-}
-.institution-unit {
-  border-left: 1px solid #56705c;
-  padding-left: 20px;
-  font-size: 14px;
-  letter-spacing: 2px;
-}
-.institution-unit small {
-  display: block;
-  font-size: 9px;
-  letter-spacing: 0;
-  color: #becfc1;
-  margin-top: 3px;
-}
-.panel-grid {
-  position: absolute;
-  width: 460px;
-  height: 460px;
-  border: 1px solid #ffffff08;
-  border-radius: 50%;
-  bottom: -295px;
-  left: -150px;
-  box-shadow:
-    0 0 0 50px #ffffff03,
-    0 0 0 100px #ffffff03,
-    0 0 0 150px #ffffff02;
-  pointer-events: none;
-}
-.workspace {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.topbar {
-  height: 87px;
-  min-height: 87px;
-  border-bottom: 1px solid #e8ece6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 0 clamp(24px, 4vw, 60px);
-  font-size: 11px;
-  color: #66746c;
-}
-.topbar-divider {
-  margin: 0 12px;
-  color: #a4afa5;
-}
-.topbar a {
-  font-weight: 600;
-  text-decoration: none;
-  margin-left: 8px;
-}
-.topbar a span {
-  margin-left: 4px;
-}
-main {
-  flex: 1;
-  width: 100%;
-  padding: 42px clamp(24px, 5.7vw, 90px) 30px;
-  outline: none;
 }
 .account-section,
 .profile-section,
@@ -302,10 +327,10 @@ main {
 }
 .page-intro h1,
 .page-intro h2,
-.receipt h2 {
+.receipt h1 {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 38px;
-  line-height: 1.25;
+  font-size: 36px;
+  line-height: 1.2;
   letter-spacing: -1.1px;
   font-weight: 400;
   margin: 10px 0 7px;
@@ -410,7 +435,7 @@ legend {
   display: grid;
   place-items: center;
 }
-.section-heading h3 {
+.section-heading h2 {
   font-size: 13px;
   font-weight: 650;
 }
@@ -576,7 +601,7 @@ legend {
   margin-left: 4px;
 }
 .page-footer {
-  padding: 18px clamp(24px, 4vw, 60px);
+  padding: 18px clamp(16px, 3.5vw, 48px);
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -642,7 +667,7 @@ legend {
 }
 .login-section {
   max-width: 440px;
-  padding-top: 70px;
+  padding-top: 40px;
 }
 .login-section form {
   display: grid;
@@ -798,7 +823,7 @@ legend {
   gap: 18px;
   justify-content: space-between;
 }
-.danger-zone h3 {
+.danger-zone h2 {
   font-size: 12px;
   color: #823c38;
 }
@@ -865,41 +890,13 @@ legend {
 }
 @media (min-width: 1500px) {
   main {
-    padding-top: 55px;
-  }
-  .brand-content {
-    margin: 70px 0;
-  }
-  .page-intro {
-    margin-bottom: 32px;
+    padding-top: 44px;
   }
   .fields-grid {
     gap: 20px;
   }
-  .section-heading {
-    margin-top: 31px;
-  }
 }
 @media (max-width: 1100px) {
-  .app-shell {
-    grid-template-columns: 315px minmax(0, 1fr);
-  }
-  .brand-panel {
-    padding: 32px 30px;
-  }
-  .brand-content h1 {
-    font-size: 41px;
-  }
-  .brand-content > p {
-    font-size: 12px;
-  }
-  .topbar {
-    padding: 0 28px;
-    font-size: 10px;
-  }
-  main {
-    padding: 34px 30px;
-  }
   .type-option {
     gap: 7px;
     padding: 13px 9px;
@@ -910,59 +907,52 @@ legend {
   .section-heading > small {
     font-size: 8px;
   }
-  .page-footer {
-    padding: 18px 28px;
-  }
 }
-@media (max-width: 800px) {
+@media (max-width: 860px) {
   .app-shell {
-    display: block;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
-  .brand-panel {
+  .side {
     position: relative;
     height: auto;
-    min-height: 0;
-    padding: 20px 24px;
+    padding: 14px 16px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    overflow: visible;
+    z-index: 5;
   }
-  .brand {
-    font-size: 21px;
-  }
-  .brand-symbol {
-    width: 39px;
-    height: 39px;
-  }
-  .brand small {
-    font-size: 6px;
-  }
-  .brand-content,
-  .institution,
+  .side-body,
+  .side-foot,
   .panel-grid {
     display: none;
   }
+  .side.open .side-body {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--dark);
+    padding: 0 16px 18px;
+    box-shadow: 0 16px 30px #10251c40;
+  }
+  .side.open .side-label {
+    margin-top: 6px;
+  }
+  .menu-btn {
+    display: grid;
+    color: #d8e8bc;
+    background: transparent;
+    border-color: #52745d;
+  }
   .topbar {
-    height: 65px;
-    min-height: 65px;
-    padding: 0 24px;
-  }
-  .topbar > span:first-child {
-    font-size: 10px;
-  }
-  .topbar > span:last-child {
-    font-size: 10px;
-  }
-  .workspace {
-    min-height: calc(100svh - 80px);
+    height: 60px;
+    min-height: 60px;
   }
   main {
-    padding: 32px 24px;
-  }
-  .account-section,
-  .profile-section {
-    max-width: 580px;
-  }
-  .page-intro h1,
-  .page-intro h2 {
-    font-size: 34px;
+    padding: 28px 20px;
   }
   .type-icon {
     display: block;
@@ -971,32 +961,24 @@ legend {
     padding: 15px 11px;
     gap: 9px;
   }
-  .section-heading > small {
-    font-size: 8px;
-  }
   .login-section,
   .receipt {
-    padding-top: 20px;
-  }
-  .brand-content {
-    margin: 0;
-  }
-  .page-footer {
-    padding: 20px 24px;
+    padding-top: 12px;
   }
   .permission-note {
     font-size: 11px;
   }
 }
-@media (max-width: 460px) {
-  .topbar > span:first-child {
+@media (max-width: 600px) {
+  .who div,
+  .topbar-path {
     display: none;
   }
   .topbar {
     justify-content: flex-end;
-    height: 57px;
-    min-height: 57px;
   }
+}
+@media (max-width: 460px) {
   .type-options {
     gap: 10px;
   }
@@ -1035,7 +1017,7 @@ legend {
   }
   .page-intro h1,
   .page-intro h2 {
-    font-size: 34px;
+    font-size: 29px;
   }
   .page-intro p {
     font-size: 12px;
@@ -1059,7 +1041,7 @@ legend {
   .submit-row {
     flex-direction: column;
   }
-  .receipt h2 {
+  .receipt h1 {
     font-size: 30px;
   }
 }

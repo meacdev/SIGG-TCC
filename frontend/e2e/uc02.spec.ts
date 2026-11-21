@@ -13,10 +13,10 @@ test('UC02: recupera por e-mail, valida o código e entra com a nova senha', asy
     (
       await request.post('http://127.0.0.1:5001/api/v1/usuarios', {
         data: {
-          nome_usuario: 'Docente de Teste',
+          nome_usuario: 'Professor de Teste',
           email_usuario: email,
           senha: oldPassword,
-          titulacao_docente: 'mestre',
+          titulacao_professor: 'Mestre',
         },
       })
     ).status(),

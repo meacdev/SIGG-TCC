@@ -5,9 +5,9 @@ def extend(paths, schemas, operation, obj, string, identifier):
     schemas["EtapaReuniao"] = obj(
         {
             "id_etapa": identifier,
-            "id_trabalho": identifier,
+            "id_trabalho_tcc": identifier,
             "titulo": string(),
-            "aluno": string(),
+            "estudante": string(),
             "codigo_turma": string(),
             "nivel_turma": {"type": "integer"},
             "pode_registrar": {"type": "boolean"},
@@ -28,7 +28,7 @@ def extend(paths, schemas, operation, obj, string, identifier):
         {
             "id_matricula": identifier,
             "id_etapa": {"type": ["integer", "null"]},
-            "aluno": string(),
+            "estudante": string(),
             "matricula": string(),
             "codigo_turma": string(),
             "titulo": {"type": ["string", "null"]},

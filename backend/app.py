@@ -67,6 +67,9 @@ def create_app(test_config=None):
         auth,
         catalogs,
         classes,
+        defense_management,
+        defenses,
+        documents,
         enrollments,
         meetings,
         monitoring,
@@ -83,15 +86,20 @@ def create_app(test_config=None):
         works.bp,
         meetings.bp,
         monitoring.bp,
+        defense_management.bp,
+        defenses.bp,
+        documents.bp,
     ):
         app.register_blueprint(blueprint)
     register_cli(app)
 
     @app.cli.command("enviar-notificacoes-academicas")
     def academic_notifications():
+        from backend.services import document_mail
         from backend.services.academic_mail import deliver
 
         deliver()
+        document_mail.deliver()
 
     @app.before_request
     def start_request():
@@ -133,6 +141,9 @@ def create_app(test_config=None):
         db.session.execute(text("SELECT id_sessao FROM sessao_autenticacao LIMIT 0"))
         db.session.execute(text("SELECT id_recuperacao FROM recuperacao_senha LIMIT 0"))
         db.session.execute(text("SELECT id_lote FROM lote_cobranca LIMIT 0"))
+        # Migration 009: updated data model (renamed tables and new columns).
+        db.session.execute(text("SELECT tipo_artigo_trabalho_tcc FROM trabalho_tcc LIMIT 0"))
+        db.session.execute(text("SELECT cpf_usuario FROM usuario LIMIT 0"))
         return jsonify(status="ok")
 
     @app.get("/api/v1/openapi.json")

@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from backend.db import db, utcnow
-from backend.models import DocenteCurso, Perfil, UsuarioPerfil
+from backend.models import Perfil, ProfessorCurso, UsuarioPerfil
 from backend.services.users import signup
 
 
@@ -15,7 +15,7 @@ def seed(app):
             "nome_usuario": "Professora de Teste",
             "email_usuario": "professora@example.com",
             "senha": "Senha de teste UC03 123",
-            "titulacao_docente": "doutor",
+            "titulacao_professor": "Doutor",
         }
     )
     role = db.session.scalar(
@@ -23,10 +23,10 @@ def seed(app):
     )
     db.session.add(UsuarioPerfil(id_usuario=teacher.id_usuario, id_perfil=role.id_perfil))
     db.session.add(
-        DocenteCurso(
-            id_docente=teacher.id_usuario,
+        ProfessorCurso(
+            id_professor=teacher.id_usuario,
             id_curso=1,
-            data_inicio_docente_curso=utcnow().date() - timedelta(days=1),
+            data_inicio_professor_curso=utcnow().date() - timedelta(days=1),
         )
     )
     db.session.commit()
@@ -35,9 +35,9 @@ def seed(app):
             "nome_usuario": "Estudante de Teste",
             "email_usuario": "estudante@example.com",
             "senha": "Senha de teste UC03 123",
-            "tipo_cadastro": "aluno",
+            "tipo_cadastro": "estudante",
             "id_curso": 1,
-            "matricula_aluno": "0002026001",
+            "matricula_estudante": "0002026001",
         }
     )
     signup(
@@ -45,8 +45,8 @@ def seed(app):
             "nome_usuario": "Estudante de Reuniões",
             "email_usuario": "reunioes@example.com",
             "senha": "Senha de teste UC03 123",
-            "tipo_cadastro": "aluno",
+            "tipo_cadastro": "estudante",
             "id_curso": 1,
-            "matricula_aluno": "0002026002",
+            "matricula_estudante": "0002026002",
         }
     )

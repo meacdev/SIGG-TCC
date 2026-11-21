@@ -94,8 +94,8 @@ export function Monitoring({ onSessionEnded }: SessionProps) {
       .then(async (r) => {
         const user = r.body.data;
         const permitted =
-          !!user.docente &&
-          user.docente.tipo_docente === 'interno' &&
+          !!user.professor &&
+          user.professor.tipo_professor === 'interno' &&
           user.perfis.some((p) => ['professor_disciplina', 'coordenador'].includes(p));
         if (!active) return;
         setAllowed(permitted);
@@ -267,7 +267,7 @@ export function Monitoring({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">ACOMPANHAMENTO ACADÊMICO</span>
-        <h2>Monitorar Prazos</h2>
+        <h1>Monitorar Prazos</h1>
         <p>
           Consulte a atividade da turma e envie cobranças aos estudantes com mais de 30 dias de
           inatividade.
@@ -479,7 +479,7 @@ export function Monitoring({ onSessionEnded }: SessionProps) {
           onClose={() => !busy && setPreview(null)}
         >
           <p>{preview.quantidade} destinatário(s) selecionado(s).</p>
-          <h3>Mensagem padrão de cobrança</h3>
+          <h2>Mensagem padrão de cobrança</h2>
           <p className="academic-summary">{preview.mensagem}</p>
           <p className="academic-hint">
             O e-mail também identifica o estudante e a turma. A situação é conferida novamente antes
@@ -514,7 +514,7 @@ export function Monitoring({ onSessionEnded }: SessionProps) {
               )}
               {records.map((r) => (
                 <article className="academic-box" key={r.id_reuniao}>
-                  <h3>Encontro de {r.data_encontro}</h3>
+                  <h2>Encontro de {r.data_encontro}</h2>
                   <p className="academic-summary">{r.resumo}</p>
                   <p className="academic-hint">
                     Orientador: {r.orientador} · Registrado por {r.autor}

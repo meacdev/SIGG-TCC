@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 
 from openapi_academic import extend
+from openapi_defense_management import extend as extend_defense_management
+from openapi_defenses import extend as extend_defenses
+from openapi_documents import extend as extend_documents
 from openapi_meetings import extend as extend_meetings
 from openapi_monitoring import extend as extend_monitoring
 from openapi_works import extend as extend_works
@@ -26,28 +29,51 @@ def string(**extra):
 
 identifier = {"type": "integer", "format": "int64", "minimum": 1}
 timestamp = string(format="date-time")
-title = string(enum=["especialista", "mestre", "doutor"])
-password = string(minLength=12, maxLength=128, writeOnly=True)
+title = string(enum=["Especialista", "Mestre", "Doutor"])
+password = string(
+    minLength=8,
+    maxLength=128,
+    pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,128}$",
+    writeOnly=True,
+    description="RF21.1.1: ao menos 1 letra maiúscula, 1 número e 1 caractere especial.",
+)
+cpf = {
+    "type": ["string", "null"],
+    "pattern": r"^[0-9]{3}[.]?[0-9]{3}[.]?[0-9]{3}-?[0-9]{2}$",
+    "description": "Opcional e único. Aceita pontuação; é armazenado com 11 dígitos.",
+}
+phone = {
+    "type": ["string", "null"],
+    "maxLength": 30,
+    "description": "Opcional. Telefone com DDD (10 a 13 dígitos); é armazenado só com dígitos.",
+}
 class_fields = {
     "periodo_letivo": string(pattern=r"^[0-9]{4}/[12]$", examples=["2026/2"]),
     "codigo_turma": string(pattern=r"^EST[A-Za-z]+[0-9]+$", maxLength=40),
     "nivel_turma": {"type": "integer", "enum": [1, 2]},
     "id_curso": identifier,
-    "id_docente_responsavel": identifier,
+    "id_professor_responsavel": identifier,
 }
 profile_fields = {
-    "nome_usuario": string(minLength=1, maxLength=200),
+    "nome_usuario": string(minLength=3, maxLength=100),
     "email_usuario": string(format="email", maxLength=254),
-    "titulacao_docente": title,
-    "url_lattes_docente": {"type": ["string", "null"], "format": "uri", "maxLength": 2048},
-    "instituicao_origem_docente": {"type": ["string", "null"], "maxLength": 200},
+    "cpf_usuario": cpf,
+    "telefone_usuario": phone,
+    "titulacao_professor": title,
+    "url_lattes_professor": {
+        "type": ["string", "null"],
+        "format": "uri",
+        "maxLength": 2048,
+        "pattern": "^https?://lattes[.]cnpq[.]br/",
+    },
+    "instituicao_origem_professor": {"type": ["string", "null"], "maxLength": 200},
     "areas_interesse": {"type": "array", "maxItems": 20, "items": string(maxLength=150)},
 }
 signup_fields = profile_fields | {
     "senha": password,
-    "tipo_cadastro": string(enum=["docente", "aluno"], default="docente"),
-    "tipo_docente": string(enum=["interno", "externo"], default="interno"),
-    "matricula_aluno": string(minLength=1, maxLength=30),
+    "tipo_cadastro": string(enum=["professor", "estudante"], default="professor"),
+    "tipo_professor": string(enum=["interno", "externo"], default="interno"),
+    "matricula_estudante": string(minLength=1, maxLength=30),
     "id_curso": identifier,
 }
 schemas = {
@@ -68,17 +94,18 @@ schemas = {
         signup_fields,
         ("nome_usuario", "email_usuario", "senha"),
         additionalProperties=False,
-        description="Docente (padrão) exige titulacao_docente. Aluno exige tipo_cadastro=aluno, "
-        "matricula_aluno e id_curso e rejeita campos docentes. Perfis administrativos "
+        description="Professor (padrão) exige titulacao_professor. Estudante exige "
+        "tipo_cadastro=estudante, matricula_estudante e id_curso e rejeita campos de "
+        "professor. Perfis administrativos "
         "são concedidos exclusivamente pela administração via CLI.",
         allOf=[
             {
                 "if": {
-                    "properties": {"tipo_cadastro": {"const": "aluno"}},
+                    "properties": {"tipo_cadastro": {"const": "estudante"}},
                     "required": ["tipo_cadastro"],
                 },
-                "then": {"required": ["matricula_aluno", "id_curso"]},
-                "else": {"required": ["titulacao_docente"]},
+                "then": {"required": ["matricula_estudante", "id_curso"]},
+                "else": {"required": ["titulacao_professor"]},
             }
         ],
     ),
@@ -92,25 +119,33 @@ schemas = {
             "id_usuario": identifier,
             "nome_usuario": string(),
             "email_usuario": string(format="email"),
+            "cpf_usuario": {"type": ["string", "null"], "pattern": "^[0-9]{11}$"},
+            "telefone_usuario": {"type": ["string", "null"]},
             "ativo_usuario": {"type": "boolean"},
             "data_criacao_usuario": timestamp,
             "data_atualizacao_usuario": timestamp,
             "perfis": {
                 "type": "array",
                 "items": string(
-                    enum=["aluno", "professor_disciplina", "orientador", "coordenador", "avaliador"]
+                    enum=[
+                        "estudante",
+                        "professor_disciplina",
+                        "orientador",
+                        "coordenador",
+                        "avaliador",
+                    ]
                 ),
             },
-            "docente": obj(
+            "professor": obj(
                 {
-                    "tipo_docente": string(),
-                    "titulacao_docente": title,
-                    "url_lattes_docente": {"type": ["string", "null"]},
-                    "instituicao_origem_docente": {"type": ["string", "null"]},
+                    "tipo_professor": string(),
+                    "titulacao_professor": title,
+                    "url_lattes_professor": {"type": ["string", "null"]},
+                    "instituicao_origem_professor": {"type": ["string", "null"]},
                     "areas_interesse": {"type": "array", "items": string()},
                 }
             ),
-            "aluno": obj({"matricula_aluno": string(), "id_curso": identifier}),
+            "estudante": obj({"matricula_estudante": string(), "id_curso": identifier}),
         },
         ("id_usuario", "nome_usuario", "email_usuario", "perfis"),
     ),
@@ -138,6 +173,10 @@ schemas = {
     "Turma": obj(
         class_fields
         | {
+            "nome_professor_responsavel": {
+                "type": ["string", "null"],
+                "description": "Nome do professor responsável pela turma.",
+            },
             "id_turma": identifier,
             "id_periodo_letivo": identifier,
             "ativa_turma": {"type": "boolean"},
@@ -154,15 +193,15 @@ schemas = {
             "codigo_turma",
             "nivel_turma",
             "id_curso",
-            "id_docente_responsavel",
+            "id_professor_responsavel",
             "periodo_letivo",
             "ativa_turma",
         ),
     ),
     "Curso": obj({"id_curso": identifier, "codigo_curso": string(), "nome_curso": string()}),
     "Periodo": obj({"id_periodo_letivo": identifier, "periodo_letivo": string()}),
-    "Docente": obj(
-        {"id_docente": identifier, "nome_usuario": string(), "titulacao_docente": title}
+    "Professor": obj(
+        {"id_professor": identifier, "nome_usuario": string(), "titulacao_professor": title}
     ),
     "Paginacao": obj(
         {
@@ -283,9 +322,14 @@ operation(
     "Tokens",
     "Login",
     public=True,
-    description="Usuário inexistente: UC_02_M03. "
+    description="Usuário inexistente: UC_02_M03. Após 5 senhas incorretas seguidas a conta "
+    "fica bloqueada por 15 minutos (423 CONTA_BLOQUEADA); a redefinição de senha desbloqueia. "
     "Permissões e rota do painel são interpretadas pelo frontend a partir de usuario.perfis.",
 )
+paths[base + "/auth/login"]["post"]["responses"]["423"] = {
+    "description": "Conta bloqueada temporariamente (RF21.1.3).",
+    "content": {"application/json": {"schema": ref("Erro")}},
+}
 operation(
     base + "/auth/refresh",
     "post",
@@ -393,10 +437,10 @@ operation(
 for suffix, title_, schema in [
     ("cursos", "cursos", "Curso"),
     ("periodos-letivos", "períodos", "Periodo"),
-    ("docentes", "docentes", "Docente"),
+    ("professores", "professores", "Professor"),
 ]:
     params = pagination.copy()
-    if suffix == "docentes":
+    if suffix == "professores":
         params.append({"name": "id_curso", "in": "query", "required": True, "schema": identifier})
     operation(
         base + "/" + suffix,
@@ -417,6 +461,9 @@ operation(base + "/openapi.json", "get", "Consultar contrato OpenAPI", "Operaç�
 
 extend(paths, schemas, operation, obj, string, identifier)
 extend_works(paths, schemas, operation, obj, string, identifier)
+extend_defenses(paths, schemas, operation, obj, string, identifier)
+extend_documents(paths, schemas, operation, obj, string, identifier)
+extend_defense_management(paths, schemas, operation, obj, string, identifier)
 extend_meetings(paths, schemas, operation, obj, string, identifier)
 extend_monitoring(paths, schemas, operation, obj, string, identifier)
 

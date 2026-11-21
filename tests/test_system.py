@@ -135,7 +135,7 @@ def test_admin_cli_seed_courses_periods_grant_revoke(app, signup, client, login)
                 "--email",
                 user["email_usuario"],
                 "--perfil",
-                "aluno",
+                "estudante",
                 "--justificativa",
                 "Teste",
             ]

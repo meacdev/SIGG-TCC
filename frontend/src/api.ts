@@ -24,9 +24,11 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
     init: RequestInit = {},
     protectedRoute = false,
     retry = true,
+    binary = false,
   ): Promise<{ body: Envelope<T>; etag: string | null }> {
     const headers = new Headers(init.headers);
-    if (init.body) headers.set('Content-Type', 'application/json');
+    if (init.body && !(init.body instanceof FormData))
+      headers.set('Content-Type', 'application/json');
     if (protectedRoute && tokens) headers.set('Authorization', `Bearer ${tokens.access_token}`);
     let response: Response;
     try {
@@ -43,6 +45,9 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
       );
     }
     if (response.status === 204) return { body: { data: undefined as T }, etag: null };
+    if (binary && response.ok) {
+      return { body: { data: (await response.blob()) as T }, etag: response.headers.get('ETag') };
+    }
     const payload = await response.json().catch(() => null);
     if (!payload)
       throw new ApiError(
@@ -62,7 +67,7 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
           refreshing = null;
         });
         await refreshing;
-        return request<T>(path, init, true, false);
+        return request<T>(path, init, true, false, binary);
       }
       if (
         protectedRoute &&
@@ -101,7 +106,10 @@ export function createApi(base = import.meta.env.VITE_API_BASE_URL || '/api/v1')
 
   return {
     request,
+    download: (path: string) => request<Blob>(path, {}, true, true, true),
     hasSession: () => tokens !== null,
+    /** Usuário devolvido no login (perfis incluídos), usado para montar o menu sem nova consulta. */
+    sessionUser: () => tokens?.usuario ?? null,
     clearSession,
     signup: (data: object) =>
       request<User>('/usuarios', { method: 'POST', body: JSON.stringify(data) }),

@@ -5,7 +5,7 @@ from backend import validation as v
 from backend.db import db
 from backend.defense_models import Matricula
 from backend.errors import APIError
-from backend.models import Aluno, Usuario
+from backend.models import Estudante, Usuario
 from backend.routes.catalogs import page_response
 from backend.security import authenticated, limiter
 from backend.serialization import check_version, resource_response
@@ -22,24 +22,24 @@ def search(class_id):
     # Escape LIKE wildcards so a search cannot accidentally enumerate the entire course.
     term = "%" + query.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_") + "%"
     students = (
-        select(Aluno)
+        select(Estudante)
         .join(Usuario)
         .where(
-            Aluno.id_curso == turma.id_curso,
+            Estudante.id_curso == turma.id_curso,
             Usuario.ativo_usuario.is_(True),
             or_(
                 Usuario.nome_usuario.ilike(term, escape="\\"),
-                Aluno.matricula_aluno.ilike(term, escape="\\"),
+                Estudante.matricula_estudante.ilike(term, escape="\\"),
                 Usuario.email_usuario.ilike(term, escape="\\"),
             ),
         )
     )
     return page_response(
-        students.order_by(Usuario.nome_usuario, Aluno.id_aluno),
+        students.order_by(Usuario.nome_usuario, Estudante.id_estudante),
         lambda a: {
-            "id_aluno": a.id_aluno,
+            "id_estudante": a.id_estudante,
             "nome": a.usuario.nome_usuario,
-            "matricula": a.matricula_aluno,
+            "matricula": a.matricula_estudante,
         },
     )
 
@@ -50,8 +50,8 @@ def search(class_id):
 def manage(class_id):
     turma = classes.get_class(class_id, lock=request.method == "POST")
     if request.method == "POST":
-        data = v.body({"id_aluno"}, {"id_aluno"})
-        item = enrollments.enroll(turma, v.integer(data["id_aluno"], "id_aluno"))
+        data = v.body({"id_estudante"}, {"id_estudante"})
+        item = enrollments.enroll(turma, v.integer(data["id_estudante"], "id_estudante"))
         return resource_response(
             item,
             enrollments.serialize(item),
@@ -92,7 +92,7 @@ def detail(enrollment_id):
     item = db.session.get(Matricula, enrollment_id)
     if not item:
         raise APIError(404, "MATRICULA_AUSENTE", "Matrícula não encontrada.")
-    if item.id_aluno != g.user.id_usuario:
+    if item.id_estudante != g.user.id_usuario:
         classes.get_class(item.id_turma)
     return resource_response(item, enrollments.serialize(item))
 
@@ -103,7 +103,8 @@ def mine():
     return page_response(
         select(Matricula)
         .where(
-            Matricula.id_aluno == g.user.id_usuario, Matricula.situacao_matricula_turma == "ativa"
+            Matricula.id_estudante == g.user.id_usuario,
+            Matricula.situacao_matricula_turma == "ativa",
         )
         .order_by(Matricula.id_matricula_turma),
         enrollments.serialize,

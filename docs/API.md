@@ -16,7 +16,7 @@ Prefixo: `/api/v1`. Todas as operações com corpo exigem `Content-Type: applica
 | POST | `/auth/recuperacao-senha/redefinir` | Público; redefinir senha e revogar todas as sessões |
 | GET | `/cursos` | Público; cursos ativos para os seletores de cadastro |
 | GET | `/periodos-letivos` | Autenticado; consultar períodos |
-| GET | `/docentes?id_curso=1` | Gestor; responsáveis elegíveis para seu curso |
+| GET | `/professores?id_curso=1` | Gestor; responsáveis elegíveis para seu curso |
 | POST | `/turmas` | Professor autorizado ou coordenador do curso; criar turma |
 | GET | `/turmas` | Listar somente turmas sob sua gestão |
 | GET | `/turmas/{id}` | Consultar turma sob sua gestão e obter ETag |
@@ -28,24 +28,24 @@ As listas têm `page` (1 a 100000) e `per_page` (1 a 100, padrão 20), com `meta
 
 ## Cadastro e login
 
-Exemplo docente: substitua o valor de `senha` por uma senha escolhida pelo usuário, com 12 a 128 caracteres. Não registre o corpo da requisição em logs.
+Exemplo docente: substitua o valor de `senha` por uma senha escolhida pelo usuário, com 8 a 128 caracteres, ao menos 1 letra maiúscula, 1 número e 1 caractere especial (RF21.1.1). `cpf_usuario` e `telefone_usuario` são opcionais (RF20.1). Não registre o corpo da requisição em logs.
 
 ```json
 {
   "nome_usuario": "Nome do docente",
   "email_usuario": "docente@instituicao.edu.br",
   "senha": "<senha informada no formulário>",
-  "tipo_cadastro": "docente",
-  "tipo_docente": "interno",
-  "titulacao_docente": "mestre",
+  "tipo_cadastro": "professor",
+  "tipo_professor": "interno",
+  "titulacao_professor": "Mestre",
   "areas_interesse": ["Engenharia de Software"],
-  "url_lattes_docente": "https://lattes.cnpq.br/123456"
+  "url_lattes_professor": "https://lattes.cnpq.br/123456"
 }
 ```
 
-Titulações: `especialista`, `mestre`, `doutor`. Áreas e Lattes são opcionais. `instituicao_origem_docente` também é opcional. Um cadastro docente não concede automaticamente papéis administrativos.
+Titulações: `Especialista`, `Mestre`, `Doutor` (a API aceita qualquer combinação de maiúsculas e grava a grafia do dicionário). O nome deve ter de 3 a 100 caracteres. Áreas e Lattes são opcionais; o Lattes, quando informado, deve ser um endereço `https://lattes.cnpq.br/...`. `instituicao_origem_professor` é obrigatória somente para `tipo_professor: "externo"`. Um cadastro de professor não concede automaticamente papéis administrativos.
 
-Para estudante, use `tipo_cadastro: "aluno"`, `matricula_aluno` e `id_curso`, além de nome, e-mail e senha. Não envie campos docentes. O estudante recebe somente o papel `aluno`. A matrícula é texto, preservando zeros iniciais.
+Para estudante, use `tipo_cadastro: "estudante"`, `matricula_estudante` e `id_curso`, além de nome, e-mail e senha. Não envie campos de professor. O estudante recebe somente o papel `estudante`. A matrícula é texto, preservando zeros iniciais.
 
 O login recebe `email_usuario` e `senha` e retorna:
 
@@ -84,7 +84,7 @@ O endpoint de solicitação permite um pedido por minuto e três por hora por IP
   "codigo_turma": "ESTCOMP01",
   "nivel_turma": 1,
   "id_curso": 1,
-  "id_docente_responsavel": 1
+  "id_professor_responsavel": 1
 }
 ```
 
@@ -110,6 +110,6 @@ Na criação e na rotação, a resposta contém `data.codigo_acesso`: uma chave 
 }
 ```
 
-`201`: criado; `204`: operação sem corpo; `401`: autenticação/token; `403`: permissão ou conta inativa no login; `404`: recurso inexistente ou turma fora do escopo; `409`: duplicata ou conflito de negócio; `412/428`: concorrência; `422`: validação; `429`: limite de tentativas; `503`: serviço/banco/e-mail indisponível. O cabeçalho `Retry-After` orienta quando repetir uma requisição limitada.
+`201`: criado; `204`: operação sem corpo; `401`: autenticação/token; `403`: permissão ou conta inativa no login; `404`: recurso inexistente ou turma fora do escopo; `409`: duplicata ou conflito de negócio; `412/428`: concorrência; `422`: validação; `423`: conta bloqueada por 15 minutos após 5 senhas incorretas seguidas (`CONTA_BLOQUEADA`); `429`: limite de tentativas; `503`: serviço/banco/e-mail indisponível. O cabeçalho `Retry-After` orienta quando repetir uma requisição limitada.
 
 O frontend deve associar as mensagens aos campos, anunciar erros para leitores de tela, mascarar a senha e obter confirmação antes da inativação. Essas ações de interface não são implementadas pela API.

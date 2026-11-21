@@ -105,7 +105,7 @@ def test_full_recovery_flow(app, client, signup, login, password):
         ).status_code
         == 422
     )
-    new_password = secrets.token_urlsafe(18)
+    new_password = "Bb2@" + secrets.token_urlsafe(18)
     data = {
         "id_recuperacao": recovery_id,
         "token_redefinicao": reset_token,
@@ -265,3 +265,88 @@ def test_non_string_password(client, signup, secret):
         ).status_code
         == 422
     )
+
+
+def wrong_login(client, user):
+    return client.post(
+        "/api/v1/auth/login", json={"email_usuario": user["email_usuario"], "senha": "Errada1!"}
+    )
+
+
+def test_login_locks_for_15_minutes_after_5_failures(app, client, signup, login, password):
+    from backend.models import Usuario
+
+    user = signup()
+    for attempt in range(1, 5):
+        response = wrong_login(client, user)
+        assert response.status_code == 401
+        with app.app_context():
+            assert db.session.get(Usuario, user["id_usuario"]).tentativas_login_usuario == attempt
+    response = wrong_login(client, user)
+    assert response.status_code == 423
+    assert response.json["error"]["code"] == "CONTA_BLOQUEADA"
+    assert "15 minutos" in response.json["error"]["message"]
+    # The correct password is refused while the lock lasts.
+    response = client.post(
+        "/api/v1/auth/login", json={"email_usuario": user["email_usuario"], "senha": password}
+    )
+    assert response.status_code == 423
+    with app.app_context():
+        row = db.session.get(Usuario, user["id_usuario"])
+        assert row.tentativas_login_usuario == 5
+        remaining = row.bloqueado_ate_usuario - utcnow()
+        assert timedelta(minutes=14) < remaining <= timedelta(minutes=15)
+        row.bloqueado_ate_usuario = utcnow() - timedelta(seconds=1)
+        db.session.commit()
+    # After the lock expires a new cycle starts, and a success clears the counter.
+    assert wrong_login(client, user).status_code == 401
+    with app.app_context():
+        row = db.session.get(Usuario, user["id_usuario"])
+        assert row.tentativas_login_usuario == 1
+        assert row.bloqueado_ate_usuario is None
+    assert login(user)["access_token"]
+    with app.app_context():
+        assert db.session.get(Usuario, user["id_usuario"]).tentativas_login_usuario == 0
+
+
+def test_successful_login_resets_failed_attempts(app, client, signup, login):
+    from backend.models import Usuario
+
+    user = signup()
+    for _ in range(4):
+        assert wrong_login(client, user).status_code == 401
+    login(user)
+    for _ in range(4):
+        assert wrong_login(client, user).status_code == 401
+    with app.app_context():
+        row = db.session.get(Usuario, user["id_usuario"])
+        assert row.tentativas_login_usuario == 4
+        assert row.bloqueado_ate_usuario is None
+
+
+def test_password_reset_clears_login_lock(app, client, signup, login):
+    from backend.models import Usuario
+
+    user = signup()
+    for _ in range(5):
+        wrong_login(client, user)
+    recovery_id, code = request_recovery(client, app, user)
+    token = client.post(
+        "/api/v1/auth/recuperacao-senha/verificar",
+        json={"id_recuperacao": recovery_id, "codigo": code},
+    ).json["data"]["token_redefinicao"]
+    new_password = "Cc3#" + secrets.token_urlsafe(18)
+    response = client.post(
+        "/api/v1/auth/recuperacao-senha/redefinir",
+        json={
+            "id_recuperacao": recovery_id,
+            "token_redefinicao": token,
+            "nova_senha": new_password,
+            "confirmacao_senha": new_password,
+        },
+    )
+    assert response.status_code == 200, response.json
+    with app.app_context():
+        row = db.session.get(Usuario, user["id_usuario"])
+        assert (row.tentativas_login_usuario, row.bloqueado_ate_usuario) == (0, None)
+    assert login(user, new_password)["access_token"]

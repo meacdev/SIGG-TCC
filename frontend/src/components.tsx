@@ -1,13 +1,64 @@
 import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 
-export function Icon({
-  name,
-  size = 22,
-}: {
-  name: 'cap' | 'user' | 'book' | 'arrow' | 'check' | 'shield' | 'eye' | 'close';
-  size?: number;
-}) {
-  const paths: Record<typeof name, ReactNode> = {
+export type IconName =
+  | 'cap'
+  | 'user'
+  | 'users'
+  | 'book'
+  | 'arrow'
+  | 'check'
+  | 'shield'
+  | 'eye'
+  | 'close'
+  | 'chat'
+  | 'clock'
+  | 'file'
+  | 'cal'
+  | 'menu'
+  | 'key'
+  | 'plus';
+
+export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
+  const paths: Record<IconName, ReactNode> = {
+    users: (
+      <>
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2 20v-1a7 7 0 0 1 14 0v1" />
+        <path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 20v-1a7 7 0 0 0-4-6.3" />
+      </>
+    ),
+    chat: <path d="M4 5h16v11H9l-5 4Z" />,
+    clock: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </>
+    ),
+    file: (
+      <>
+        <path d="M14 3H6v18h12V7Z" />
+        <path d="M14 3v4h4M9 13h6M9 17h6" />
+      </>
+    ),
+    cal: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </>
+    ),
+    menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+    key: (
+      <>
+        <circle cx="8" cy="15" r="4" />
+        <path d="m11 12 9-9M17 6l3 3M14 9l2 2" />
+      </>
+    ),
+    plus: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v8M8 12h8" />
+      </>
+    ),
     cap: (
       <>
         <path d="m2 9 10-5 10 5-10 5Z" />

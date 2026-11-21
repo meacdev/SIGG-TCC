@@ -14,7 +14,7 @@ import type { ClassItem } from './classes';
 export interface Enrollment {
   id_matricula: number;
   id_turma: number;
-  id_aluno: number;
+  id_estudante: number;
   nome: string;
   matricula: string;
   codigo_turma: string;
@@ -25,7 +25,7 @@ export interface Enrollment {
   notificacao?: string;
 }
 interface Student {
-  id_aluno: number;
+  id_estudante: number;
   nome: string;
   matricula: string;
 }
@@ -57,7 +57,7 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
       .profile()
       .then(async (r) => {
         if (!active) return;
-        const student = !!r.body.data.aluno;
+        const student = !!r.body.data.estudante;
         setOwn(student);
         if (!student) {
           const items = await catalog<ClassItem>('/turmas?ativa_turma=true');
@@ -121,7 +121,10 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
     try {
       const r = await api.request<Enrollment>(
         own ? '/matriculas/autoinscricao' : `/turmas/${classId}/matriculas`,
-        { method: 'POST', body: JSON.stringify(own ? { codigo_acesso: code } : { id_aluno: id }) },
+        {
+          method: 'POST',
+          body: JSON.stringify(own ? { codigo_acesso: code } : { id_estudante: id }),
+        },
         true,
       );
       setSuccess(r.body.message || 'Estudante matriculado com sucesso!');
@@ -178,7 +181,7 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
     <section>
       <div className="page-intro">
         <span className="eyebrow">VÍNCULOS ACADÊMICOS</span>
-        <h2>Matrículas</h2>
+        <h1>Matrículas</h1>
         <p>
           {own
             ? 'Entre em uma turma usando o código compartilhado pelo professor.'
@@ -196,7 +199,7 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
             void add();
           }}
         >
-          <h3>Entrar em uma turma</h3>
+          <h2>Entrar em uma turma</h2>
           <div className="field">
             <label htmlFor="codigo-inscricao">Código de acesso da turma</label>
             <input
@@ -239,7 +242,7 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
           </div>
           {classId && (
             <form className="academic-box" onSubmit={search}>
-              <h3>Adicionar estudante</h3>
+              <h2>Adicionar estudante</h2>
               <div className="field">
                 <label htmlFor="busca-estudante">Buscar por nome, matrícula ou e-mail</label>
                 <input
@@ -257,14 +260,14 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
                 </button>
               </div>
               {students.map((s) => (
-                <article key={s.id_aluno} className="academic-box">
-                  <h4>{s.nome}</h4>
+                <article key={s.id_estudante} className="academic-box">
+                  <h3>{s.nome}</h3>
                   <p>Matrícula: {s.matricula}</p>
                   <button
                     type="button"
                     className="secondary"
                     disabled={busy}
-                    onClick={() => add(s.id_aluno)}
+                    onClick={() => add(s.id_estudante)}
                   >
                     Matricular {s.nome}
                   </button>
@@ -282,12 +285,12 @@ export function Enrollments({ onSessionEnded }: SessionProps) {
       )}
       {(own || classId) && (
         <>
-          <h3>{own ? 'Minhas turmas' : 'Estudantes matriculados'}</h3>
+          <h2>{own ? 'Minhas turmas' : 'Estudantes matriculados'}</h2>
           {!rows.length && <p className="academic-empty">Nenhuma matrícula ativa encontrada.</p>}
           <div className="academic-list">
             {rows.map((row) => (
               <article className="academic-box" key={row.id_matricula}>
-                <h3>{own ? row.codigo_turma : row.nome}</h3>
+                <h2>{own ? row.codigo_turma : row.nome}</h2>
                 <p className="academic-meta">
                   {row.periodo_letivo} · TCC {row.nivel_turma} · Matrícula {row.matricula}
                   {!row.turma_ativa ? ' · Turma inativa' : ''}

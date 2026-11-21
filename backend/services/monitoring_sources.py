@@ -48,28 +48,28 @@ requests = Table(
     "solicitacao_correcao",
     metadata,
     Column("id_solicitacao_correcao", BigInteger, primary_key=True),
-    Column("id_banca", BigInteger),
+    Column("id_banca_defesa", BigInteger),
     Column("descricao_solicitacao_correcao", Text),
     Column("data_limite_reenvio_solicitacao_correcao", Date),
     Column("id_usuario_registro", BigInteger),
 )
 defenses = Table(
-    "banca",
+    "banca_defesa",
     metadata,
-    Column("id_banca", BigInteger, primary_key=True),
+    Column("id_banca_defesa", BigInteger, primary_key=True),
     Column("id_etapa_trabalho", BigInteger),
-    Column("id_rubrica", BigInteger),
-    Column("data_inicio_banca", DateTime),
-    Column("data_fim_banca", DateTime),
-    Column("local_defesa_banca", Text),
+    Column("id_rubrica_avaliacao", BigInteger),
+    Column("data_inicio_banca_defesa", DateTime),
+    Column("data_fim_banca_defesa", DateTime),
+    Column("local_defesa_banca_defesa", Text),
     Column("id_usuario_agendamento", BigInteger),
 )
 rubrics = Table(
-    "rubrica",
+    "rubrica_avaliacao",
     metadata,
-    Column("id_rubrica", BigInteger, primary_key=True),
+    Column("id_rubrica_avaliacao", BigInteger, primary_key=True),
     Column("id_turma", BigInteger),
-    Column("nome_rubrica", String),
+    Column("nome_rubrica_avaliacao", String),
     Column("id_usuario_criacao", BigInteger),
 )
 
@@ -93,7 +93,7 @@ def deliveries(stage_ids):
                 requests,
                 corrections.c.id_solicitacao_correcao == requests.c.id_solicitacao_correcao,
             )
-            .join(defenses, requests.c.id_banca == defenses.c.id_banca)
+            .join(defenses, requests.c.id_banca_defesa == defenses.c.id_banca_defesa)
         )
         .where(defenses.c.id_etapa_trabalho.in_(stage_ids))
     )
