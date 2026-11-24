@@ -534,3 +534,46 @@ def test_active_advising_blocks_inactivation(app, client, admin, teacher):
     )
     assert error_code(blocked) == "UC_14_M12"
     assert blocked.json["error"]["fields"]["vinculos"][0]["tipo"] == "orientacao"
+
+
+def test_institutional_email_rule(client, admin, teacher):
+    student = payload(
+        tipo_cadastro="estudante",
+        matricula_estudante=uuid4().hex[:12],
+        id_curso=1,
+    )
+    outsiders = (
+        "pessoa@gmail.com",
+        "pessoa@fakeuea.edu.br",
+        "pessoa@uea.edu.br.exemplo.com",
+    )
+    for address in outsiders:
+        for data in (payload(), docente(), student):
+            response = client.post(
+                BASE, json={**data, "email_usuario": address}, headers=admin["headers"]
+            )
+            assert response.status_code == 422 and error_code(response) == "UC_14_M03"
+            assert "email_usuario" in response.json["error"]["fields"]
+    assert create(client, admin, {**payload(), "email_usuario": "Pessoa@UEA.edu.br"})
+    external = payload(
+        email_usuario=f"{uuid4().hex}@ufam.edu.br",
+        tipo_cadastro="docente",
+        tipo_professor="externo",
+        titulacao_professor="doutor",
+        instituicao_origem_professor="UFAM",
+    )
+    created = create(client, admin, external)
+    url = f"{BASE}/{created.json['data']['id_usuario']}"
+    auth = versioned(admin, created)
+    internal = client.patch(url, json={"tipo_professor": "interno"}, headers=auth)
+    assert error_code(internal) == "UC_14_M03"
+    other = client.patch(url, json={"email_usuario": "novo@ufam.edu.br"}, headers=auth)
+    assert other.status_code == 200
+
+    legacy = f"{BASE}/{teacher['id_usuario']}"
+    current = client.get(legacy, headers=admin["headers"])
+    auth = versioned(admin, current)
+    denied = client.patch(legacy, json={"email_usuario": "novo@gmail.com"}, headers=auth)
+    assert error_code(denied) == "UC_14_M03"
+    kept = client.patch(legacy, json={"nome_usuario": "Nome Mantido"}, headers=auth)
+    assert kept.status_code == 200

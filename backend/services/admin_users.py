@@ -68,6 +68,7 @@ CREATE_FIELDS = {
 UPDATE_FIELDS = CREATE_FIELDS - {"tipo_cadastro"}
 STUDENT_FIELDS = {"matricula_estudante", "id_curso"}
 TEACHER_FIELDS = {"tipo_professor", "titulacao_professor", "instituicao_origem_professor"}
+INSTITUTIONAL_DOMAIN = "uea.edu.br"
 STATUS_FIELDS = {"ativo_usuario", "justificativa"}
 GRANT_FIELDS = {
     "codigo_perfil",
@@ -104,6 +105,12 @@ def formatted(field, parser, *args):
         if error.status != 422:
             raise
         fail(422, 3, {field: error.message})
+
+
+def require_institutional(address):
+    """UC14 attribute 3: only external teachers may use a non-institutional address."""
+    if not address.endswith(f"@{INSTITUTIONAL_DOMAIN}"):
+        fail(422, 3, {"email_usuario": f"Use um e-mail @{INSTITUTIONAL_DOMAIN}."})
 
 
 def reject_fields(data, names):
@@ -414,6 +421,8 @@ def pre_register(data):
         reject_fields(data, STUDENT_FIELDS | TEACHER_FIELDS)
     name = formatted("nome_usuario", v.name, data["nome_usuario"])
     address = formatted("email_usuario", v.email, data["email_usuario"])
+    if not (kind == "docente" and data["tipo_professor"] == "externo"):
+        require_institutional(address)
     document = formatted("cpf_usuario", v.cpf, data.get("cpf_usuario"))
     phone = formatted("telefone_usuario", v.phone, data.get("telefone_usuario"))
     enrollment = None
@@ -510,6 +519,13 @@ def update_user(user_id, data):
             pending_email = address
     student_changes = update_student_values(user, data)
     teacher_changes = update_teacher_values(user, data)
+    previous_kind = user.professor.tipo_professor if user.professor else None
+    final_kind = teacher_changes.get("tipo_professor", previous_kind)
+    # Legacy addresses stay valid until the e-mail or the teacher type actually changes.
+    became_internal = previous_kind == "externo" and final_kind == "interno"
+    checked_address = pending_email or (user.email_usuario if became_internal else None)
+    if checked_address and final_kind != "externo":
+        require_institutional(checked_address)
     unique_identity(
         pending_email,
         changes.get("cpf_usuario"),
