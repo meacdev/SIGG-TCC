@@ -9,9 +9,10 @@ from sqlalchemy import inspect, select, text
 from backend.audit import audit
 from backend.db import db, utcnow
 from backend.models import Curso, Perfil, ProfessorCurso, Usuario, UsuarioPerfil
-from backend.services.classes import get_period
+from backend.services.classes import clear_course_role, get_period, has_course_role
 
 PROFILES = {
+    "administrador": "Administrador do sistema (secretaria)",
     "estudante": "Estudante",
     "professor_disciplina": "Professor da disciplina de TCC",
     "orientador": "Orientador ou coorientador",
@@ -66,7 +67,7 @@ def register_cli(app):
     @app.cli.command("seed-perfis")
     @with_appcontext
     def seed():
-        """Create the five catalog roles without granting administrative access."""
+        """Create the catalog roles without granting them to anyone."""
         seed_profiles()
         db.session.commit()
         click.echo("Perfis inicializados.")
@@ -125,11 +126,16 @@ def register_cli(app):
                 raise click.ClickException(
                     "Informe uma expiração futura com fuso horário."
                 ) from None
+        if perfil == "administrador" and expiration:
+            raise click.ClickException("O perfil de administrador não possui expiração.")
         if perfil == "estudante" and not user.estudante:
             raise click.ClickException("O usuário não possui cadastro de estudante.")
-        if perfil != "estudante" and (not user.professor or not user.professor.ativo_professor):
+        if perfil not in {"estudante", "administrador"} and (
+            not user.professor or not user.professor.ativo_professor
+        ):
             raise click.ClickException("O usuário não possui cadastro de professor ativo.")
-        if perfil in {"professor_disciplina", "coordenador"}:
+        course_role = perfil in {"professor_disciplina", "coordenador"}
+        if course_role:
             if user.professor.tipo_professor != "interno":
                 raise click.ClickException("Esse perfil exige professor interno.")
             course = db.session.get(Curso, id_curso) if id_curso else None
@@ -160,7 +166,6 @@ def register_cli(app):
                     if not department:
                         raise click.ClickException("Informe --departamento para o coordenador.")
                     link.departamento_unidade_professor_curso = department[:200]
-                link.coordenador_professor_curso = not revogar
         seed_profiles()
         profile = db.session.scalar(select(Perfil).where(Perfil.codigo_perfil == perfil))
         association = db.session.get(UsuarioPerfil, (user.id_usuario, profile.id_perfil))
@@ -171,14 +176,24 @@ def register_cli(app):
                 or association.data_expiracao_usuario_perfil > utcnow()
             )
         )
+        if not association and revogar:
+            raise click.ClickException("Perfil não concedido a este usuário.")
+        if course_role and not revogar and not old:
+            clear_course_role(user.id_usuario, perfil)
+        if link_for_role := (link if course_role else None):
+            if perfil == "coordenador":
+                link_for_role.coordenador_professor_curso = not revogar
+            else:
+                link_for_role.professor_disciplina_professor_curso = not revogar
+            db.session.flush()
         if not association:
-            if revogar:
-                raise click.ClickException("Perfil não concedido a este usuário.")
             association = UsuarioPerfil(id_usuario=user.id_usuario, id_perfil=profile.id_perfil)
             db.session.add(association)
-        if revogar:
+        # RN 07: the grant only ends when no other course keeps the role.
+        remains = revogar and course_role and has_course_role(user.id_usuario, perfil)
+        if revogar and not remains:
             association.data_expiracao_usuario_perfil = utcnow()
-        else:
+        elif not revogar:
             association.data_concessao_usuario_perfil = utcnow()
             association.data_expiracao_usuario_perfil = expiration
         audit(
@@ -186,8 +201,8 @@ def register_cli(app):
             "revogacao_perfil_cli" if revogar else "concessao_perfil_cli",
             "usuario",
             user.id_usuario,
-            {f"perfil_{perfil}": (old, not revogar)},
+            {f"perfil_{perfil}": (old, bool(not revogar or remains))},
             reason=f"{justificativa.strip()} (curso={id_curso})",
         )
         db.session.commit()
-        click.echo("Permissões atualizadas. Revogação do papel é global para o usuário.")
+        click.echo("Permissões atualizadas.")

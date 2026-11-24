@@ -8,8 +8,8 @@ from backend.db import db, utcnow
 from backend.errors import APIError
 from backend.models import Sessao
 from backend.security import authenticated, limiter, tokens
-from backend.serialization import user_json
-from backend.services import auth
+from backend.serialization import iso, user_json
+from backend.services import auth, invites
 
 bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 
@@ -82,3 +82,31 @@ def reset_password():
     fields = {"id_recuperacao", "token_redefinicao", "nova_senha", "confirmacao_senha"}
     auth.reset_password(v.body(fields, fields))
     return jsonify(code="UC_01_M02", message="Senha redefinida com sucesso!")
+
+
+# The token travels in the body so it never appears in URLs or access logs.
+@bp.post("/convite/validar")
+@limiter.limit("10 per minute")
+def validate_invite():
+    data = v.body({"token"}, ("token",), "UC_14_M02")
+    result = invites.validate_invite(data["token"])
+    result["data_expiracao_convite"] = iso(result["data_expiracao_convite"])
+    return jsonify(data=result)
+
+
+@bp.post("/convite/aceitar")
+@limiter.limit("10 per minute")
+def accept_invite():
+    fields = {"token", "nova_senha", "confirmacao_senha"}
+    invites.accept_invite(v.body(fields, fields, "UC_14_M02"))
+    return jsonify(
+        code="UC_14_M19", message="Conta ativada com sucesso! Entre com seu e-mail e senha."
+    )
+
+
+@bp.post("/alteracao-email/confirmar")
+@limiter.limit("10 per minute")
+def confirm_email_change():
+    data = v.body({"token"}, ("token",), "UC_14_M02")
+    invites.confirm_email_change(data["token"])
+    return jsonify(code="EMAIL_CONFIRMADO", message="E-mail confirmado com sucesso!")

@@ -61,7 +61,7 @@ yarn db:seed
 yarn db:check
 ```
 
-`db:upgrade` aplica, em uma transação e com lock, todas as migrações pendentes de `backend/sql/migrations/` (hoje 001 e 005 a 011). Migrações já aplicadas têm o checksum conferido. Faça backup antes de atualizar um banco com dados. A migração aborta, sem apagar registros, se houver e-mails que diferem só por maiúsculas ou códigos equivalentes no mesmo período: resolva essas duplicatas antes.
+`db:upgrade` aplica, em uma transação e com lock, todas as migrações pendentes de `backend/sql/migrations/` (hoje 001 e 005 a 012). Migrações já aplicadas têm o checksum conferido. Faça backup antes de atualizar um banco com dados. A migração aborta, sem apagar registros, se houver e-mails que diferem só por maiúsculas ou códigos equivalentes no mesmo período: resolva essas duplicatas antes.
 
 Crie cada curso uma única vez. `db:check` confere a conexão e a estrutura sem criar dados.
 
@@ -93,8 +93,9 @@ Crie a conta docente pela tela de cadastro. Ela entra e edita o próprio perfil,
 ```
 
 - `professor_disciplina` e `coordenador` exigem professor **interno** com cadastro ativo. `--departamento` é obrigatório para o coordenador quando o vínculo ainda não o possui.
-- O professor gerencia as próprias turmas nos cursos com vínculo vigente. O coordenador gerencia as turmas dos cursos que coordena e pode autorizar professores desses cursos.
-- `--revogar` expira o papel **global do usuário**, não só o vínculo com o curso indicado. `--expira-em` aceita data ISO 8601 futura com fuso.
+- O professor gerencia as próprias turmas nos cursos em que tem o papel. O coordenador gerencia as turmas dos cursos que coordena e pode autorizar professores desses cursos.
+- `--revogar` retira o papel do curso indicado. O perfil do usuário só expira quando não restar curso com esse papel. `--expira-em` aceita data ISO 8601 futura com fuso.
+- O primeiro administrador também é criado aqui, com `--perfil administrador` e sem curso. Os demais são concedidos pela API do UC14 (`docs/UC14.md`).
 - Toda concessão e revogação exige justificativa e gera auditoria com ator de sistema (`id_usuario=NULL`).
 
 ## Comandos

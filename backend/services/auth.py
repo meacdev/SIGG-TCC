@@ -92,7 +92,12 @@ def request_reset(address):
     recovery_id = str(uuid4())
     user = db.session.scalar(
         select(Usuario)
-        .where(Usuario.email_usuario == address, Usuario.ativo_usuario.is_(True))
+        .where(
+            Usuario.email_usuario == address,
+            Usuario.ativo_usuario.is_(True),
+            # UC14 RN 03: a pre-registered account defines its password through the invite.
+            Usuario.hash_senha_usuario.is_not(None),
+        )
         .with_for_update()
     )
     if user:

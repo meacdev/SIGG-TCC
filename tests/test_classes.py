@@ -74,6 +74,7 @@ def test_permissions_and_scope(app, client, teacher, class_payload, signup, logi
             ProfessorCurso(
                 id_professor=user["id_usuario"],
                 id_curso=2,
+                professor_disciplina_professor_curso=True,
                 data_inicio_professor_curso=utcnow().date() - timedelta(days=1),
             )
         )

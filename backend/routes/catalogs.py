@@ -57,7 +57,8 @@ def teachers():
         raise APIError(422, "VALIDACAO", "Informe id_curso para consultar os docentes.") from None
     coordinator_courses = list(db.session.scalars(course_scope(g.user.id_usuario, True)))
     if "coordenador" not in profiles or course_id not in coordinator_courses:
-        if course_id not in list(db.session.scalars(course_scope(g.user.id_usuario))):
+        scope = course_scope(g.user.id_usuario, discipline=True)
+        if course_id not in list(db.session.scalars(scope)):
             raise APIError(403, "ACESSO_NEGADO", "Você não possui vínculo com o curso.")
         only_self = True
     else:
@@ -71,6 +72,7 @@ def teachers():
             Professor.tipo_professor == "interno",
             Usuario.ativo_usuario.is_(True),
             ProfessorCurso.id_curso == course_id,
+            ProfessorCurso.professor_disciplina_professor_curso.is_(True),
             current_link(),
         )
     )

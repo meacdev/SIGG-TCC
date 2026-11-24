@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SIGG-TCC API",
-    "version": "1.4.0",
-    "description": "Cadastro, autenticação, turmas, matrículas, trabalhos, reuniões e UC13 Monitorar Prazos, conforme a numeração atual dos DOCX. Datas em UTC/ISO 8601; datas acadêmicas em Manaus. IDs correspondem às PKs do banco. Senhas, hashes e códigos não são expostos em consultas."
+    "version": "1.5.0",
+    "description": "Cadastro, autenticação, turmas, matrículas, trabalhos, reuniões , UC13 Monitorar Prazos e UC14 Manter Usuários, conforme a numeração atual dos DOCX. Datas em UTC/ISO 8601; datas acadêmicas em Manaus. IDs correspondem às PKs do banco. Senhas, hashes e códigos não são expostos em consultas."
   },
   "servers": [
     {
@@ -12166,6 +12166,1427 @@
         ],
         "description": "Revalida turma e inatividade; persiste notificações e auditoria antes do SMTP. Repetir o mesmo lote não duplica notificações nem reenvia as já entregues. HTTP 200 com UC_13_M05 indica pendências persistidas, nunca sucesso de entrega total."
       }
+    },
+    "/api/v1/admin/usuarios": {
+      "get": {
+        "summary": "Listar usuários",
+        "operationId": "Listar_usuários",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UsuarioAdministracao"
+                      }
+                    },
+                    "meta": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "situacao",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ativo",
+                "pendente",
+                "inativo"
+              ]
+            }
+          },
+          {
+            "name": "tipo_cadastro",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "estudante",
+                "docente",
+                "administrativo"
+              ]
+            }
+          },
+          {
+            "name": "perfil",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id_curso",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Pré-cadastrar usuário",
+        "operationId": "Pré-cadastrar_usuário",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "201": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "nome_usuario": {
+                    "type": "string"
+                  },
+                  "email_usuario": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "cpf_usuario": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "telefone_usuario": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "matricula_estudante": {
+                    "type": "string"
+                  },
+                  "id_curso": {
+                    "type": "integer"
+                  },
+                  "tipo_professor": {
+                    "enum": [
+                      "interno",
+                      "externo"
+                    ]
+                  },
+                  "titulacao_professor": {
+                    "enum": [
+                      "Especialista",
+                      "Mestre",
+                      "Doutor"
+                    ]
+                  },
+                  "instituicao_origem_professor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "tipo_cadastro": {
+                    "enum": [
+                      "estudante",
+                      "docente",
+                      "administrativo"
+                    ]
+                  }
+                },
+                "required": [
+                  "nome_usuario",
+                  "email_usuario",
+                  "tipo_cadastro"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/usuarios/{id_usuario}": {
+      "get": {
+        "summary": "Consultar usuário",
+        "operationId": "Consultar_usuário",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "summary": "Alterar usuário",
+        "operationId": "Alterar_usuário",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "nome_usuario": {
+                    "type": "string"
+                  },
+                  "email_usuario": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "cpf_usuario": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "telefone_usuario": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "matricula_estudante": {
+                    "type": "string"
+                  },
+                  "id_curso": {
+                    "type": "integer"
+                  },
+                  "tipo_professor": {
+                    "enum": [
+                      "interno",
+                      "externo"
+                    ]
+                  },
+                  "titulacao_professor": {
+                    "enum": [
+                      "Especialista",
+                      "Mestre",
+                      "Doutor"
+                    ]
+                  },
+                  "instituicao_origem_professor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/usuarios/{id_usuario}/convite": {
+      "post": {
+        "summary": "Reenviar convite",
+        "operationId": "Reenviar_convite",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/usuarios/{id_usuario}/situacao": {
+      "patch": {
+        "summary": "Alterar situação da conta",
+        "operationId": "Alterar_situação_da_conta",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "ativo_usuario": {
+                    "type": "boolean"
+                  },
+                  "justificativa": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ativo_usuario",
+                  "justificativa"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/usuarios/{id_usuario}/perfis": {
+      "post": {
+        "summary": "Conceder perfil",
+        "operationId": "Conceder_perfil",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "codigo_perfil": {
+                    "enum": [
+                      "administrador",
+                      "professor_disciplina",
+                      "coordenador"
+                    ]
+                  },
+                  "id_curso": {
+                    "type": "integer"
+                  },
+                  "departamento_unidade": {
+                    "type": "string"
+                  },
+                  "data_expiracao": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "justificativa": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "codigo_perfil",
+                  "justificativa"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/usuarios/{id_usuario}/perfis/revogar": {
+      "post": {
+        "summary": "Revogar perfil",
+        "operationId": "Revogar_perfil",
+        "tags": [
+          "Administração de usuários"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Versão do recurso."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UsuarioAdministracao"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_usuario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "codigo_perfil": {
+                    "enum": [
+                      "administrador",
+                      "professor_disciplina",
+                      "coordenador"
+                    ]
+                  },
+                  "id_curso": {
+                    "type": "integer"
+                  },
+                  "justificativa": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "codigo_perfil",
+                  "justificativa"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/convite/validar": {
+      "post": {
+        "summary": "Validar convite",
+        "operationId": "Validar_convite",
+        "tags": [
+          "Autenticação"
+        ],
+        "responses": {
+          "200": {
+            "description": "Convite válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "nome_usuario": {
+                          "type": "string"
+                        },
+                        "email_usuario": {
+                          "type": "string"
+                        },
+                        "data_expiracao_convite": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/convite/aceitar": {
+      "post": {
+        "summary": "Aceitar convite",
+        "operationId": "Aceitar_convite",
+        "tags": [
+          "Autenticação"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "nova_senha": {
+                    "type": "string"
+                  },
+                  "confirmacao_senha": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token",
+                  "nova_senha",
+                  "confirmacao_senha"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/alteracao-email/confirmar": {
+      "post": {
+        "summary": "Confirmar alteração de e-mail",
+        "operationId": "Confirmar_alteração_de_e-mail",
+        "tags": [
+          "Autenticação"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Erro de validação, acesso ou disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14096,6 +15517,105 @@
             "type": "integer"
           }
         }
+      },
+      "UsuarioAdministracao": {
+        "type": "object",
+        "description": "Cadastro para gestão. Não contém senha, tokens, notas ou documentos.",
+        "properties": {
+          "id_usuario": {
+            "type": "integer"
+          },
+          "nome_usuario": {
+            "type": "string"
+          },
+          "email_usuario": {
+            "type": "string"
+          },
+          "cpf_usuario": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "telefone_usuario": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ativo_usuario": {
+            "type": "boolean"
+          },
+          "situacao_conta": {
+            "enum": [
+              "ativo",
+              "pendente",
+              "inativo"
+            ]
+          },
+          "tipo_cadastro": {
+            "enum": [
+              "estudante",
+              "docente",
+              "administrativo"
+            ]
+          },
+          "data_criacao_usuario": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data_atualizacao_usuario": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "perfis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "concessoes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "vinculos_curso": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "data_expiracao_convite": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "estudante": {
+            "type": "object"
+          },
+          "professor": {
+            "type": "object"
+          },
+          "convite_enviado": {
+            "type": "boolean"
+          },
+          "alteracao_email": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id_usuario",
+          "nome_usuario",
+          "email_usuario",
+          "situacao_conta",
+          "perfis"
+        ]
       }
     }
   }

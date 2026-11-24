@@ -4,7 +4,7 @@ import string
 from datetime import timedelta
 
 from flask import current_app, g
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, exists, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from backend import validation as v
@@ -35,13 +35,52 @@ def current_link():
     )
 
 
-def course_scope(user_id, coordinator=False):
+def course_scope(user_id, coordinator=False, discipline=False):
     query = select(ProfessorCurso.id_curso).where(
         ProfessorCurso.id_professor == user_id, current_link()
     )
     if coordinator:
         query = query.where(ProfessorCurso.coordenador_professor_curso.is_(True))
+    if discipline:
+        query = query.where(ProfessorCurso.professor_disciplina_professor_curso.is_(True))
     return query
+
+
+def course_role_column(profile):
+    return {
+        "professor_disciplina": ProfessorCurso.professor_disciplina_professor_curso,
+        "coordenador": ProfessorCurso.coordenador_professor_curso,
+    }[profile]
+
+
+def has_course_role(user_id, profile):
+    """Whether any current or future link still carries the per-course role."""
+    today = utcnow().astimezone(current_app.config["ACADEMIC_TIMEZONE"]).date()
+    return bool(
+        db.session.scalar(
+            select(
+                exists().where(
+                    ProfessorCurso.id_professor == user_id,
+                    course_role_column(profile).is_(True),
+                    or_(
+                        ProfessorCurso.data_fim_professor_curso.is_(None),
+                        ProfessorCurso.data_fim_professor_curso >= today,
+                    ),
+                )
+            )
+        )
+    )
+
+
+def clear_course_role(user_id, profile):
+    """An expired grant must not silently revive its old courses when granted again."""
+    column = course_role_column(profile)
+    db.session.execute(
+        update(ProfessorCurso)
+        .where(ProfessorCurso.id_professor == user_id, column.is_(True))
+        .values({column.key: False})
+        .execution_options(synchronize_session="fetch")
+    )
 
 
 def manager():
@@ -64,7 +103,7 @@ def visible_classes():
         conditions.append(
             and_(
                 Turma.id_professor_responsavel == g.user.id_usuario,
-                Turma.id_curso.in_(course_scope(g.user.id_usuario)),
+                Turma.id_curso.in_(course_scope(g.user.id_usuario, discipline=True)),
             )
         )
     if "coordenador" in profiles:
@@ -105,6 +144,7 @@ def validate_assignment(course_id, teacher_id):
                 exists().where(
                     ProfessorCurso.id_professor == g.user.id_usuario,
                     ProfessorCurso.id_curso == course_id,
+                    ProfessorCurso.professor_disciplina_professor_curso.is_(True),
                     current_link(),
                 )
             )
@@ -119,6 +159,7 @@ def validate_assignment(course_id, teacher_id):
             exists().where(
                 ProfessorCurso.id_professor == teacher_id,
                 ProfessorCurso.id_curso == course_id,
+                ProfessorCurso.professor_disciplina_professor_curso.is_(True),
                 current_link(),
             )
         )

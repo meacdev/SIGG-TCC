@@ -106,6 +106,8 @@ class ProfessorCurso(db.Model):
     data_inicio_professor_curso = db.Column(db.Date, nullable=False)
     data_fim_professor_curso = db.Column(db.Date)
     coordenador_professor_curso = db.Column(db.Boolean, nullable=False, default=False)
+    # UC14 RN 07: the teaching role is granted and revoked per course.
+    professor_disciplina_professor_curso = db.Column(db.Boolean, nullable=False, default=False)
     capacidade_orientandos_professor_curso = db.Column(db.SmallInteger)
     # Required by the dictionary whenever coordenador_professor_curso is true.
     departamento_unidade_professor_curso = db.Column(db.String(200))
@@ -181,3 +183,30 @@ class RecuperacaoSenha(db.Model):
     tentativas = db.Column(db.SmallInteger, nullable=False, default=0)
     usada_em = db.Column(UTCDateTime)
     hash_token_redefinicao = db.Column(db.String(64))
+
+
+class TokenUsuario(db.Model):
+    __tablename__ = "token_usuario"
+    __table_args__ = (
+        db.Index(
+            "uq_token_convite_pendente",
+            "id_usuario",
+            unique=True,
+            sqlite_where=db.text(
+                "finalidade_token_usuario = 'convite_cadastro' "
+                "AND data_consumo_token_usuario IS NULL"
+            ),
+            postgresql_where=db.text(
+                "finalidade_token_usuario = 'convite_cadastro' "
+                "AND data_consumo_token_usuario IS NULL"
+            ),
+        ),
+    )
+    id_token_usuario = db.Column(ID, primary_key=True)
+    id_usuario = db.Column(ID, db.ForeignKey("usuario.id_usuario"), nullable=False)
+    hash_token_usuario = db.Column(db.Text, unique=True, nullable=False)
+    finalidade_token_usuario = db.Column(db.String(25), nullable=False)
+    novo_email_token_usuario = db.Column(db.String(254))
+    data_criacao_token_usuario = db.Column(UTCDateTime, nullable=False, default=utcnow)
+    data_expiracao_token_usuario = db.Column(UTCDateTime, nullable=False)
+    data_consumo_token_usuario = db.Column(UTCDateTime)

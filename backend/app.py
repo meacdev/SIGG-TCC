@@ -64,6 +64,7 @@ def create_app(test_config=None):
 
     from backend.cli import register_cli
     from backend.routes import (
+        admin_users,
         auth,
         catalogs,
         classes,
@@ -80,6 +81,7 @@ def create_app(test_config=None):
     for blueprint in (
         auth.bp,
         users.bp,
+        admin_users.bp,
         classes.bp,
         catalogs.bp,
         enrollments.bp,
@@ -144,6 +146,10 @@ def create_app(test_config=None):
         # Migration 009: updated data model (renamed tables and new columns).
         db.session.execute(text("SELECT tipo_artigo_trabalho_tcc FROM trabalho_tcc LIMIT 0"))
         db.session.execute(text("SELECT cpf_usuario FROM usuario LIMIT 0"))
+        # Migration 012: UC14 per-course teaching role.
+        db.session.execute(
+            text("SELECT professor_disciplina_professor_curso FROM professor_curso LIMIT 0")
+        )
         return jsonify(status="ok")
 
     @app.get("/api/v1/openapi.json")
