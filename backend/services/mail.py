@@ -39,7 +39,7 @@ def send_reset_email(address, code):
             if config["SMTP_USERNAME"]:
                 smtp.login(config["SMTP_USERNAME"], config["SMTP_PASSWORD"])
             smtp.send_message(message)
-    except OSError, smtplib.SMTPException:
+    except (OSError, smtplib.SMTPException):
         raise APIError(
             503, "EMAIL_INDISPONIVEL", "Não foi possível enviar o e-mail agora."
         ) from None

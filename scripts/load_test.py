@@ -48,7 +48,7 @@ def call(index):
             status = response.status
     except HTTPError as error:
         status = error.code
-    except URLError, TimeoutError:
+    except (URLError, TimeoutError):
         status = 0
     return time.perf_counter() - start, status
 

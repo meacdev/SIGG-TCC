@@ -44,7 +44,7 @@ def email(value, code="EMAIL_INVALIDO"):
         if len(normalized) > 254:
             raise ValueError
         return normalized
-    except EmailNotValidError, ValueError:
+    except (EmailNotValidError, ValueError):
         raise APIError(422, code, "Informe um endereço de e-mail válido.") from None
 
 

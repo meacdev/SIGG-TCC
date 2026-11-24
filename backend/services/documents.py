@@ -231,7 +231,7 @@ def emit(banca, data):
             today = utcnow().astimezone(current_app.config["ACADEMIC_TIMEZONE"]).date()
             if deadline < today:
                 raise ValueError
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             raise APIError(
                 422, "UC_10_M05", "Informe o prazo para envio das correções solicitadas."
             ) from None

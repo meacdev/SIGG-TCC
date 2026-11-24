@@ -167,7 +167,7 @@ def timestamp(value):
         if result.tzinfo is None:
             raise ValueError
         return result.astimezone(UTC)
-    except ValueError, TypeError, OverflowError:
+    except (ValueError, TypeError, OverflowError):
         raise APIError(422, "UC_07_M06", "Informe uma data e um horário com fuso válido.") from None
 
 

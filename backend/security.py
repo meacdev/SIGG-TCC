@@ -41,7 +41,7 @@ def verify_password(encoded, value):
         return False
     try:
         return hasher.verify(encoded or DUMMY_HASH, value)
-    except VerificationError, InvalidHashError:
+    except (VerificationError, InvalidHashError):
         return False
 
 
@@ -117,7 +117,7 @@ def authenticated(refresh=False, any_token=False):
             claims = get_jwt()
             try:
                 user_id = int(get_jwt_identity())
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 raise APIError(401, "TOKEN_INVALIDO", "Token inválido.") from None
             g.user = db.session.get(Usuario, user_id)
             if not g.user or not g.user.ativo_usuario:

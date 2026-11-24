@@ -25,7 +25,7 @@ def number(value, field, places=2, maximum="999.99"):
         ):
             raise ValueError
         return result
-    except InvalidOperation, ValueError:
+    except (InvalidOperation, ValueError):
         raise APIError(
             422, "VALIDACAO", "Informe um número decimal válido.", {field: "Valor inválido."}
         ) from None

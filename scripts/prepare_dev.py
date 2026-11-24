@@ -50,7 +50,7 @@ def prepare(values, runner=subprocess.run):
             encoding="utf-8",
             timeout=120,
         )
-    except OSError, subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         print("Não foi possível preparar o banco. Confira o PostgreSQL e execute yarn db:upgrade.")
         return 1
     if result.returncode:
