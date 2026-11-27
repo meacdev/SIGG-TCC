@@ -26,6 +26,7 @@ def seed(app):
         ProfessorCurso(
             id_professor=teacher.id_usuario,
             id_curso=1,
+            professor_disciplina_professor_curso=True,
             data_inicio_professor_curso=utcnow().date() - timedelta(days=1),
         )
     )
