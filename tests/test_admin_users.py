@@ -56,7 +56,7 @@ def docente(**overrides):
 
 
 def link_token(app, index=-1):
-    return re.search(r"#token=(\S+)", app.outbox[index][2]).group(1)
+    return re.search(r"#/\S+\?token=(\S+)", app.outbox[index][2]).group(1)
 
 
 def create(client, admin, data=None):
@@ -97,7 +97,7 @@ def test_invite_lifecycle(app, client, admin, password):
     assert data["situacao_conta"] == "pendente" and data["convite_enviado"] is True
     assert "hash_senha_usuario" not in data
     token = link_token(app)
-    assert f"/aceitar-convite#token={token}" in app.outbox[-1][2]
+    assert f"/#/aceitar-convite?token={token}" in app.outbox[-1][2]
     with app.app_context():
         stored = db.session.scalar(
             select(TokenUsuario).where(TokenUsuario.id_usuario == data["id_usuario"])

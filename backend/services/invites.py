@@ -67,7 +67,7 @@ def issue_email_change(user, address):
 
 def frontend_link(path, raw):
     # The fragment keeps the secret out of server logs and Referer headers.
-    return f"{current_app.config['FRONTEND_URL'].rstrip('/')}/{path}#token={raw}"
+    return f"{current_app.config['FRONTEND_URL'].rstrip('/')}/#/{path}?token={raw}"
 
 
 def send_invite(address, raw):

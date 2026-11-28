@@ -16,7 +16,8 @@ export type AcademicPage =
   | 'organizar-defesas'
   | 'bancas'
   | 'documentos'
-  | 'manuscrito-banca';
+  | 'manuscrito-banca'
+  | 'usuarios';
 
 type Access = Pick<User, 'perfis' | 'professor' | 'estudante'>;
 
@@ -26,6 +27,9 @@ const isTeacher = (user: Access) => !!user.professor;
 const isCourseStaff = (user: Access) =>
   user.professor?.tipo_professor === 'interno' &&
   user.perfis.some((profile) => profile === 'professor_disciplina' || profile === 'coordenador');
+
+/** UC14 (RN 01): só o Administrador (secretaria) gerencia contas e perfis. */
+const isAdministrator = (user: Access) => user.perfis.includes('administrador');
 
 const RULES: Record<AcademicPage, (user: Access) => boolean> = {
   perfil: () => true,
@@ -42,6 +46,7 @@ const RULES: Record<AcademicPage, (user: Access) => boolean> = {
   documentos: isStudent,
   // Aberto pelo link do e-mail da banca; o backend confere estudante, membro ou equipe.
   'manuscrito-banca': () => true,
+  usuarios: isAdministrator,
 };
 
 export function canAccess(page: AcademicPage, user: Access): boolean {

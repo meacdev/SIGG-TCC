@@ -13,6 +13,8 @@ import { DefenseManagement, ManuscriptAccess } from './defense-management';
 import { Defenses } from './defenses';
 import { StudentDocuments, VerifyDocument } from './documents';
 import { canAccess, type AcademicPage } from './navigation';
+import { Users } from './users';
+import { AcceptInvite, ConfirmEmail } from './invites';
 import './academic.css';
 
 type Page =
@@ -29,7 +31,10 @@ type Page =
   | 'manuscrito-banca'
   | 'bancas'
   | 'documentos'
-  | 'verificar-documento';
+  | 'verificar-documento'
+  | 'usuarios'
+  | 'aceitar-convite'
+  | 'confirmar-email';
 const currentPage = (): Page => {
   const page = window.location.hash.replace('#/', '').split('?')[0];
   return [
@@ -46,6 +51,9 @@ const currentPage = (): Page => {
     'bancas',
     'documentos',
     'verificar-documento',
+    'usuarios',
+    'aceitar-convite',
+    'confirmar-email',
   ].includes(page)
     ? (page as Page)
     : 'cadastro';
@@ -69,14 +77,21 @@ const TITLES: Record<Page, string> = {
   bancas: 'Minhas bancas',
   documentos: 'Minhas atas',
   'verificar-documento': 'Verificar documento',
+  usuarios: 'Usuários',
+  'aceitar-convite': 'Ativar conta',
+  'confirmar-email': 'Confirmar e-mail',
 };
 
 const roleLabel = (user: User) =>
   user.perfis.includes('coordenador')
     ? 'Coordenador(a) de curso'
-    : user.professor
-      ? 'Professor / avaliador'
-      : 'Estudante';
+    : user.perfis.includes('administrador')
+      ? 'Administração · secretaria'
+      : user.professor
+        ? 'Professor / avaliador'
+        : user.estudante
+          ? 'Estudante'
+          : 'Usuário';
 
 type NavLink<P extends Page = Page> = { page: P; label: string; icon: IconName };
 const ACADEMIC_LINKS: NavLink<AcademicPage>[] = [
@@ -89,6 +104,7 @@ const ACADEMIC_LINKS: NavLink<AcademicPage>[] = [
   { page: 'organizar-defesas', label: 'Organizar defesas', icon: 'cal' },
   { page: 'bancas', label: 'Minhas bancas', icon: 'users' },
   { page: 'documentos', label: 'Minhas atas', icon: 'file' },
+  { page: 'usuarios', label: 'Usuários', icon: 'shield' },
 ];
 const ACCESS_LINKS: NavLink[] = [
   { page: 'entrar', label: 'Entrar', icon: 'key' },
@@ -346,6 +362,25 @@ export function App() {
             <StudentDocuments onSessionEnded={sessionEnded} />
           )}
           {page === 'verificar-documento' && <VerifyDocument />}
+          {view === 'usuarios' && api.hasSession() && (
+            <Users onSessionEnded={sessionEnded} user={me} />
+          )}
+          {page === 'aceitar-convite' && (
+            <AcceptInvite
+              onAccepted={(address) => {
+                setEmail(address);
+                sessionEnded('Conta ativada com sucesso! Entre com seu e-mail e senha.');
+              }}
+            />
+          )}
+          {page === 'confirmar-email' && (
+            <ConfirmEmail
+              onConfirmed={(message) => {
+                setEmail('');
+                sessionEnded(message);
+              }}
+            />
+          )}
           {view === 'monitoramento' && api.hasSession() && (
             <Monitoring onSessionEnded={sessionEnded} />
           )}
@@ -386,6 +421,8 @@ function AccountForm({
   const [courseStatus, setCourseStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [courseAttempt, setCourseAttempt] = useState(0);
   const student = values.tipo_cadastro === 'estudante';
+  // Contas administrativas (UC14) não têm matrícula nem vínculo docente para exibir.
+  const academic = !original || !!original.estudante || !!original.professor;
 
   useEffect(() => {
     if (!student) return;
@@ -674,138 +711,145 @@ function AccountForm({
             </div>
           )}
         </div>
-        <div className="section-heading">
-          <span>02</span>
-          <h2>Informações acadêmicas</h2>
-        </div>
-        <div className="fields-grid">
-          {student ? (
-            <>
-              <Field name="matricula_estudante" label="Matrícula" errors={errors}>
-                <input
-                  {...field('matricula_estudante')}
-                  disabled={busy || !!original}
-                  autoComplete="off"
-                  maxLength={30}
-                  placeholder="Informe sua matrícula"
-                  required
-                />
-              </Field>
-              {original ? (
-                <div className="field">
-                  <label htmlFor="curso-cadastrado">Curso</label>
-                  <input
-                    id="curso-cadastrado"
-                    value={
-                      courses.find((course) => String(course.id_curso) === values.id_curso)
-                        ?.nome_curso ||
-                      (courseStatus === 'loading'
-                        ? 'Carregando curso…'
-                        : 'Curso vinculado ao seu cadastro')
-                    }
-                    disabled
-                  />
-                  <small>Matrícula e curso são mantidos pela instituição.</small>
-                </div>
+        {academic && (
+          <>
+            <div className="section-heading">
+              <span>02</span>
+              <h2>Informações acadêmicas</h2>
+            </div>
+            <div className="fields-grid">
+              {student ? (
+                <>
+                  <Field name="matricula_estudante" label="Matrícula" errors={errors}>
+                    <input
+                      {...field('matricula_estudante')}
+                      disabled={busy || !!original}
+                      autoComplete="off"
+                      maxLength={30}
+                      placeholder="Informe sua matrícula"
+                      required
+                    />
+                  </Field>
+                  {original ? (
+                    <div className="field">
+                      <label htmlFor="curso-cadastrado">Curso</label>
+                      <input
+                        id="curso-cadastrado"
+                        value={
+                          courses.find((course) => String(course.id_curso) === values.id_curso)
+                            ?.nome_curso ||
+                          (courseStatus === 'loading'
+                            ? 'Carregando curso…'
+                            : 'Curso vinculado ao seu cadastro')
+                        }
+                        disabled
+                      />
+                      <small>Matrícula e curso são mantidos pela instituição.</small>
+                    </div>
+                  ) : (
+                    <Field name="id_curso" label="Curso" errors={errors}>
+                      <select
+                        {...field('id_curso')}
+                        disabled={busy || courseStatus !== 'ready' || !courses.length}
+                        required
+                      >
+                        <option value="">
+                          {courseStatus === 'loading'
+                            ? 'Carregando cursos…'
+                            : 'Selecione seu curso'}
+                        </option>
+                        {courses.map((course) => (
+                          <option key={course.id_curso} value={course.id_curso}>
+                            {course.nome_curso}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
+                  {!original && courseStatus === 'error' && (
+                    <div className="inline-warning full" role="alert">
+                      Não foi possível carregar os cursos.{' '}
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setCourseAttempt((value) => value + 1)}
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                  {!original && courseStatus === 'ready' && !courses.length && (
+                    <div className="inline-warning full" role="status">
+                      Nenhum curso ativo disponível. Solicite à administração o cadastro do seu
+                      curso.
+                    </div>
+                  )}
+                </>
               ) : (
-                <Field name="id_curso" label="Curso" errors={errors}>
-                  <select
-                    {...field('id_curso')}
-                    disabled={busy || courseStatus !== 'ready' || !courses.length}
-                    required
-                  >
-                    <option value="">
-                      {courseStatus === 'loading' ? 'Carregando cursos…' : 'Selecione seu curso'}
-                    </option>
-                    {courses.map((course) => (
-                      <option key={course.id_curso} value={course.id_curso}>
-                        {course.nome_curso}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <>
+                  <Field name="titulacao_professor" label="Titulação" errors={errors}>
+                    <select {...field('titulacao_professor')} required>
+                      <option value="">Selecione sua titulação</option>
+                      <option value="Especialista">Especialista</option>
+                      <option value="Mestre">Mestre</option>
+                      <option value="Doutor">Doutor</option>
+                    </select>
+                  </Field>
+                  <Field name="tipo_professor" label="Vínculo institucional" errors={errors}>
+                    <select {...field('tipo_professor')} disabled={busy || !!original}>
+                      <option value="interno">Professor interno · UEA</option>
+                      <option value="externo">Professor / avaliador externo</option>
+                    </select>
+                  </Field>
+                  <div className="full">
+                    <Field
+                      name="instituicao_origem_professor"
+                      label="Instituição de origem"
+                      optional={values.tipo_professor !== 'externo'}
+                      errors={errors}
+                    >
+                      <input
+                        {...field('instituicao_origem_professor')}
+                        autoComplete="organization"
+                        maxLength={200}
+                        placeholder="Nome da instituição"
+                      />
+                    </Field>
+                  </div>
+                  <div className="full">
+                    <Field
+                      name="areas_interesse"
+                      label="Áreas de interesse"
+                      optional
+                      errors={errors}
+                      hint="Separe por vírgulas. Até 20 áreas."
+                    >
+                      <input
+                        {...field('areas_interesse', true)}
+                        placeholder="Ex.: Engenharia de Software, Inteligência Artificial"
+                      />
+                    </Field>
+                  </div>
+                  <div className="full">
+                    <Field
+                      name="url_lattes_professor"
+                      label="Link do Currículo Lattes"
+                      optional
+                      errors={errors}
+                    >
+                      <input
+                        {...field('url_lattes_professor')}
+                        type="url"
+                        maxLength={2048}
+                        placeholder="https://lattes.cnpq.br/…"
+                      />
+                    </Field>
+                  </div>
+                </>
               )}
-              {!original && courseStatus === 'error' && (
-                <div className="inline-warning full" role="alert">
-                  Não foi possível carregar os cursos.{' '}
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => setCourseAttempt((value) => value + 1)}
-                  >
-                    Tentar novamente
-                  </button>
-                </div>
-              )}
-              {!original && courseStatus === 'ready' && !courses.length && (
-                <div className="inline-warning full" role="status">
-                  Nenhum curso ativo disponível. Solicite à administração o cadastro do seu curso.
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <Field name="titulacao_professor" label="Titulação" errors={errors}>
-                <select {...field('titulacao_professor')} required>
-                  <option value="">Selecione sua titulação</option>
-                  <option value="Especialista">Especialista</option>
-                  <option value="Mestre">Mestre</option>
-                  <option value="Doutor">Doutor</option>
-                </select>
-              </Field>
-              <Field name="tipo_professor" label="Vínculo institucional" errors={errors}>
-                <select {...field('tipo_professor')} disabled={busy || !!original}>
-                  <option value="interno">Professor interno · UEA</option>
-                  <option value="externo">Professor / avaliador externo</option>
-                </select>
-              </Field>
-              <div className="full">
-                <Field
-                  name="instituicao_origem_professor"
-                  label="Instituição de origem"
-                  optional={values.tipo_professor !== 'externo'}
-                  errors={errors}
-                >
-                  <input
-                    {...field('instituicao_origem_professor')}
-                    autoComplete="organization"
-                    maxLength={200}
-                    placeholder="Nome da instituição"
-                  />
-                </Field>
-              </div>
-              <div className="full">
-                <Field
-                  name="areas_interesse"
-                  label="Áreas de interesse"
-                  optional
-                  errors={errors}
-                  hint="Separe por vírgulas. Até 20 áreas."
-                >
-                  <input
-                    {...field('areas_interesse', true)}
-                    placeholder="Ex.: Engenharia de Software, Inteligência Artificial"
-                  />
-                </Field>
-              </div>
-              <div className="full">
-                <Field
-                  name="url_lattes_professor"
-                  label="Link do Currículo Lattes"
-                  optional
-                  errors={errors}
-                >
-                  <input
-                    {...field('url_lattes_professor')}
-                    type="url"
-                    maxLength={2048}
-                    placeholder="https://lattes.cnpq.br/…"
-                  />
-                </Field>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
         {!original && !student && (
           <p className="permission-note">
             <Icon name="shield" size={18} />

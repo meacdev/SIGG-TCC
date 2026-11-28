@@ -50,6 +50,9 @@ with app.app_context():
     from seed_monitoring import seed as seed_monitoring
 
     seed_monitoring(app)
+    from seed_admin import seed as seed_admin
+
+    seed_admin(app)
 
 if __name__ == "__main__":
     # A single worker keeps the same in-memory database throughout the test run.

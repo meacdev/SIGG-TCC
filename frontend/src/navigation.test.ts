@@ -12,6 +12,7 @@ const MENU: AcademicPage[] = [
   'organizar-defesas',
   'bancas',
   'documentos',
+  'usuarios',
 ];
 
 const teacher = (tipo: Teacher['tipo_professor'] = 'interno'): Teacher => ({
@@ -63,6 +64,13 @@ describe('barra lateral por perfil (CR-2026-0004)', () => {
 
   it('conta sem vínculo acadêmico vê apenas Meu cadastro', () => {
     expect(visible({ perfis: [] })).toEqual(['perfil']);
+  });
+
+  it('administrador vê a gestão de usuários; os demais perfis não', () => {
+    expect(visible({ perfis: ['administrador'] })).toEqual(['perfil', 'usuarios']);
+    const coordinator = { perfis: ['coordenador', 'administrador'], professor: teacher() };
+    expect(visible(coordinator)).toContain('usuarios');
+    expect(canAccess('usuarios', { perfis: ['coordenador'], professor: teacher() })).toBe(false);
   });
 
   it('manuscrito da banca continua acessível pelo link do e-mail', () => {
